@@ -1,0 +1,16 @@
+{
+  "meta": {"total_count": 1, "pageable_count": 1, "is_end": true},
+  "documents": [
+    {
+      "id": "200",
+      "place_name": "홍대 방탈출카페",
+      "category_name": "여가시설 > 방탈출카페",
+      "road_address_name": "서울 마포구 어울마당로 3",
+      "address_name": "",
+      "distance": "300",
+      "place_url": "http://place.map.kakao.com/200",
+      "x": "126.9230",
+      "y": "37.5550"
+    }
+  ]
+}

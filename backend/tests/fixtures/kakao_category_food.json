@@ -1,0 +1,27 @@
+{
+  "meta": {"total_count": 2, "pageable_count": 2, "is_end": true},
+  "documents": [
+    {
+      "id": "100",
+      "place_name": "홍대 국밥집",
+      "category_name": "음식점 > 한식 > 국밥",
+      "road_address_name": "서울 마포구 와우산로 1",
+      "address_name": "서울 마포구 서교동 1",
+      "distance": "120",
+      "place_url": "http://place.map.kakao.com/100",
+      "x": "126.9250",
+      "y": "37.5560"
+    },
+    {
+      "id": "101",
+      "place_name": "합정 파스타",
+      "category_name": "음식점 > 양식 > 이탈리안",
+      "road_address_name": "",
+      "address_name": "서울 마포구 합정동 2",
+      "distance": "480",
+      "place_url": "http://place.map.kakao.com/101",
+      "x": "126.9200",
+      "y": "37.5500"
+    }
+  ]
+}
