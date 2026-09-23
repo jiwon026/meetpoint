@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.rooms.router import router as rooms_router
 
 
 def create_app() -> FastAPI:
@@ -17,6 +18,8 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, bool]:
         return {"ok": True}
+
+    app.include_router(rooms_router)
 
     return app
 
