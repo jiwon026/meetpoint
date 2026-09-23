@@ -1,0 +1,11 @@
+{
+  "meta": {"total_count": 1, "pageable_count": 1, "is_end": true},
+  "documents": [
+    {
+      "address_name": "서울 마포구 양화로 160",
+      "x": "126.9245",
+      "y": "37.5571",
+      "address_type": "ROAD_ADDR"
+    }
+  ]
+}
