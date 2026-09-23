@@ -1,0 +1,44 @@
+{
+  "culturalEventInfo": {
+    "list_total_count": 3,
+    "RESULT": {"CODE": "INFO-000", "MESSAGE": "정상 처리되었습니다"},
+    "row": [
+      {
+        "CODENAME": "전시/미술",
+        "TITLE": "홍대 일러스트 페어",
+        "PLACE": "KT&G 상상마당",
+        "STRTDATE": "2026-09-20 00:00:00.0",
+        "END_DATE": "2026-09-30 00:00:00.0",
+        "LOT": "126.9222",
+        "LAT": "37.5541",
+        "ORG_LINK": "https://example.com/fair",
+        "MAIN_IMG": "https://example.com/fair.jpg",
+        "IS_FREE": "무료"
+      },
+      {
+        "CODENAME": "콘서트",
+        "TITLE": "잠실 야외 콘서트",
+        "PLACE": "올림픽공원",
+        "STRTDATE": "2026-09-26 00:00:00.0",
+        "END_DATE": "2026-09-26 00:00:00.0",
+        "LOT": "127.1216",
+        "LAT": "37.5202",
+        "ORG_LINK": "https://example.com/concert",
+        "MAIN_IMG": "",
+        "IS_FREE": "유료"
+      },
+      {
+        "CODENAME": "축제",
+        "TITLE": "좌표뒤바뀐 홍대 축제",
+        "PLACE": "홍대 걷고싶은거리",
+        "STRTDATE": "2026-09-01 00:00:00.0",
+        "END_DATE": "2026-12-31 00:00:00.0",
+        "LOT": "37.5563",
+        "LAT": "126.9236",
+        "ORG_LINK": "",
+        "MAIN_IMG": "",
+        "IS_FREE": "무료"
+      }
+    ]
+  }
+}
