@@ -31,12 +31,14 @@ logger = logging.getLogger(__name__)
 
 ROOM_KEEP_DAYS = 7
 SLUG_RETRIES = 5
+MAX_PARTICIPANTS = 20
 
 MSG_ADDRESS_NOT_FOUND = "주소를 찾지 못했어요. 역을 직접 골라주세요."
 MSG_OUTSIDE_METRO = "아직 수도권만 지원해요"
 MSG_EXPIRED = "약속이 지난 방이에요"
 MSG_ROOM_NOT_FOUND = "방을 찾을 수 없어요"
 MSG_STATION_NOT_FOUND = "역을 찾을 수 없어요"
+MSG_ROOM_FULL = "참여 인원이 가득 찼어요 (최대 20명)"
 
 
 def _unique_slug(session: Session) -> str:
@@ -91,6 +93,9 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
 def add_participant(
     session: Session, room: Room, data: ParticipantCreate, geocoder: Geocoder
 ) -> Participant:
+    # 지오코딩 전에 막는다. 정원이 찼으면 외부 API를 부를 이유가 없다.
+    if len(room.participants) >= MAX_PARTICIPANTS:
+        raise HTTPException(status_code=422, detail=MSG_ROOM_FULL)
     lat, lng = _resolve_point(session, data, geocoder)
     if not is_in_metro(lat, lng):
         raise HTTPException(status_code=422, detail=MSG_OUTSIDE_METRO)

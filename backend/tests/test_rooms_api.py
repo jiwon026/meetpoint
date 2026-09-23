@@ -147,6 +147,18 @@ def test_expired_room_is_410(client, seeded):
     assert response.json()["detail"] == "약속이 지난 방이에요"
 
 
+def test_room_rejects_21st_participant(client):
+    slug = _create_room(client)["slug"]
+    for i in range(20):
+        response = client.post(
+            f"/rooms/{slug}/participants", json={"nickname": f"참여자{i}", "station_id": 1}
+        )
+        assert response.status_code == 201, response.text
+    response = client.post(f"/rooms/{slug}/participants", json={"nickname": "늦둥이", "station_id": 1})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "참여 인원이 가득 찼어요 (최대 20명)"
+
+
 class BrokenGeocoder:
     def geocode(self, query: str):
         raise httpx.ConnectError("boom")
