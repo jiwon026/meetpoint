@@ -3,9 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from app.cache import ContentCacheRepo
+from app.errors import UpstreamError
 from app.events.seoul import SeoulEventClient
 from app.events.service import get_seoul_events
 from app.models import Hub
@@ -59,3 +61,18 @@ def test_raw_feed_is_fetched_once_and_cached(seeded):
     get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), cache)
     get_seoul_events(seeded.get(Hub, 3), date(2026, 9, 26), SeoulEventClient("test-key"), cache)
     assert route.call_count == 1
+
+
+@respx.mock
+def test_in_band_error_code_raises(seeded):
+    payload = {"culturalEventInfo": {"RESULT": {"CODE": "ERROR-500", "MESSAGE": "서버 오류"}, "row": []}}
+    respx.get(url__startswith=SEOUL_URL_PREFIX).mock(return_value=httpx.Response(200, json=payload))
+    with pytest.raises(UpstreamError):
+        SeoulEventClient("test-key").fetch_all()
+
+
+@respx.mock
+def test_top_level_no_data_code_returns_empty(seeded):
+    payload = {"RESULT": {"CODE": "INFO-200", "MESSAGE": "해당하는 데이터가 없습니다."}}
+    respx.get(url__startswith=SEOUL_URL_PREFIX).mock(return_value=httpx.Response(200, json=payload))
+    assert SeoulEventClient("test-key").fetch_all() == []

@@ -1,8 +1,25 @@
 import httpx
 
+from app.errors import UpstreamError
+
 SEOUL_OPENAPI_BASE = "http://openapi.seoul.go.kr:8088"
 PAGE_SIZE = 1000
 MAX_PAGES = 10
+SUCCESS_CODE = "INFO-000"
+NO_DATA_CODE = "INFO-200"
+
+
+def _rows_or_raise(payload: dict) -> list[dict]:
+    body = payload.get("culturalEventInfo")
+    result = (body if body is not None else payload).get("RESULT", {}) or {}
+    code = result.get("CODE", "")
+    if body is None:
+        if code == NO_DATA_CODE:
+            return []
+        raise UpstreamError(f"seoul api: {code} {result.get('MESSAGE', '')}".strip())
+    if code and code != SUCCESS_CODE:
+        raise UpstreamError(f"seoul api: {code} {result.get('MESSAGE', '')}".strip())
+    return list(body.get("row", []))
 
 
 class SeoulEventClient:
@@ -20,8 +37,7 @@ class SeoulEventClient:
             url = f"{SEOUL_OPENAPI_BASE}/{self._api_key}/json/culturalEventInfo/{start}/{end}/"
             response = self._client.get(url)
             response.raise_for_status()
-            body = response.json().get("culturalEventInfo", {})
-            batch = body.get("row", [])
+            batch = _rows_or_raise(response.json())
             rows.extend(batch)
             if len(batch) < PAGE_SIZE:
                 break
