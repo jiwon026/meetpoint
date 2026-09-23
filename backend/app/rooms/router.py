@@ -1,3 +1,4 @@
+import logging
 from dataclasses import asdict
 from typing import Literal
 
@@ -27,6 +28,8 @@ from app.schemas import (
 )
 from app.stations import search_stations
 from app.transit.matrix import StationTimeMatrix
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -93,6 +96,8 @@ def hub_content(
         else:
             items = get_places(hub, kind, local_client, cache)
         return {"kind": kind, "items": [asdict(i) for i in items], "error": None}
-    except (httpx.HTTPError, UpstreamError):
+    except (httpx.HTTPError, UpstreamError) as exc:
+        # 예외 클래스 이름만 남긴다. 요청 URL에는 API 키가 들어 있어 절대 기록하지 않는다.
+        logger.warning("content fetch failed kind=%s hub=%s error=%s", kind, hub.id, type(exc).__name__)
         stale = cache.get_stale(f"places:{hub.id}:{kind}") if kind != "event" else None
         return {"kind": kind, "items": list(stale or []), "error": MSG_CONTENT_UNAVAILABLE}

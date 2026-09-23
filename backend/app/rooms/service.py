@@ -1,6 +1,8 @@
+import logging
 from dataclasses import asdict
 from datetime import datetime, timedelta
 
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,6 +25,8 @@ from app.schemas import (
 )
 from app.stations import all_stations
 from app.transit.matrix import StationTimeMatrix
+
+logger = logging.getLogger(__name__)
 
 ROOM_KEEP_DAYS = 7
 SLUG_RETRIES = 5
@@ -73,7 +77,11 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
         if station is None:
             raise HTTPException(status_code=404, detail=MSG_STATION_NOT_FOUND)
         return station.lat, station.lng
-    point = geocoder.geocode(data.address or "")
+    try:
+        point = geocoder.geocode(data.address or "")
+    except httpx.HTTPError as exc:
+        logger.warning("geocode failed error=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=MSG_ADDRESS_NOT_FOUND) from exc
     if point is None:
         raise HTTPException(status_code=422, detail=MSG_ADDRESS_NOT_FOUND)
     return point.lat, point.lng

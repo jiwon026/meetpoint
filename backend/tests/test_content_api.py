@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -70,14 +71,18 @@ def test_event_content_uses_room_meet_date(client):
 
 
 @respx.mock
-def test_upstream_failure_returns_friendly_error_and_empty_items(client):
+def test_upstream_failure_returns_friendly_error_and_empty_items(client, caplog):
     respx.get(CATEGORY_URL).mock(return_value=httpx.Response(500))
     slug = _room_slug(client)
-    response = client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "cafe"})
+    with caplog.at_level(logging.WARNING):
+        response = client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "cafe"})
     assert response.status_code == 200
     body = response.json()
     assert body["items"] == []
     assert body["error"] == "지금 불러올 수 없어요"
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("content fetch failed" in r.getMessage() and "kind=cafe" in r.getMessage() for r in warnings)
+    assert all("dapi.kakao.com" not in r.getMessage() for r in caplog.records)
 
 
 @respx.mock

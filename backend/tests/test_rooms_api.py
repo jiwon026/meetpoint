@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -139,6 +140,27 @@ def test_expired_room_is_410(client, seeded):
     response = client.get(f"/rooms/{slug}")
     assert response.status_code == 410
     assert response.json()["detail"] == "약속이 지난 방이에요"
+
+
+class BrokenGeocoder:
+    def geocode(self, query: str):
+        raise httpx.ConnectError("boom")
+
+
+def test_geocoder_outage_returns_503_with_guidance(seeded):
+    app = create_app()
+
+    def _db():
+        yield seeded
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_geocoder] = lambda: BrokenGeocoder()
+    app.dependency_overrides[get_matrix] = lambda: StationTimeMatrix.load(seeded, {1, 2, 3, 4})
+    client = TestClient(app)
+    slug = _create_room(client)["slug"]
+    response = client.post(f"/rooms/{slug}/participants", json={"nickname": "a", "address": "홍대 근처"})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "주소를 찾지 못했어요. 역을 직접 골라주세요."
 
 
 def test_station_search_endpoint(client):
