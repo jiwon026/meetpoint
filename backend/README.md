@@ -1,8 +1,11 @@
 # 우리지금만나 백엔드
 
+아래 명령은 전부 이 폴더(`backend/`) 안에서 실행한다. 저장소 루트에서는 `cd backend` 먼저.
+
 ## 로컬 실행
 
 ```bash
+cd backend
 python -m venv .venv
 .venv/Scripts/pip install -e ".[dev]"
 cp .env.example .env
