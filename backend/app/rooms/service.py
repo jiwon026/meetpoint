@@ -11,8 +11,9 @@ from app.cache import utcnow
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
 from app.geocoding.nearest import StationWalk, nearest_stations
-from app.models import Hub, Participant, Room, Station
-from app.ranking.rank import HubCandidate, ParticipantInput, rank_hubs
+from app.hubs import load_hub_candidates
+from app.models import Participant, Room, Station
+from app.ranking.rank import ParticipantInput, rank_hubs
 from app.rooms.slug import generate_slug
 from app.schemas import (
     LegOut,
@@ -126,15 +127,6 @@ def room_out(room: Room) -> RoomOut:
     )
 
 
-def _candidates(session: Session) -> tuple[list[Hub], list[HubCandidate]]:
-    hubs = list(session.scalars(select(Hub).order_by(Hub.id)).all())
-    nodes_by_name: dict[str, list[int]] = {}
-    for s in all_stations(session):
-        nodes_by_name.setdefault(s.name, []).append(s.id)
-    candidates = [HubCandidate(h.id, h.name, tuple(nodes_by_name.get(h.name, ()))) for h in hubs]
-    return hubs, candidates
-
-
 def compute_result(session: Session, room: Room, matrix: StationTimeMatrix) -> ResultOut:
     if len(room.participants) < 2:
         return ResultOut(status="waiting", recommendations=[])
@@ -142,7 +134,7 @@ def compute_result(session: Session, room: Room, matrix: StationTimeMatrix) -> R
         ParticipantInput(p.id, p.nickname, tuple(StationWalk(**d) for d in p.nearest_stations))
         for p in room.participants
     ]
-    hubs, candidates = _candidates(session)
+    hubs, candidates = load_hub_candidates(session)
     hub_by_id = {h.id: h for h in hubs}
     scores = rank_hubs(inputs, candidates, matrix)
     recommendations = [

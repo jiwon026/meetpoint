@@ -15,6 +15,7 @@ from app.events.seoul import SeoulEventClient
 from app.geocoding.kakao import GeoPoint
 from app.main import create_app
 from app.places.kakao_local import KakaoLocalClient
+from app.places.service import place_cache_key
 from app.transit.matrix import StationTimeMatrix
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -90,7 +91,7 @@ def test_upstream_failure_serves_stale_cache_when_present(client, seeded):
     respx.get(CATEGORY_URL).mock(return_value=httpx.Response(500))
     old_clock = lambda: datetime(2020, 1, 1)
     ContentCacheRepo(seeded, now=old_clock).set(
-        "places:1:cafe",
+        place_cache_key(1, "cafe"),
         [{"id": "1", "name": "옛날카페", "category": "카페", "address": "", "distance_m": 10, "url": "", "lat": 0.0, "lng": 0.0}],
         kind="cafe",
         hub_id=1,

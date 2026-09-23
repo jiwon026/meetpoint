@@ -16,9 +16,10 @@ from app.events.service import get_events
 from app.geocoding.kakao import Geocoder
 from app.models import Hub
 from app.places.kakao_local import KakaoLocalClient
-from app.places.service import get_places
+from app.places.service import get_places, place_cache_key
 from app.rooms import service
 from app.schemas import (
+    ContentOut,
     ParticipantCreate,
     ParticipantOut,
     ResultOut,
@@ -75,7 +76,7 @@ MSG_HUB_NOT_FOUND = "거점을 찾을 수 없어요"
 ContentKind = Literal["food", "cafe", "play", "event"]
 
 
-@router.get("/rooms/{slug}/hubs/{hub_id}/content")
+@router.get("/rooms/{slug}/hubs/{hub_id}/content", response_model=ContentOut)
 def hub_content(
     slug: str,
     hub_id: int,
@@ -85,7 +86,7 @@ def hub_content(
     seoul_client: SeoulEventClient = Depends(get_seoul_client),
     kopis_client: KopisClient = Depends(get_kopis_client),
     cache: ContentCacheRepo = Depends(get_cache),
-) -> dict:
+) -> ContentOut:
     room = service.get_room(db, slug)
     hub = db.get(Hub, hub_id)
     if hub is None:
@@ -95,9 +96,9 @@ def hub_content(
             items = get_events(hub, room.meet_date, seoul_client, kopis_client, cache)
         else:
             items = get_places(hub, kind, local_client, cache)
-        return {"kind": kind, "items": [asdict(i) for i in items], "error": None}
+        return ContentOut(kind=kind, items=[asdict(i) for i in items], error=None)
     except (httpx.HTTPError, UpstreamError) as exc:
         # 예외 클래스 이름만 남긴다. 요청 URL에는 API 키가 들어 있어 절대 기록하지 않는다.
         logger.warning("content fetch failed kind=%s hub=%s error=%s", kind, hub.id, type(exc).__name__)
-        stale = cache.get_stale(f"places:{hub.id}:{kind}") if kind != "event" else None
-        return {"kind": kind, "items": list(stale or []), "error": MSG_CONTENT_UNAVAILABLE}
+        stale = cache.get_stale(place_cache_key(hub.id, kind)) if kind != "event" else None
+        return ContentOut(kind=kind, items=list(stale or []), error=MSG_CONTENT_UNAVAILABLE)

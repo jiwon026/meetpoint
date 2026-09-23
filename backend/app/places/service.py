@@ -50,8 +50,12 @@ def _fetch(hub: Hub, kind: str, client: KakaoLocalClient) -> list[Place]:
     raise ValueError(f"unknown place kind: {kind}")
 
 
+def place_cache_key(hub_id: int, kind: str) -> str:
+    return f"places:{hub_id}:{kind}"
+
+
 def get_places(hub: Hub, kind: str, client: KakaoLocalClient, cache: ContentCacheRepo) -> list[Place]:
-    key = f"places:{hub.id}:{kind}"
+    key = place_cache_key(hub.id, kind)
     cached = cache.get(key, CONTENT_TTL)
     if cached is not None:
         return [Place(**item) for item in cached]

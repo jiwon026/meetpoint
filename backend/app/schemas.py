@@ -70,3 +70,9 @@ class StationOut(BaseModel):
     id: int
     name: str
     line: str
+
+
+class ContentOut(BaseModel):
+    kind: Literal["food", "cafe", "play", "event"]
+    items: list[dict]
+    error: str | None
