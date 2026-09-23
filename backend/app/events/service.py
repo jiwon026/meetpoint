@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import date
 
-from app.cache import CONTENT_TTL, ContentCacheRepo
+from app.cache import CONTENT_TTL, VENUE_TTL, ContentCacheRepo
+from app.events.kopis import KopisClient
 from app.events.seoul import SeoulEventClient
 from app.geo import haversine_km
 from app.models import Hub
@@ -93,3 +94,79 @@ def get_seoul_events(
             continue
         events.append(_to_event(row, hub, coords))
     return sorted(events, key=lambda e: e.distance_m)
+
+
+KOPIS_AREA_BY_REGION = {"경기": "41", "인천": "28"}
+
+
+def _kopis_dot_date(value: str) -> str:
+    return value.replace(".", "-")
+
+
+def _venue_coords(mt10id: str, client: KopisClient, cache: ContentCacheRepo) -> tuple[float, float] | None:
+    if not mt10id:
+        return None
+    key = f"venue:kopis:{mt10id}"
+    cached = cache.get(key, VENUE_TTL)
+    if cached is None:
+        facility = client.facility(mt10id)
+        cached = {"la": facility.get("la", ""), "lo": facility.get("lo", "")}
+        cache.set(key, cached, kind="venue")
+    try:
+        lat, lng = float(cached["la"]), float(cached["lo"])
+    except (TypeError, ValueError, KeyError):
+        return None
+    if lat == 0 or lng == 0:
+        return None
+    return lat, lng
+
+
+def get_kopis_events(
+    hub: Hub, meet_date: date, client: KopisClient, cache: ContentCacheRepo
+) -> list[Event]:
+    area = KOPIS_AREA_BY_REGION.get(hub.region)
+    if area is None:
+        return []
+    key = f"events:kopis:{area}:{meet_date.isoformat()}"
+    rows = cache.get(key, CONTENT_TTL)
+    if rows is None:
+        rows = client.list_performances(meet_date, area)
+        cache.set(key, rows, kind="event")
+    events: list[Event] = []
+    for row in rows:
+        coords = _venue_coords(row.get("mt10id", ""), client, cache)
+        if coords is None:
+            continue
+        km = haversine_km(hub.lat, hub.lng, *coords)
+        if km > EVENT_RADIUS_KM:
+            continue
+        mt20id = row.get("mt20id", "")
+        events.append(
+            Event(
+                id=f"kopis:{mt20id}",
+                title=row.get("prfnm", ""),
+                place=row.get("fcltynm", ""),
+                start_date=_kopis_dot_date(row.get("prfpdfrom", "")),
+                end_date=_kopis_dot_date(row.get("prfpdto", "")),
+                lat=coords[0],
+                lng=coords[1],
+                url=f"https://www.kopis.or.kr/por/db/pblprfr/pblprfrView.do?mt20Id={mt20id}",
+                image=row.get("poster", ""),
+                category=row.get("genrenm", ""),
+                is_free=False,
+                distance_m=int(km * 1000),
+            )
+        )
+    return sorted(events, key=lambda e: e.distance_m)
+
+
+def get_events(
+    hub: Hub,
+    meet_date: date,
+    seoul_client: SeoulEventClient,
+    kopis_client: KopisClient,
+    cache: ContentCacheRepo,
+) -> list[Event]:
+    if hub.region == "서울":
+        return get_seoul_events(hub, meet_date, seoul_client, cache)
+    return get_kopis_events(hub, meet_date, kopis_client, cache)

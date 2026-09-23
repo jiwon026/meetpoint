@@ -1,16 +1,27 @@
+import httpx
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cache import ContentCacheRepo
 from app.config import get_settings
 from app.db import get_db
+from app.events.kopis import KopisClient
+from app.events.seoul import SeoulEventClient
 from app.geocoding.kakao import Geocoder, KakaoGeocoder
 from app.models import Hub, Station
+from app.places.kakao_local import KakaoLocalClient
 from app.transit.matrix import StationTimeMatrix
+
+_http_client = httpx.Client(timeout=10.0)
+
+
+def get_http_client() -> httpx.Client:
+    return _http_client
 
 
 def get_geocoder() -> Geocoder:
-    return KakaoGeocoder(get_settings().kakao_rest_key)
+    return KakaoGeocoder(get_settings().kakao_rest_key, client=get_http_client())
 
 
 def hub_node_ids(session: Session) -> set[int]:
@@ -30,3 +41,19 @@ def get_matrix(session: Session = Depends(get_db)) -> StationTimeMatrix:
         matrix = StationTimeMatrix.load(session, hub_node_ids(session))
         _matrix_holder["matrix"] = matrix
     return matrix
+
+
+def get_local_client() -> KakaoLocalClient:
+    return KakaoLocalClient(get_settings().kakao_rest_key, client=get_http_client())
+
+
+def get_seoul_client() -> SeoulEventClient:
+    return SeoulEventClient(get_settings().seoul_api_key, client=get_http_client())
+
+
+def get_kopis_client() -> KopisClient:
+    return KopisClient(get_settings().kopis_api_key, client=get_http_client())
+
+
+def get_cache(session: Session = Depends(get_db)) -> ContentCacheRepo:
+    return ContentCacheRepo(session)
