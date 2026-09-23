@@ -1,14 +1,33 @@
-from dataclasses import dataclass
+import logging
+from dataclasses import asdict, dataclass
 from datetime import date
 
+import httpx
+
 from app.cache import CONTENT_TTL, VENUE_TTL, ContentCacheRepo
+from app.errors import UpstreamError
 from app.events.kopis import KopisClient
 from app.events.seoul import SeoulEventClient
 from app.geo import haversine_km
 from app.models import Hub
 
+logger = logging.getLogger(__name__)
+
 EVENT_RADIUS_KM = 1.5
 SEOUL_RAW_KEY = "events:seoul:raw"
+# 원본 행에는 쓰지 않는 필드가 많다. 캐시에는 쓰는 것만 담는다.
+SEOUL_KEEP_FIELDS = (
+    "CODENAME",
+    "TITLE",
+    "PLACE",
+    "STRTDATE",
+    "END_DATE",
+    "LOT",
+    "LAT",
+    "ORG_LINK",
+    "MAIN_IMG",
+    "IS_FREE",
+)
 
 
 @dataclass(frozen=True)
@@ -49,7 +68,7 @@ def _to_event(row: dict, hub: Hub, coords: tuple[float, float]) -> Event:
     lat, lng = coords
     distance_m = int(haversine_km(hub.lat, hub.lng, lat, lng) * 1000)
     return Event(
-        id=f"seoul:{row.get('TITLE', '')}:{_date_part(row.get('STRTDATE', ''))}",
+        id=f"seoul:{row.get('TITLE', '')}:{row.get('PLACE', '')}:{_date_part(row.get('STRTDATE', ''))}",
         title=row.get("TITLE", ""),
         place=row.get("PLACE", ""),
         start_date=_date_part(row.get("STRTDATE", "")),
@@ -75,14 +94,27 @@ def _seoul_raw(client: SeoulEventClient, cache: ContentCacheRepo) -> list[dict]:
     cached = cache.get(SEOUL_RAW_KEY, CONTENT_TTL)
     if cached is not None:
         return list(cached)
-    rows = client.fetch_all()
-    cache.set(SEOUL_RAW_KEY, rows, kind="event")
-    return rows
+    try:
+        rows = client.fetch_all()
+    except (httpx.HTTPError, UpstreamError) as exc:
+        stale = cache.get_stale(SEOUL_RAW_KEY)
+        if stale is None:
+            raise
+        # 설계 8절: 갱신에 실패하면 캐시된 값을 쓴다. 호출자에게는 알리지 않고 로그만 남긴다.
+        logger.warning("seoul feed refresh failed, serving stale error=%s", type(exc).__name__)
+        return list(stale)
+    trimmed = [{k: r.get(k, "") for k in SEOUL_KEEP_FIELDS} for r in rows]
+    cache.set(SEOUL_RAW_KEY, trimmed, kind="event")
+    return trimmed
 
 
 def get_seoul_events(
     hub: Hub, meet_date: date, client: SeoulEventClient, cache: ContentCacheRepo
 ) -> list[Event]:
+    key = f"events:seoul:{hub.id}:{meet_date.isoformat()}"
+    cached = cache.get(key, CONTENT_TTL)
+    if cached is not None:
+        return [Event(**e) for e in cached]
     events: list[Event] = []
     for row in _seoul_raw(client, cache):
         if not _open_on(row, meet_date):
@@ -93,7 +125,9 @@ def get_seoul_events(
         if haversine_km(hub.lat, hub.lng, *coords) > EVENT_RADIUS_KM:
             continue
         events.append(_to_event(row, hub, coords))
-    return sorted(events, key=lambda e: e.distance_m)
+    events = sorted(events, key=lambda e: e.distance_m)
+    cache.set(key, [asdict(e) for e in events], kind="event", hub_id=hub.id)
+    return events
 
 
 KOPIS_AREA_BY_REGION = {"경기": "41", "인천": "28"}
@@ -133,8 +167,13 @@ def get_kopis_events(
         rows = client.list_performances(meet_date, area)
         cache.set(key, rows, kind="event")
     events: list[Event] = []
+    # 같은 공연장에서 하는 공연이 여러 건이면 좌표는 한 번만 구한다.
+    coords_by_facility: dict[str, tuple[float, float] | None] = {}
     for row in rows:
-        coords = _venue_coords(row.get("mt10id", ""), client, cache)
+        facility_id = row.get("mt10id", "")
+        if facility_id not in coords_by_facility:
+            coords_by_facility[facility_id] = _venue_coords(facility_id, client, cache)
+        coords = coords_by_facility[facility_id]
         if coords is None:
             continue
         km = haversine_km(hub.lat, hub.lng, *coords)

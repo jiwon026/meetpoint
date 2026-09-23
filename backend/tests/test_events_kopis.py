@@ -39,7 +39,7 @@ def test_kopis_events_filtered_by_venue_distance(seeded):
     listing, _ = _mock_kopis()
     hub = _suwon_hub(seeded)
     events = get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), ContentCacheRepo(seeded))
-    assert [e.title for e in events] == ["수원 재즈 나이트"]
+    assert [e.title for e in events] == ["수원 재즈 나이트", "수원 재즈 나이트 2회"]
     assert events[0].place == "수원 SK아트리움"
     assert events[0].start_date == "2026-09-26"
     assert events[0].category == "대중음악"
@@ -55,8 +55,10 @@ def test_kopis_venue_coords_are_cached_across_calls(seeded):
     hub = _suwon_hub(seeded)
     cache = ContentCacheRepo(seeded)
     get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), cache)
-    get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), cache)
+    events = get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), cache)
+    # 같은 공연장(FC001)을 쓰는 공연이 둘이어도 시설 조회는 한 번뿐이다.
     assert fac1.call_count == 1
+    assert len(events) == 2
 
 
 def test_kopis_returns_empty_for_seoul_hub(seeded):

@@ -1,15 +1,19 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class RoomCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     title: str = Field(min_length=1, max_length=40)
     meet_date: date
 
 
 class ParticipantCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     nickname: str = Field(min_length=1, max_length=20)
     address: str | None = Field(default=None, max_length=100)
     station_id: int | None = None

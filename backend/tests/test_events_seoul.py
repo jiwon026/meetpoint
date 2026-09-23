@@ -1,16 +1,17 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import httpx
 import pytest
 import respx
+from sqlalchemy import delete
 
 from app.cache import ContentCacheRepo
 from app.errors import UpstreamError
 from app.events.seoul import SeoulEventClient
-from app.events.service import get_seoul_events
-from app.models import Hub
+from app.events.service import SEOUL_RAW_KEY, get_seoul_events
+from app.models import ContentCache, Hub
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SEOUL_URL_PREFIX = "http://openapi.seoul.go.kr:8088/test-key/json/culturalEventInfo/"
@@ -61,6 +62,35 @@ def test_raw_feed_is_fetched_once_and_cached(seeded):
     get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), cache)
     get_seoul_events(seeded.get(Hub, 3), date(2026, 9, 26), SeoulEventClient("test-key"), cache)
     assert route.call_count == 1
+
+
+@respx.mock
+def test_stale_feed_is_served_when_refresh_fails(seeded):
+    route = respx.get(url__startswith=SEOUL_URL_PREFIX).mock(return_value=httpx.Response(200, json=_load()))
+    hub = seeded.get(Hub, 1)
+    expired_cache = ContentCacheRepo(seeded, now=lambda: datetime(2020, 1, 1))
+    get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), expired_cache)
+
+    route.mock(return_value=httpx.Response(500))
+    events = get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), ContentCacheRepo(seeded))
+
+    assert "홍대 일러스트 페어" in [e.title for e in events]
+
+
+@respx.mock
+def test_per_hub_result_is_cached(seeded):
+    route = respx.get(url__startswith=SEOUL_URL_PREFIX).mock(return_value=httpx.Response(200, json=_load()))
+    hub = seeded.get(Hub, 1)
+    cache = ContentCacheRepo(seeded)
+    first = get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), cache)
+
+    seeded.execute(delete(ContentCache).where(ContentCache.cache_key == SEOUL_RAW_KEY))
+    seeded.commit()
+    route.mock(return_value=httpx.Response(500))
+    second = get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), cache)
+
+    assert [e.title for e in second] == [e.title for e in first]
+    assert second
 
 
 @respx.mock

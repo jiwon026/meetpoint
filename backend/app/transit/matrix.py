@@ -15,9 +15,12 @@ class StationTimeMatrix:
     @classmethod
     def load(cls, session: Session, to_station_ids: Iterable[int]) -> "StationTimeMatrix":
         ids = list(set(to_station_ids))
-        stmt = select(StationTime).where(StationTime.to_station_id.in_(ids))
-        rows = session.scalars(stmt).all()
-        return cls({(r.from_station_id, r.to_station_id): r.minutes for r in rows})
+        # ORM 객체 대신 컬럼만 읽는다. 수만 행을 올릴 때 메모리와 시간 차이가 크다.
+        stmt = select(StationTime.from_station_id, StationTime.to_station_id, StationTime.minutes).where(
+            StationTime.to_station_id.in_(ids)
+        )
+        rows = session.execute(stmt).all()
+        return cls({(f, t): m for f, t, m in rows})
 
     def minutes(self, from_id: int, to_id: int) -> int | None:
         if from_id == to_id:

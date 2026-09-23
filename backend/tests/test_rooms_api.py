@@ -62,6 +62,11 @@ def test_create_room_rejects_empty_title(client):
     assert response.status_code == 422
 
 
+def test_create_room_rejects_whitespace_only_title(client):
+    response = client.post("/rooms", json={"title": "   ", "meet_date": "2026-09-26"})
+    assert response.status_code == 422
+
+
 def test_unknown_room_is_404(client):
     assert client.get("/rooms/zzzzzz").status_code == 404
 
