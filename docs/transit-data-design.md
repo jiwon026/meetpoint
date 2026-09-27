@@ -83,7 +83,7 @@ backend/
 - 위도 36.9~38.3, 경도 126.3~127.9 안에 있고, 노선명이 수도권 노선 목록(`config.py`)에 있는 행만 남긴다.
 - 이름 정규화(`names.py`): 앞뒤 공백 제거, 괄호와 그 안 내용 제거("총신대입구(이수)" -> "총신대입구"), 끝의 "역" 제거, 전각 공백 제거. 원문 이름도 별도 컬럼으로 보존.
 - 노드 id는 1부터 순번. 같은 이름과 노선이 중복되면 실패.
-출력: `stations.csv` (id, name, raw_name, line, operator, lat, lng). group_id는 5.4에서 채운다.
+출력: `stations.csv` (id, name, raw_name, line, operator, lat, lng, region). region은 도로명주소 앞 두 글자(서울, 경기, 인천), 주소가 없으면 빈 값. group_id는 5.4에서 채운다.
 
 ### 5.2 edges
 
