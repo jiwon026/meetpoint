@@ -39,6 +39,19 @@ def test_write_csv_round_trip(tmp_path: Path):
     assert read_csv_rows(p) == [{"id": "1", "name": "홍대입구"}]
 
 
+def test_read_csv_rows_tolerates_trailing_empty_cells(tmp_path: Path):
+    p = tmp_path / "a.csv"
+    p.write_text("호선,역명\n2호선,홍대입구,\n", encoding="utf-8")
+    assert read_csv_rows(p) == [{"호선": "2호선", "역명": "홍대입구"}]
+
+
+def test_read_csv_rows_raises_on_ragged_row(tmp_path: Path):
+    p = tmp_path / "a.csv"
+    p.write_text("호선,역명\n2호선\n", encoding="utf-8")
+    with pytest.raises(ColumnError, match="2행"):
+        read_csv_rows(p)
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [

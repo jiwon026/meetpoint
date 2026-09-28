@@ -25,7 +25,19 @@ def read_csv_rows(path: Path) -> list[dict[str, str]]:
             with path.open(encoding=enc, newline="") as f:
                 reader = csv.reader(f)
                 header = _clean_header(next(reader))
-                return [dict(zip(header, [c.strip() for c in row])) for row in reader if any(row)]
+                rows: list[dict[str, str]] = []
+                for lineno, row in enumerate(reader, start=2):
+                    if not any(row):
+                        continue
+                    cells = [c.strip() for c in row]
+                    while len(cells) > len(header) and cells[-1] == "":
+                        cells.pop()
+                    if len(cells) != len(header):
+                        raise ColumnError(
+                            f"{path.name} {lineno}행: 컬럼 {len(cells)}개, 헤더 {len(header)}개"
+                        )
+                    rows.append(dict(zip(header, cells)))
+                return rows
         except UnicodeDecodeError as exc:
             last = exc
     raise UnicodeDecodeError("csv", b"", 0, 0, f"{path}: {last}")
