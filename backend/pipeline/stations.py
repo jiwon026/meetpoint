@@ -6,8 +6,16 @@
 from dataclasses import asdict, dataclass
 
 from app.geo import haversine_km
-from pipeline.config import COLUMNS, GROUP_RADIUS_KM, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR, canonical_line
-from pipeline.io import pick, read_xlsx_rows, require_raw, write_csv
+from pipeline.config import (
+    COLUMNS,
+    GROUP_RADIUS_KM,
+    MANUAL_DIR,
+    METRO_LAT_RANGE,
+    METRO_LNG_RANGE,
+    OUT_DIR,
+    canonical_line,
+)
+from pipeline.io import pick, read_csv_rows, read_xlsx_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
 
 STATION_FIELDS = ("id", "name", "raw_name", "line", "operator", "lat", "lng", "region", "group_id")
@@ -72,9 +80,29 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
     return out
 
 
+def parse_extra(rows: list[dict[str, str]], start_id: int) -> list[StationRow]:
+    """표준데이터에 없는 역(manual/extra_stations.csv)을 id를 이어 붙여 StationRow로."""
+    return [
+        StationRow(
+            id=start_id + i,
+            name=normalize_station_name(r["name"]),
+            raw_name=r["name"],
+            line=canonical_line(r["line"]) or r["line"],
+            operator=r["operator"],
+            lat=float(r["lat"]),
+            lng=float(r["lng"]),
+            region=r["region"],
+        )
+        for i, r in enumerate(rows)
+    ]
+
+
 def main() -> None:
     rows = read_xlsx_rows(require_raw("stations_std"))
     stations = parse_standard(rows)
+    extra_path = MANUAL_DIR / "extra_stations.csv"
+    if extra_path.exists():
+        stations += parse_extra(read_csv_rows(extra_path), start_id=len(stations) + 1)
     write_csv(OUT_DIR / "stations.csv", STATION_FIELDS, [{**asdict(s), "group_id": ""} for s in stations])
     print(f"stations: {len(stations)} rows -> {OUT_DIR / 'stations.csv'}")
 

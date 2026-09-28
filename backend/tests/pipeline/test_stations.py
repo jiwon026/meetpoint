@@ -1,6 +1,6 @@
 import pytest
 
-from pipeline.stations import StationRow, parse_standard, region_from_address
+from pipeline.stations import StationRow, parse_extra, parse_standard, region_from_address
 
 ROWS = [
     {"역사명": "홍대입구", "노선명": "2호선", "운영기관명": "서울교통공사", "위도": "37.5571", "경도": "126.9245", "도로명주소": "서울특별시 마포구 양화로 지하 160"},
@@ -54,3 +54,15 @@ def test_parse_normalizes_name_but_keeps_raw():
 )
 def test_region_from_address(address, expected):
     assert region_from_address(address) == expected
+
+
+def test_parse_extra_continues_ids_and_normalizes_names():
+    extra = [
+        {"name": "서울역", "line": "GTX-A", "operator": "에스지레일", "lat": "37.55585", "lng": "126.972103", "region": "서울"},
+        {"name": "동탄", "line": "GTX-A", "operator": "에스지레일", "lat": "37.199943", "lng": "127.095738", "region": "경기"},
+    ]
+    rows = parse_extra(extra, start_id=777)
+    assert rows == [
+        StationRow(777, "서울", "서울역", "GTX-A", "에스지레일", 37.55585, 126.972103, "서울"),
+        StationRow(778, "동탄", "동탄", "GTX-A", "에스지레일", 37.199943, 127.095738, "경기"),
+    ]
