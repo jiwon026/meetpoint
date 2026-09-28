@@ -10,6 +10,7 @@ from pathlib import Path
 from app.geo import haversine_km
 from pipeline.config import (
     COLUMNS,
+    EXPECTED_KM_DROPS,
     HAVERSINE_DETOUR,
     KRAIL_DISTANCE_GLOB,
     KRAIL_EXCLUDE,
@@ -149,15 +150,22 @@ def parse_manual_segments(rows: Iterable[dict[str, str]]) -> dict[str, list[Segm
 SEGMENT_BREAK = "|"
 
 
+PatchKey = tuple[str, str, str]
+
+
 def apply_segment_patches(
-    segments_by_line: dict[str, list[Segment]], patches: dict[tuple[str, str, str], tuple[str, ...]]
-) -> dict[str, list[Segment]]:
-    """config.SEGMENT_PATCHES 규칙으로 원본 역 순서의 결함을 고친 새 구간 목록을 돌려준다.
+    segments_by_line: dict[str, list[Segment]], patches: dict[PatchKey, tuple[str, ...]], km_to_next: bool = False
+) -> tuple[dict[str, list[Segment]], set[PatchKey]]:
+    """config.SEGMENT_PATCHES 규칙으로 원본 역 순서의 결함을 고친 새 구간 목록과 쓰인 규칙 키를 돌려준다.
 
     키 (노선, 앞 역, 뒤 역)이 연속한 두 역과 맞으면 그 사이에 값의 역들을 끼우고, "|"에서 구간을 끊는다.
-    앞 역이 ""이면 구간 첫 역 앞에 끼운다. 한 번도 쓰이지 않은 규칙이 있으면 원본이 바뀐 것이므로 실패한다.
+    앞 역이 ""이면 구간 첫 역 앞에 끼운다.
+    뒤 역에 붙은 km는 원본 형식에 따라 주인이 다르다.
+    km_to_next=False(직전 역부터): 뒤 역 행의 값이라 뒤 역에 그대로 둔다(서울 파일의 빠진 지선 첫 역).
+    km_to_next=True(다음 역까지): 앞 역이 적은 '다음 역까지' 값이다. 첫 삽입이 역이면 그 역으로 옮기고,
+    첫 삽입이 "|"이면 가짜 쌍의 거리라 버린다. 어느 쪽이든 뒤 역의 km는 비운다.
     """
-    used: set[tuple[str, str, str]] = set()
+    used: set[PatchKey] = set()
     out: dict[str, list[Segment]] = {}
     for line, segments in segments_by_line.items():
         new_segments: list[Segment] = []
@@ -169,44 +177,75 @@ def apply_segment_patches(
                 key = (line, prev, norm)
                 if key in patches:
                     used.add(key)
-                    for inserted in patches[key]:
+                    carried = km if km_to_next else None
+                    if km_to_next:
+                        km = None
+                    for i, inserted in enumerate(patches[key]):
                         if inserted == SEGMENT_BREAK:
                             if current:
                                 new_segments.append(current)
                             current = []
                         else:
-                            current.append((inserted, None, None))
+                            current.append((inserted, carried if i == 0 else None, None))
                 current.append((name, km, minutes) if current else (name, None, None))
                 prev = norm
             new_segments.append(current)
         out[line] = new_segments
+    return out, used
+
+
+def patch_sources(
+    parts: Sequence[tuple[dict[str, list[Segment]], bool]], patches: dict[PatchKey, tuple[str, ...]]
+) -> list[dict[str, list[Segment]]]:
+    """(구간 목록, km_to_next) 원본마다 패치를 적용한다. 한 번도 쓰이지 않은 규칙이 있으면 원본이 바뀐 것이라 실패한다."""
+    used: set[PatchKey] = set()
+    out: list[dict[str, list[Segment]]] = []
+    for segments, km_to_next in parts:
+        patched, part_used = apply_segment_patches(segments, patches, km_to_next)
+        out.append(patched)
+        used |= part_used
     unused = sorted(set(patches) - used)
     if unused:
         raise ValueError(f"쓰이지 않은 SEGMENT_PATCHES 규칙: {unused}")
     return out
 
 
+KmDrop = tuple[str, str, str, float, float]  # (노선, 앞 역, 뒤 역, 원본 km, 직선 km)
+
+
 def drop_implausible_km(
     segments_by_line: dict[str, list[Segment]], index: StationIndex, min_ratio: float = KM_MIN_STRAIGHT_RATIO
-) -> dict[str, list[Segment]]:
-    """실측 분이 없는 구간의 km가 두 역 직선거리 x min_ratio보다 짧으면 버린 새 구간 목록을 돌려준다.
+) -> tuple[dict[str, list[Segment]], list[KmDrop]]:
+    """실측 분이 없는 구간의 km가 두 역 직선거리 x min_ratio보다 짧으면 버린 새 구간 목록과 버린 목록을 돌려준다.
 
     코레일 통합 파일은 1호선 서울교통공사 구간을 빼면서 뒤쪽 행의 거리가 한 칸씩 밀려 있다. 버린 km는
     build_edges가 직선거리 x HAVERSINE_DETOUR로 채운다. 역 매칭 실패는 build_edges가 보고하므로 여기선 넘긴다.
+    버린 목록은 (노선, 앞 역, 뒤 역) 정규화 이름 기준으로 중복 없이 처음 나온 순서다.
     """
     out: dict[str, list[Segment]] = {}
+    drops: dict[tuple[str, str, str], KmDrop] = {}
     for line, segments in segments_by_line.items():
         new_segments: list[Segment] = []
         for segment in segments:
             fixed: Segment = segment[:1]
             for (prev_name, _, _), (name, km, minutes) in zip(segment, segment[1:]):
                 a, b = index.get(prev_name, line), index.get(name, line)
-                if km and minutes is None and a and b and km < min_ratio * haversine_km(a.lat, a.lng, b.lat, b.lng):
-                    km = None
+                if km and minutes is None and a and b:
+                    straight = haversine_km(a.lat, a.lng, b.lat, b.lng)
+                    if km < min_ratio * straight:
+                        drops.setdefault((line, a.name, b.name), (line, a.name, b.name, km, round(straight, 2)))
+                        km = None
                 fixed.append((name, km, minutes))
             new_segments.append(fixed)
         out[line] = new_segments
-    return out
+    return out, list(drops.values())
+
+
+def check_km_drops(drops: Sequence[KmDrop], expected: Collection[tuple[str, str, str]]) -> None:
+    """EXPECTED_KM_DROPS에 없는 쌍을 버렸으면 원본이 바뀐 것이라 실패한다."""
+    unexpected = [d for d in drops if d[:3] not in expected]
+    if unexpected:
+        raise ValueError(f"EXPECTED_KM_DROPS에 없는 km 버림: {unexpected}")
 
 
 def build_edges(
@@ -273,17 +312,23 @@ def main() -> None:
     classes = load_line_classes(MANUAL_DIR / "line_classes.csv")
     seoul = parse_seoul_segments(read_csv_rows(require_raw("seoul_times")))
     krail_paths = [p for p in sorted(RAW_DIR.glob(KRAIL_DISTANCE_GLOB)) if p.name not in KRAIL_EXCLUDE]
-    krail = _merge(
-        *(
-            parse_krail_segments(read_csv_rows(p), km_to_next=p.name in KRAIL_KM_TO_NEXT, skip_names=KRAIL_OUT_OF_AREA)
-            for p in krail_paths
+    krail = [
+        (
+            parse_krail_segments(read_csv_rows(p), km_to_next=p.name in KRAIL_KM_TO_NEXT, skip_names=KRAIL_OUT_OF_AREA),
+            p.name in KRAIL_KM_TO_NEXT,
         )
-    )
+        for p in krail_paths
+    ]
     manual = parse_manual_segments(read_csv_rows(MANUAL_DIR / "line_orders.csv"))
     # 노선으로 거르지 않는다. 서울교통공사 실측 구간이 먼저 들어가므로 같은 역 쌍은 build_edges의
     # (a, b) 중복 제거로 실측이 남고, 국가철도공단 파일은 1호선 코레일 구간처럼 서울 파일에 없는 쌍만 보탠다.
-    segments = apply_segment_patches(_merge(seoul, krail, manual), SEGMENT_PATCHES)
-    edges = build_edges(drop_implausible_km(segments, index), index, classes)
+    # 패치는 km 방향이 원본마다 달라 합치기 전에 원본별로 적용한다.
+    segments = _merge(*patch_sources([(seoul, False), *krail, (manual, False)], SEGMENT_PATCHES))
+    segments, drops = drop_implausible_km(segments, index)
+    for line, a, b, km, straight in drops:
+        print(f"km 버림: {line} {a}-{b} 원본 {km}km, 직선 {straight}km")
+    check_km_drops(drops, EXPECTED_KM_DROPS)
+    edges = build_edges(segments, index, classes)
     write_csv(OUT_DIR / "edges.csv", EDGE_FIELDS, [asdict(e) for e in edges])
     measured = sum(1 for e in edges if e.source == "measured")
     print(f"edges: {len(edges)} rows ({measured} measured) -> {OUT_DIR / 'edges.csv'}")

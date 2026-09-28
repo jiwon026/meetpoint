@@ -68,6 +68,29 @@ def test_parse_extra_continues_ids_and_normalizes_names():
     ]
 
 
+EXTRA_ROW = {"name": "동탄", "line": "GTX-A", "operator": "에스지레일", "lat": "37.199943", "lng": "127.095738", "region": "경기"}
+
+
+def test_parse_extra_rejects_unknown_line():
+    with pytest.raises(ValueError, match="노선"):
+        parse_extra([dict(EXTRA_ROW, line="GTX-Z")], start_id=1)
+
+
+def test_parse_extra_rejects_coordinates_outside_metro_bbox():
+    with pytest.raises(ValueError, match="범위"):
+        parse_extra([dict(EXTRA_ROW, lat="36.81", lng="127.146")], start_id=1)
+
+
+def test_parse_extra_rejects_station_already_in_standard_rows():
+    with pytest.raises(ValueError, match="이미"):
+        parse_extra([dict(EXTRA_ROW, name="수원역", line="1호선")], start_id=4, existing={("수원", "1호선")})
+
+
+def test_parse_extra_rejects_duplicate_rows_within_file():
+    with pytest.raises(ValueError, match="이미"):
+        parse_extra([EXTRA_ROW, EXTRA_ROW], start_id=1)
+
+
 def test_parse_applies_coordinate_override():
     # 표준데이터의 5호선 마곡 좌표는 발산 좌표와 같다. config.STD_COORD_OVERRIDES로 고친다.
     row = {"역사명": "마곡", "노선명": "5호선", "운영기관명": "서울교통공사", "위도": "37.55865", "경도": "126.837693", "도로명주소": "서울특별시 강서구"}

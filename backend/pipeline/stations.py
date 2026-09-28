@@ -3,6 +3,7 @@
 실행: python -m pipeline.stations
 """
 
+from collections.abc import Collection
 from dataclasses import asdict, dataclass
 
 from app.geo import haversine_km
@@ -84,21 +85,29 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
     return out
 
 
-def parse_extra(rows: list[dict[str, str]], start_id: int) -> list[StationRow]:
-    """표준데이터에 없는 역(manual/extra_stations.csv)을 id를 이어 붙여 StationRow로."""
-    return [
-        StationRow(
-            id=start_id + i,
-            name=normalize_station_name(r["name"]),
-            raw_name=r["name"],
-            line=canonical_line(r["line"]) or r["line"],
-            operator=r["operator"],
-            lat=float(r["lat"]),
-            lng=float(r["lng"]),
-            region=r["region"],
-        )
-        for i, r in enumerate(rows)
-    ]
+def parse_extra(
+    rows: list[dict[str, str]], start_id: int, existing: Collection[tuple[str, str]] = ()
+) -> list[StationRow]:
+    """표준데이터에 없는 역(manual/extra_stations.csv)을 id를 이어 붙여 StationRow로.
+
+    노선이 표준 노선명이 아니거나, 좌표가 수도권 범위 밖이거나, (이름, 노선)이 existing(표준데이터 노드)이나
+    파일 앞 행에 이미 있으면 ValueError. 수작업 파일 실수가 조용히 노드로 들어가지 않게 한다.
+    """
+    seen = set(existing)
+    out: list[StationRow] = []
+    for r in rows:
+        line = canonical_line(r["line"])
+        if line is None:
+            raise ValueError(f"extra_stations: 표준 노선명이 아닌 노선 {r['line']!r} ({r['name']})")
+        lat, lng = float(r["lat"]), float(r["lng"])
+        if not _in_metro(lat, lng):
+            raise ValueError(f"extra_stations: 수도권 범위 밖 좌표 {r['name']} {line} {lat},{lng}")
+        name = normalize_station_name(r["name"])
+        if (name, line) in seen:
+            raise ValueError(f"extra_stations: 이미 있는 역 ({name}, {line})")
+        seen.add((name, line))
+        out.append(StationRow(start_id + len(out), name, r["name"], line, r["operator"], lat, lng, r["region"]))
+    return out
 
 
 def main() -> None:
@@ -106,7 +115,8 @@ def main() -> None:
     stations = parse_standard(rows)
     extra_path = MANUAL_DIR / "extra_stations.csv"
     if extra_path.exists():
-        stations += parse_extra(read_csv_rows(extra_path), start_id=len(stations) + 1)
+        existing = {(st.name, st.line) for st in stations}
+        stations += parse_extra(read_csv_rows(extra_path), start_id=len(stations) + 1, existing=existing)
     write_csv(OUT_DIR / "stations.csv", STATION_FIELDS, [{**asdict(s), "group_id": ""} for s in stations])
     print(f"stations: {len(stations)} rows -> {OUT_DIR / 'stations.csv'}")
 

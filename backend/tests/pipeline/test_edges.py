@@ -6,10 +6,12 @@ from pipeline.edges import (
     StationIndex,
     apply_segment_patches,
     build_edges,
+    check_km_drops,
     drop_implausible_km,
     parse_krail_segments,
     parse_manual_segments,
     parse_seoul_segments,
+    patch_sources,
 )
 from pipeline.stations import StationRow
 
@@ -90,28 +92,42 @@ def test_parse_krail_skips_out_of_area_names_and_breaks_there():
     assert [[n for n, _, _ in seg] for seg in segs["1호선"]] == [["평택", "성환"]]
 
 
-def test_apply_segment_patches_breaks_inserts_and_prepends():
+def test_apply_segment_patches_from_previous_keeps_km_on_following_station():
+    # 서울 파일(직전 역부터): 용답 행 2.3km, 3분은 빠진 지선 첫 역 성수부터의 실측이라 용답에 남는다.
     segs = {
         "2호선": [[("충정로", None, None), ("시청", 1.1, 1.5), ("용답", 2.3, 3.0), ("신답", 1.0, 1.5)]],
-        "1호선": [[("외대앞", None, None), ("회기", 1.4, None), ("남영", 1.7, None)]],
         "3호선": [[("지축", None, None), ("구파발", 1.5, 3.0)]],
     }
-    patches = {
-        ("2호선", "시청", "용답"): ("|", "성수"),
-        ("1호선", "회기", "남영"): ("청량리", "|", "서울역"),
-        ("3호선", "", "지축"): ("삼송",),
-    }
-    out = apply_segment_patches(segs, patches)
+    patches = {("2호선", "시청", "용답"): ("|", "성수"), ("3호선", "", "지축"): ("삼송",)}
+    out, used = apply_segment_patches(segs, patches)
     assert out["2호선"] == [
         [("충정로", None, None), ("시청", 1.1, 1.5)],
         [("성수", None, None), ("용답", 2.3, 3.0), ("신답", 1.0, 1.5)],
     ]
-    assert out["1호선"] == [
-        [("외대앞", None, None), ("회기", 1.4, None), ("청량리", None, None)],
-        [("서울역", None, None), ("남영", 1.7, None)],
-    ]
     assert out["3호선"] == [[("삼송", None, None), ("지축", None, None), ("구파발", 1.5, 3.0)]]
+    assert used == set(patches)
     assert segs["3호선"][0][0] == ("지축", None, None)  # 입력은 그대로
+
+
+def test_apply_segment_patches_to_next_moves_carried_km_to_inserted_station():
+    # 통합 파일(다음 역까지): 회기 행 1.4km는 회기에서 다음 역(생략된 청량리)까지라 회기-청량리 쌍의 거리다.
+    # 서울역-남영 쌍에는 원본 값이 없다(직선거리 추정).
+    segs = {"1호선": [[("외대앞", None, None), ("회기", 0.8, None), ("남영", 1.4, None), ("용산", 1.7, None)]]}
+    out, _ = apply_segment_patches(segs, {("1호선", "회기", "남영"): ("청량리", "|", "서울역")}, km_to_next=True)
+    assert out["1호선"] == [
+        [("외대앞", None, None), ("회기", 0.8, None), ("청량리", 1.4, None)],
+        [("서울역", None, None), ("남영", None, None), ("용산", 1.7, None)],
+    ]
+
+
+def test_apply_segment_patches_to_next_discards_carried_km_at_break():
+    # 통합 파일: 지평 행 2.9km는 지평-신촌이라는 가짜 쌍의 거리라 버린다. 가좌-신촌은 직선거리 추정.
+    segs = {"경의중앙선": [[("용문", None, None), ("지평", 3.6, None), ("신촌", 2.9, None), ("서울역", 3.1, None)]]}
+    out, _ = apply_segment_patches(segs, {("경의중앙선", "지평", "신촌"): ("|", "가좌")}, km_to_next=True)
+    assert out["경의중앙선"] == [
+        [("용문", None, None), ("지평", 3.6, None)],
+        [("가좌", None, None), ("신촌", None, None), ("서울역", 3.1, None)],
+    ]
 
 
 def test_drop_implausible_km_discards_distance_shorter_than_straight_line():
@@ -121,15 +137,24 @@ def test_drop_implausible_km_discards_distance_shorter_than_straight_line():
         "경강선": [[("판교", None, None), ("이매", 0.5, None)]],
         "2호선": [[("시청", None, None), ("을지로입구", 0.1, 2.0)]],
     }
-    out = drop_implausible_km(segs, index)
+    out, drops = drop_implausible_km(segs, index)
     assert out["경강선"] == [[("판교", None, None), ("이매", None, None)]]
     assert out["2호선"] == segs["2호선"]  # 실측 분이 있는 구간은 그대로
+    assert [d[:4] for d in drops] == [("경강선", "판교", "이매", 0.5)]
+    assert 1.4 < drops[0][4] < 1.6
 
 
 def test_drop_implausible_km_keeps_plausible_distance():
     index = StationIndex(S, aliases={})
     segs = {"경강선": [[("판교", None, None), ("이매", 1.8, None)]]}
-    assert drop_implausible_km(segs, index) == segs
+    assert drop_implausible_km(segs, index) == (segs, [])
+
+
+def test_check_km_drops_fails_on_unexpected_pair():
+    drops = [("경강선", "판교", "이매", 0.5, 1.5)]
+    check_km_drops(drops, {("경강선", "판교", "이매")})
+    with pytest.raises(ValueError, match="EXPECTED_KM_DROPS"):
+        check_km_drops(drops, set())
 
 
 def test_parse_manual_orders_by_seq():
@@ -171,7 +196,16 @@ def test_station_index_resolves_alias():
     assert index.get("총신대입구", "7호선").id == 10
 
 
-def test_apply_segment_patches_fails_on_unused_rule():
+def test_patch_sources_fails_on_unused_rule():
     segs = {"2호선": [[("시청", None, None), ("을지로입구", 0.7, 2.0)]]}
     with pytest.raises(ValueError, match="쓰이지 않은"):
-        apply_segment_patches(segs, {("2호선", "시청", "용답"): ("|", "성수")})
+        patch_sources([(segs, False)], {("2호선", "시청", "용답"): ("|", "성수")})
+
+
+def test_patch_sources_applies_each_source_with_its_km_direction():
+    seoul = {"2호선": [[("시청", None, None), ("용답", 2.3, 3.0)]]}
+    krail = {"1호선": [[("회기", None, None), ("남영", 1.4, None)]]}
+    patches = {("2호선", "시청", "용답"): ("|", "성수"), ("1호선", "회기", "남영"): ("청량리", "|", "서울역")}
+    out_seoul, out_krail = patch_sources([(seoul, False), (krail, True)], patches)
+    assert out_seoul["2호선"][1] == [("성수", None, None), ("용답", 2.3, 3.0)]
+    assert out_krail["1호선"] == [[("회기", None, None), ("청량리", 1.4, None)], [("서울역", None, None), ("남영", None, None)]]
