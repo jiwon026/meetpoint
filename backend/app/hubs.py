@@ -7,16 +7,14 @@ from app.stations import all_stations
 
 
 def load_hub_candidates(session: Session) -> tuple[list[Hub], list[HubCandidate]]:
-    """거점과 그 거점에 해당하는 역 노드 id 묶음. 지금은 역 이름으로 묶는다.
-
-    같은 이름의 다른 역(신촌 2호선과 경의중앙선 등)을 구분하려면
-    데이터 파이프라인에서 그룹 키를 도입해야 한다. 그때 이 함수만 바꾼다.
-    """
+    """거점과 같은 그룹(물리적으로 같은 역)에 속한 역 노드 id 묶음."""
     hubs = list(session.scalars(select(Hub).order_by(Hub.id)).all())
-    nodes_by_name: dict[str, list[int]] = {}
+    nodes_by_group: dict[int, list[int]] = {}
     for s in all_stations(session):
-        nodes_by_name.setdefault(s.name, []).append(s.id)
-    candidates = [HubCandidate(h.id, h.name, tuple(nodes_by_name.get(h.name, ()))) for h in hubs]
+        nodes_by_group.setdefault(s.group_id, []).append(s.id)
+    candidates = [
+        HubCandidate(h.id, h.name, tuple(nodes_by_group.get(h.group_id, ()))) for h in hubs
+    ]
     return hubs, candidates
 
 

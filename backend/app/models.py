@@ -8,6 +8,17 @@ class Base(DeclarativeBase):
     pass
 
 
+class StationGroup(Base):
+    """물리적으로 같은 역. 환승역은 노선별 Station 여러 개가 한 그룹에 속한다."""
+
+    __tablename__ = "station_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+
+
 class Station(Base):
     __tablename__ = "stations"
 
@@ -16,6 +27,7 @@ class Station(Base):
     line: Mapped[str] = mapped_column(String(30))
     lat: Mapped[float] = mapped_column(Float)
     lng: Mapped[float] = mapped_column(Float)
+    group_id: Mapped[int] = mapped_column(ForeignKey("station_groups.id"), index=True)
 
 
 class Hub(Base):
@@ -23,6 +35,7 @@ class Hub(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     station_id: Mapped[int] = mapped_column(ForeignKey("stations.id"))
+    group_id: Mapped[int] = mapped_column(ForeignKey("station_groups.id"), index=True)
     name: Mapped[str] = mapped_column(String(50))
     lat: Mapped[float] = mapped_column(Float)
     lng: Mapped[float] = mapped_column(Float)

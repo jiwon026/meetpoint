@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.models import Base, Hub, Station, StationTime
+from app.models import Base, Hub, Station, StationGroup, StationTime
 
 # id, 이름, 노선, 위도, 경도
 STATIONS = [
@@ -54,13 +54,18 @@ def session(engine):
 @pytest.fixture
 def seeded(session):
     session.add_all(
-        [Station(id=i, name=n, line=l, lat=la, lng=lo) for i, n, l, la, lo in STATIONS]
+        [StationGroup(id=i, name=n, lat=la, lng=lo) for i, n, l, la, lo in STATIONS]
+    )
+    session.flush()
+    session.add_all(
+        [Station(id=i, name=n, line=l, lat=la, lng=lo, group_id=i) for i, n, l, la, lo in STATIONS]
     )
     session.add_all(
         [
             Hub(
                 id=i,
                 station_id=sid,
+                group_id=sid,
                 name=n,
                 lat=STATION_BY_ID[sid][3],
                 lng=STATION_BY_ID[sid][4],

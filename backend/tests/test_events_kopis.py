@@ -17,7 +17,9 @@ FACILITY_FAR = """<?xml version="1.0" encoding="UTF-8"?>
 
 def _suwon_hub(seeded) -> Hub:
     station = seeded.get(Station, 6)
-    hub = Hub(id=9, station_id=6, name="수원", lat=station.lat, lng=station.lng, region="경기", tags=[], vibe_summary="")
+    hub = Hub(
+        id=9, station_id=6, group_id=6, name="수원", lat=station.lat, lng=station.lng, region="경기", tags=[], vibe_summary=""
+    )
     seeded.add(hub)
     seeded.commit()
     return hub
