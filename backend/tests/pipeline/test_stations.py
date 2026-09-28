@@ -106,3 +106,37 @@ def test_parse_moves_gyeongwon_rows_between_yongsan_and_wangsimni_to_gyeongui():
         dict(base, 역사명="회기역", 노선명="경원선", 위도="37.589602", 경도="127.057936"),
     ]
     assert [(r.name, r.line) for r in parse_standard(rows)] == [("서빙고", "경의중앙선"), ("회기", "1호선")]
+
+
+def test_parse_raises_on_unparsable_coordinates_for_metro_line():
+    bad = dict(ROWS[0], 역사명="합정", 위도="", 경도="126.9139")
+    with pytest.raises(ValueError, match="좌표") as info:
+        parse_standard([ROWS[0], bad])
+    assert "('합정', '2호선', '', '126.9139')" in str(info.value)
+
+
+def test_parse_ignores_unparsable_coordinates_outside_metro_lines():
+    bad = dict(ROWS[3], 위도="없음")
+    assert [(r.name, r.line) for r in parse_standard([ROWS[0], bad])] == [("홍대입구", "2호선")]
+
+
+SEVEN = {"노선명": "7호선", "운영기관명": "서울교통공사", "도로명주소": "서울특별시 동작구"}
+ISU_ALIASES = {"총신대입구": "이수", "이수": "총신대입구"}
+
+
+def test_parse_dedupes_alias_linked_names_on_same_line():
+    rows = [
+        dict(SEVEN, 역사명="이수", 위도="37.485258", 경도="126.981766"),
+        dict(SEVEN, 역사명="총신대입구(이수)", 위도="37.485258", 경도="126.981766"),
+    ]
+    assert [(r.id, r.name, r.line) for r in parse_standard(rows, aliases=ISU_ALIASES)] == [(1, "이수", "7호선")]
+    assert len(parse_standard(rows)) == 2
+
+
+def test_parse_alias_dedupe_keeps_distance_guard():
+    rows = [
+        dict(SEVEN, 역사명="이수", 위도="37.485258", 경도="126.981766"),
+        dict(SEVEN, 역사명="총신대입구(이수)", 위도="37.515258", 경도="126.981766"),
+    ]
+    with pytest.raises(ValueError, match="중복 역인데 좌표가 다름"):
+        parse_standard(rows, aliases=ISU_ALIASES)

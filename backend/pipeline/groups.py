@@ -9,10 +9,11 @@ from dataclasses import asdict, dataclass
 
 from app.geo import haversine_km
 from pipeline.config import COLUMNS, DEFAULT_TRANSFER_MIN, GROUP_RADIUS_KM, MANUAL_DIR, OUT_DIR, TRANSFER_WAIT_MIN, canonical_line
-from pipeline.edges import load_aliases, load_stations, parse_duration
+from pipeline.durations import parse_duration
+from pipeline.edges import load_stations
 from pipeline.io import pick, read_csv_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
-from pipeline.stations import STATION_FIELDS, StationRow
+from pipeline.stations import STATION_FIELDS, StationRow, load_aliases
 
 GROUP_FIELDS = ("id", "name", "lat", "lng", "node_count")
 TRANSFER_FIELDS = ("from_id", "to_id", "minutes", "source")
@@ -83,17 +84,26 @@ def group_rows(stations: Sequence[StationRow], group_of: dict[int, int]) -> list
     return rows
 
 
-def parse_transfer_minutes(rows: Iterable[dict[str, str]]) -> dict[tuple[str, str, str], float]:
+SkippedTransfer = tuple[str, str, str, str]  # 원본 (환승역명, 호선, 환승노선, 환승소요시간)
+
+
+def parse_transfer_minutes(
+    rows: Iterable[dict[str, str]],
+) -> tuple[dict[tuple[str, str, str], float], list[SkippedTransfer]]:
+    """(정규화 역명, 호선, 환승노선) -> 환승 도보 분 표와, 노선이 표준 노선명으로 매핑되지 않거나 분을 읽지 못해 건너뛴 행."""
     cols = COLUMNS["transfer"]
     table: dict[tuple[str, str, str], float] = {}
+    skipped: list[SkippedTransfer] = []
     for row in rows:
-        line = canonical_line(pick(row, cols["line"]))
-        to_line = canonical_line(pick(row, cols["to_line"]))
-        minutes = parse_duration(pick(row, cols["minutes"], required=False))
+        raw_line, raw_to_line = pick(row, cols["line"]), pick(row, cols["to_line"])
+        raw_minutes = pick(row, cols["minutes"], required=False)
+        line, to_line = canonical_line(raw_line), canonical_line(raw_to_line)
+        minutes = parse_duration(raw_minutes)
         if line is None or to_line is None or minutes is None:
+            skipped.append((pick(row, cols["name"]), raw_line, raw_to_line, raw_minutes))
             continue
         table[(normalize_station_name(pick(row, cols["name"])), line, to_line)] = round(minutes, 1)
-    return table
+    return table, skipped
 
 
 def build_transfers(stations: Sequence[StationRow], group_of: dict[int, int], minutes_table: dict[tuple[str, str, str], float]) -> list[Transfer]:
@@ -117,7 +127,11 @@ def main() -> None:
     aliases = load_aliases(MANUAL_DIR / "station_aliases.csv")
     group_of = assign_groups(stations, aliases)
     groups = group_rows(stations, group_of)
-    table = parse_transfer_minutes(read_csv_rows(require_raw("transfers")))
+    table, skipped = parse_transfer_minutes(read_csv_rows(require_raw("transfers")))
+    for name, line, to_line, minutes in skipped:
+        print(f"환승 행 건너뜀: {name} {line} -> {to_line} ({minutes})")
+    if skipped:
+        print(f"환승 행 건너뜀 {len(skipped)}건")
     transfers = build_transfers(stations, group_of, table)
     write_csv(OUT_DIR / "station_groups.csv", GROUP_FIELDS, [asdict(g) for g in groups])
     write_csv(OUT_DIR / "transfers.csv", TRANSFER_FIELDS, [asdict(t) for t in transfers])

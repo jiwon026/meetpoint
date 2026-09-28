@@ -1,6 +1,6 @@
 import pytest
 
-from pipeline.estimate import calibrate_speed, estimate_minutes, parse_mmss
+from pipeline.estimate import calibrate_speed, estimate_minutes
 
 
 def test_urban_two_km_is_about_three_point_three_minutes():
@@ -35,10 +35,3 @@ def test_calibrate_recovers_speed():
 def test_calibrate_ignores_zero_km():
     assert calibrate_speed([(0.0, 0.0), (2.0, 4.0)]) == pytest.approx(30.0, rel=1e-6)
 
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [("02:00", 2.0), ("02:30", 2.5), ("00:30", 0.5), ("01:45", 1.75), ("invalid", None), ("", None), (None, None)],
-)
-def test_parse_mmss(value, expected):
-    assert parse_mmss(value) == expected

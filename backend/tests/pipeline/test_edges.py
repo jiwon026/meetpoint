@@ -160,6 +160,13 @@ def test_check_km_drops_fails_on_unexpected_pair():
         check_km_drops(drops, set())
 
 
+def test_check_km_drops_fails_on_expected_pair_not_observed():
+    drops = [("경강선", "판교", "이매", 0.5, 1.5)]
+    with pytest.raises(ValueError, match="관찰되지 않은") as info:
+        check_km_drops(drops, {("경강선", "판교", "이매"), ("1호선", "용산", "노량진")})
+    assert "('1호선', '용산', '노량진')" in str(info.value)
+
+
 def test_parse_manual_orders_by_seq():
     rows = [
         {"line": "우이신설선", "seq": "2", "name": "솔밭공원"},

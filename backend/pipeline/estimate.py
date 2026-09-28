@@ -6,22 +6,8 @@
 import sys
 
 from pipeline.config import COLUMNS, DWELL_MIN, SPEED_KMH
+from pipeline.durations import parse_duration
 from pipeline.io import pick, read_csv_rows, require_raw
-
-
-def parse_mmss(value: str) -> float | None:
-    """mm:ss 형식의 시간을 분으로 변환. 예: '02:30' -> 2.5"""
-    if not value or not isinstance(value, str):
-        return None
-    parts = value.strip().split(':')
-    if len(parts) != 2:
-        return None
-    try:
-        m = int(parts[0])
-        s = int(parts[1])
-        return m + s / 60.0
-    except (ValueError, IndexError):
-        return None
 
 
 def estimate_minutes(km: float, line_class: str) -> float:
@@ -47,15 +33,11 @@ def _measured_pairs() -> list[tuple[float, float]]:
     for row in read_csv_rows(require_raw("seoul_times")):
         try:
             km = float(pick(row, cols["km"]) or 0)
-            minutes_str = pick(row, cols["minutes"]) or ""
-            # Try to parse mm:ss format first
-            minutes = parse_mmss(minutes_str)
-            if minutes is None:
-                # Fall back to float parsing
-                minutes = float(minutes_str) if minutes_str else 0
         except ValueError:
             continue
-        pairs.append((km, minutes))
+        minutes = parse_duration(pick(row, cols["minutes"]))
+        if minutes is not None:
+            pairs.append((km, minutes))
     return pairs
 
 

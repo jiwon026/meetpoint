@@ -3,8 +3,9 @@
 실행: python -m pipeline.stations
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 from app.geo import haversine_km
 from pipeline.config import (
@@ -45,10 +46,25 @@ def _in_metro(lat: float, lng: float) -> bool:
     return METRO_LAT_RANGE[0] <= lat <= METRO_LAT_RANGE[1] and METRO_LNG_RANGE[0] <= lng <= METRO_LNG_RANGE[1]
 
 
-def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
+def load_aliases(path: Path) -> dict[str, str]:
+    """station_aliases.csv(a, b)를 양방향 정규화 역명 맵으로."""
+    out: dict[str, str] = {}
+    for r in read_csv_rows(path):
+        out[r["a"]] = r["b"]
+        out[r["b"]] = r["a"]
+    return out
+
+
+def parse_standard(rows: list[dict[str, str]], aliases: Mapping[str, str] | None = None) -> list[StationRow]:
+    """표준데이터 행을 수도권 역 노드로. 같은 노선에서 이름이 같거나 aliases(정규화 역명 쌍)로 이어진 행은 한 노드다.
+
+    수도권 노선인데 좌표를 읽지 못한 행이 있으면 목록을 담아 ValueError. 수도권 밖 노선 행은 무시한다.
+    """
     cols = COLUMNS["std"]
+    aliases = aliases or {}
     out: list[StationRow] = []
     seen: dict[tuple[str, str], StationRow] = {}
+    bad_coords: list[tuple[str, str, str, str]] = []
     for row in rows:
         raw_line = pick(row, cols["line"]).strip()
         raw_name = pick(row, cols["name"])
@@ -56,14 +72,17 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
         line = STD_LINE_OVERRIDES.get((raw_line, name)) or canonical_line(raw_line)
         if line is None:
             continue
+        raw_lat, raw_lng = pick(row, cols["lat"]), pick(row, cols["lng"])
         try:
-            lat, lng = float(pick(row, cols["lat"])), float(pick(row, cols["lng"]))
+            lat, lng = float(raw_lat), float(raw_lng)
         except ValueError:
+            bad_coords.append((raw_name, line, raw_lat, raw_lng))
             continue
         lat, lng = STD_COORD_OVERRIDES.get((line, name), (lat, lng))
         if not _in_metro(lat, lng):
             continue
-        key = (name, line)
+        other = aliases.get(name)
+        key = (min(name, other) if other else name, line)
         if key in seen:
             kept = seen[key]
             dist = haversine_km(kept.lat, kept.lng, lat, lng)
@@ -82,6 +101,8 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
         )
         seen[key] = station
         out.append(station)
+    if bad_coords:
+        raise ValueError(f"좌표를 읽지 못한 수도권 역 {len(bad_coords)}건 (역사명, 노선, 위도, 경도): {bad_coords}")
     return out
 
 
@@ -112,7 +133,7 @@ def parse_extra(
 
 def main() -> None:
     rows = read_xlsx_rows(require_raw("stations_std"))
-    stations = parse_standard(rows)
+    stations = parse_standard(rows, load_aliases(MANUAL_DIR / "station_aliases.csv"))
     extra_path = MANUAL_DIR / "extra_stations.csv"
     if extra_path.exists():
         existing = {(st.name, st.line) for st in stations}

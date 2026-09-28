@@ -24,10 +24,11 @@ from pipeline.config import (
     SEGMENT_PATCHES,
     canonical_line,
 )
+from pipeline.durations import parse_duration
 from pipeline.estimate import estimate_minutes
 from pipeline.io import pick, read_csv_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
-from pipeline.stations import StationRow
+from pipeline.stations import StationRow, load_aliases
 
 EDGE_FIELDS = ("from_id", "to_id", "line", "km", "minutes", "source")
 Segment = list[tuple[str, float | None, float | None]]  # (역명, 직전 역까지 km, 직전 역까지 분)
@@ -61,26 +62,6 @@ class StationIndex:
             hit = self._by_key.get((candidate, line))
             if hit is not None:
                 return hit
-        return None
-
-
-def parse_duration(value: str) -> float | None:
-    """'2', '1.5', '02:00', '01:30' 을 분(float)으로. 빈 값이나 이상한 값은 None.
-
-    서울교통공사 파일의 소요시간과 환승소요시간은 mm:ss 형식이다.
-    """
-    value = value.strip()
-    if not value:
-        return None
-    if ":" in value:
-        m, s = value.split(":", 1)
-        try:
-            return float(m) + float(s) / 60
-        except ValueError:
-            return None
-    try:
-        return float(value)
-    except ValueError:
         return None
 
 
@@ -243,10 +224,20 @@ def drop_implausible_km(
 
 
 def check_km_drops(drops: Sequence[KmDrop], expected: Collection[tuple[str, str, str]]) -> None:
-    """EXPECTED_KM_DROPS에 없는 쌍을 버렸으면 원본이 바뀐 것이라 실패한다."""
+    """EXPECTED_KM_DROPS와 실제로 버린 쌍이 다르면 원본이 바뀐 것이라 실패한다.
+
+    표에 없는 쌍을 버렸거나, 표에 있는 쌍이 버려지지 않았으면(표가 낡음) 둘 다 목록으로 보고한다.
+    """
     unexpected = [d for d in drops if d[:3] not in expected]
+    observed = {d[:3] for d in drops}
+    not_observed = sorted(set(expected) - observed)
+    problems = []
     if unexpected:
-        raise ValueError(f"EXPECTED_KM_DROPS에 없는 km 버림: {unexpected}")
+        problems.append(f"EXPECTED_KM_DROPS에 없는 km 버림: {unexpected}")
+    if not_observed:
+        problems.append(f"EXPECTED_KM_DROPS에 있지만 관찰되지 않은 버림: {not_observed}")
+    if problems:
+        raise ValueError("\n".join(problems))
 
 
 def build_edges(
@@ -283,14 +274,6 @@ def build_edges(
 
 def load_line_classes(path: Path) -> dict[str, str]:
     return {r["line"]: r["line_class"] for r in read_csv_rows(path)}
-
-
-def load_aliases(path: Path) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for r in read_csv_rows(path):
-        out[r["a"]] = r["b"]
-        out[r["b"]] = r["a"]
-    return out
 
 
 def load_stations(path: Path) -> list[StationRow]:

@@ -54,9 +54,21 @@ def test_parse_transfer_minutes_keys_by_normalized_name_and_lines():
         {"호선": "2", "환승역명": "홍대입구", "환승노선": "경의중앙선", "환승소요시간": "03:00"},
         {"호선": "1", "환승역명": "서울역", "환승노선": "4호선", "환승소요시간": "02:13"},
     ]
-    table = parse_transfer_minutes(rows)
+    table, skipped = parse_transfer_minutes(rows)
     assert table[("홍대입구", "2호선", "경의중앙선")] == 3.0
     assert table[("서울", "1호선", "4호선")] == pytest.approx(2.2, abs=0.05)
+    assert skipped == []
+
+
+def test_parse_transfer_minutes_returns_skipped_rows():
+    # 실제 파일의 수서 3호선 -> 국철 행은 환승노선이 표준 노선명으로 매핑되지 않는다.
+    rows = [
+        {"호선": "3", "환승역명": "수서", "환승노선": "국철", "환승소요시간": "01:17"},
+        {"호선": "2", "환승역명": "홍대입구", "환승노선": "경의중앙선", "환승소요시간": "03:00"},
+    ]
+    table, skipped = parse_transfer_minutes(rows)
+    assert list(table) == [("홍대입구", "2호선", "경의중앙선")]
+    assert skipped == [("수서", "3", "국철", "01:17")]
 
 
 def test_build_transfers_uses_table_then_default():
