@@ -102,7 +102,7 @@ backend/
 minutes = max(1.0, km / speed_kmh * 60 + DWELL_MIN)
 ```
 - `DWELL_MIN = 0.5`
-- 등급별 속도: urban 32 km/h, regional 45 km/h, gtx 80 km/h. 등급은 `manual/line_classes.csv`.
+- 등급별 속도: urban 60 km/h, regional 75 km/h, gtx 110 km/h (1~8호선 실측 보정 결과. 처음 가정은 32/45/80이었음). 등급은 `manual/line_classes.csv`.
 - 보정: 1~8호선 실측(분)과 거리(km)로 urban 속도를 최소제곱으로 추정해 결과를 출력한다. 상수와 15% 넘게 차이 나면 상수를 그 값으로 갱신하고 문서에 기록한다. 보정은 파이프라인 실행 시 자동으로 하지 않고, `python -m pipeline.estimate --calibrate`로 사람이 확인한 뒤 상수를 바꾼다.
 - 결과는 소수 1자리로 저장. 다익스트라는 실수로 계산하고 최종 시간표는 반올림 정수.
 

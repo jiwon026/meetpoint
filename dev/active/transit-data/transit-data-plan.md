@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 모든 명령은 `backend/` 안에서 실행. 테스트는 `.venv/Scripts/pytest`. 파이프라인은 `.venv/Scripts/python -m pipeline.<모듈>`.
-- 상수는 전부 `pipeline/config.py`에 둔다: 수도권 경계 위도 36.9~38.3, 경도 126.3~127.9. 그룹 반경 0.5km. 기본 환승 4.0분. 정차 0.5분. 직선거리 우회 계수 1.15. 속도 urban 32, regional 45, gtx 80 km/h. 간선 최대 거리 urban 5, regional 12, gtx 25 km.
+- 상수는 전부 `pipeline/config.py`에 둔다: 수도권 경계 위도 36.9~38.3, 경도 126.3~127.9. 그룹 반경 0.5km. 기본 환승 4.0분. 정차 0.5분. 직선거리 우회 계수 1.15. 속도 urban 60, regional 75, gtx 110 km/h. 간선 최대 거리 urban 5, regional 12, gtx 25 km.
 - 시간 추정식은 `max(1.0, km / speed_kmh * 60 + 0.5)`, 소수 1자리. 최종 시간표는 반올림 정수.
 - 이름 정규화: 괄호와 내용 제거, 공백 제거, 끝의 "역" 제거. 원문은 raw_name으로 보존.
 - 실패는 전부 명시적. 역명 매칭 실패, 컬럼 누락, 검증 실패는 목록을 출력하고 0이 아닌 종료 코드. 조용히 건너뛰지 않는다.
@@ -312,7 +312,7 @@ GROUP_RADIUS_KM = 0.5
 DEFAULT_TRANSFER_MIN = 4.0
 DWELL_MIN = 0.5
 HAVERSINE_DETOUR = 1.15
-SPEED_KMH = {"urban": 32.0, "regional": 45.0, "gtx": 80.0}
+SPEED_KMH = {"urban": 60.0, "regional": 75.0, "gtx": 110.0}
 MAX_EDGE_KM = {"urban": 5.0, "regional": 12.0, "gtx": 25.0}
 LINE_CLASSES = tuple(SPEED_KMH)
 
