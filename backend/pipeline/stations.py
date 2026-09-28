@@ -13,6 +13,8 @@ from pipeline.config import (
     METRO_LAT_RANGE,
     METRO_LNG_RANGE,
     OUT_DIR,
+    STD_COORD_OVERRIDES,
+    STD_LINE_OVERRIDES,
     canonical_line,
 )
 from pipeline.io import pick, read_csv_rows, read_xlsx_rows, require_raw, write_csv
@@ -47,17 +49,19 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
     out: list[StationRow] = []
     seen: dict[tuple[str, str], StationRow] = {}
     for row in rows:
-        line = canonical_line(pick(row, cols["line"]))
+        raw_line = pick(row, cols["line"]).strip()
+        raw_name = pick(row, cols["name"])
+        name = normalize_station_name(raw_name)
+        line = STD_LINE_OVERRIDES.get((raw_line, name)) or canonical_line(raw_line)
         if line is None:
             continue
         try:
             lat, lng = float(pick(row, cols["lat"])), float(pick(row, cols["lng"]))
         except ValueError:
             continue
+        lat, lng = STD_COORD_OVERRIDES.get((line, name), (lat, lng))
         if not _in_metro(lat, lng):
             continue
-        raw_name = pick(row, cols["name"])
-        name = normalize_station_name(raw_name)
         key = (name, line)
         if key in seen:
             kept = seen[key]

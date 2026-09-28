@@ -137,6 +137,20 @@ LINE_ALIASES: dict[str, tuple[str, ...]] = {
 _ALIAS_INDEX = {alias.replace(" ", ""): canon for canon, aliases in LINE_ALIASES.items() for alias in aliases}
 
 
+# 표준데이터가 노선명 "경원선"으로 적은 용산~왕십리 구간 역은 경의중앙선 전동차만 다닌다(1호선은 회기 북쪽 경원선).
+# 키는 (표준데이터 노선명, 정규화 역명). canonical_line보다 먼저 본다. (Task 13, 2026-09-28)
+STD_LINE_OVERRIDES: dict[tuple[str, str], str] = {
+    ("경원선", name): "경의중앙선" for name in ("용산", "이촌", "서빙고", "한남", "옥수", "응봉", "왕십리")
+}
+
+# 표준데이터 좌표가 이웃 역 좌표를 그대로 복사한 행. 키는 (표준 노선명, 정규화 역명), 값은 카카오 로컬 검색 좌표.
+# 5호선 마곡은 발산 좌표(7m 차이), 4호선 이촌은 신용산 좌표(14m 차이)로 들어 있었다. (Task 13, 2026-09-28)
+STD_COORD_OVERRIDES: dict[tuple[str, str], tuple[float, float]] = {
+    ("5호선", "마곡"): (37.560229, 126.824697),
+    ("4호선", "이촌"): (37.522373, 126.97452),
+}
+
+
 def canonical_line(raw: str) -> str | None:
     """노선명 표기를 표준 노선명으로. 서울교통공사 파일은 호선을 '1', '2' 숫자만으로 적는다."""
     key = raw.strip().replace(" ", "")

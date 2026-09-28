@@ -66,3 +66,20 @@ def test_parse_extra_continues_ids_and_normalizes_names():
         StationRow(777, "서울", "서울역", "GTX-A", "에스지레일", 37.55585, 126.972103, "서울"),
         StationRow(778, "동탄", "동탄", "GTX-A", "에스지레일", 37.199943, 127.095738, "경기"),
     ]
+
+
+def test_parse_applies_coordinate_override():
+    # 표준데이터의 5호선 마곡 좌표는 발산 좌표와 같다. config.STD_COORD_OVERRIDES로 고친다.
+    row = {"역사명": "마곡", "노선명": "5호선", "운영기관명": "서울교통공사", "위도": "37.55865", "경도": "126.837693", "도로명주소": "서울특별시 강서구"}
+    station = parse_standard([row])[0]
+    assert (station.lat, station.lng) == (37.560229, 126.824697)
+
+
+def test_parse_moves_gyeongwon_rows_between_yongsan_and_wangsimni_to_gyeongui():
+    # 표준데이터는 용산~왕십리 경의중앙선 역을 노선명 "경원선"으로 적는다. 회기 북쪽 경원선은 1호선이다.
+    base = {"운영기관명": "한국철도공사", "도로명주소": "서울특별시 용산구"}
+    rows = [
+        dict(base, 역사명="서빙고역", 노선명="경원선", 위도="37.51961", 경도="126.988358"),
+        dict(base, 역사명="회기역", 노선명="경원선", 위도="37.589602", 경도="127.057936"),
+    ]
+    assert [(r.name, r.line) for r in parse_standard(rows)] == [("서빙고", "경의중앙선"), ("회기", "1호선")]
