@@ -102,7 +102,8 @@ backend/
 minutes = max(1.0, km / speed_kmh * 60 + DWELL_MIN)
 ```
 - `DWELL_MIN = 0.5`
-- 등급별 속도: urban 60 km/h, regional 75 km/h, gtx 110 km/h (1~8호선 실측 보정 결과. 처음 가정은 32/45/80이었음). 등급은 `manual/line_classes.csv`.
+- 등급별 속도: urban 43.4 km/h, regional 61 km/h, gtx 110 km/h. 등급은 `manual/line_classes.csv`. (변경 이력: 처음 가정 32/45/80, 1차 보정 60/75/110, 2026-09-28 서울교통공사 소요시간이 정차를 뺀 운행시간임을 확인하고 실측 간선에도 정차 0.5분을 더하도록 바꾸면서 재보정. 근거는 `backend/data/SOURCES.md`.)
+- 실측 간선(1~8호선)에도 정차 0.5분을 더한다. 서울교통공사 파일의 소요시간은 역 사이 운행시간만이라 정차가 빠져 있다.
 - 보정: 1~8호선 실측(분)과 거리(km)로 urban 속도를 최소제곱으로 추정해 결과를 출력한다. 상수와 15% 넘게 차이 나면 상수를 그 값으로 갱신하고 문서에 기록한다. 보정은 파이프라인 실행 시 자동으로 하지 않고, `python -m pipeline.estimate --calibrate`로 사람이 확인한 뒤 상수를 바꾼다.
 - 결과는 소수 1자리로 저장. 다익스트라는 실수로 계산하고 최종 시간표는 반올림 정수.
 
@@ -112,7 +113,7 @@ minutes = max(1.0, km / speed_kmh * 60 + DWELL_MIN)
 처리:
 - 정규화 이름이 같은(또는 별칭으로 연결된) 노드들 중 서로 500m 이내인 것을 union-find로 묶는다. 500m는 `config.py` 상수.
 - 그룹 id는 1부터 순번. 그룹 대표 이름은 가장 많은 노드가 쓰는 이름, 중심 좌표는 노드 좌표 평균.
-- 같은 그룹 안 노드 쌍마다 환승 간선을 만든다. 환승 시간은 서울교통공사 환승역 파일에 (역명, 호선, 환승노선) 쌍이 있으면 그 값(분), 없으면 4분.
+- 같은 그룹 안 노드 쌍마다 환승 간선을 만든다. 환승 시간은 서울교통공사 환승역 파일에 (역명, 호선, 환승노선) 쌍이 있으면 그 값(도보 시간, 분)에 대기 2.5분을 더한 값, 없으면 4분.
 - stations.csv에 group_id를 채운다.
 출력: `station_groups.csv` (id, name, lat, lng, node_count), `transfers.csv` (from_id, to_id, minutes, source).
 
