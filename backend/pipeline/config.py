@@ -1,0 +1,120 @@
+from dataclasses import dataclass
+from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BACKEND_DIR / "data"
+RAW_DIR = DATA_DIR / "raw"
+MANUAL_DIR = DATA_DIR / "manual"
+OUT_DIR = DATA_DIR / "out"
+
+METRO_LAT_RANGE = (36.9, 38.3)
+METRO_LNG_RANGE = (126.3, 127.9)
+
+GROUP_RADIUS_KM = 0.5
+DEFAULT_TRANSFER_MIN = 4.0
+DWELL_MIN = 0.5
+HAVERSINE_DETOUR = 1.15
+SPEED_KMH = {"urban": 32.0, "regional": 45.0, "gtx": 80.0}
+MAX_EDGE_KM = {"urban": 5.0, "regional": 12.0, "gtx": 25.0}
+LINE_CLASSES = tuple(SPEED_KMH)
+
+
+@dataclass(frozen=True)
+class RawFile:
+    filename: str
+    url: str
+    note: str = ""
+
+
+RAW_FILES: dict[str, RawFile] = {
+    "stations_std": RawFile(
+        "전국도시철도역사정보표준데이터.xlsx",
+        "https://www.data.go.kr/data/15013205/standard.do",
+        "국가철도공단 표준데이터, XLSX 다운로드",
+    ),
+    "seoul_times": RawFile(
+        "서울교통공사_역간거리_및_소요시간.csv",
+        "https://data.seoul.go.kr/dataList/OA-12034/S/1/datasetView.do",
+        "1~8호선 역 순서, 거리(km), 운행시간(분)",
+    ),
+    "transfers": RawFile(
+        "서울교통공사_환승역거리_소요시간정보.csv",
+        "https://www.data.go.kr/data/15044419/fileData.do",
+        "환승역 145곳 환승소요시간",
+    ),
+}
+# 국가철도공단 노선별 역간거리 파일은 여러 개라 글롭으로 잡는다.
+KRAIL_DISTANCE_GLOB = "국가철도공단_*역간거리*.csv"
+
+# 표준 노선명 -> 원본 파일들에 등장하는 표기. 원본 헤더를 확인하면서(Task 3) 늘린다.
+LINE_ALIASES: dict[str, tuple[str, ...]] = {
+    # 표준데이터(2026-06-30판) 노선명 표기를 2026-09-28에 확인해 반영했다.
+    "1호선": ("1호선", "서울 1호선", "수도권1호선", "수도권 1호선", "경부선", "경인선", "경원선", "장항선"),
+    "2호선": ("2호선", "서울 2호선"),
+    "3호선": ("3호선", "서울 3호선", "일산선"),
+    "4호선": ("4호선", "서울 4호선", "안산선", "과천선", "안산과천선", "진접선"),
+    "5호선": ("5호선", "서울 5호선", "수도권5호선", "수도권 5호선", "하남선"),
+    "6호선": ("6호선", "서울 6호선"),
+    "7호선": ("7호선", "서울 7호선", "수도권7호선", "수도권 7호선", "도시철도 7호선"),
+    "8호선": ("8호선", "서울 8호선", "별내선", "수도권 광역철도 8호선"),
+    "9호선": ("9호선", "서울 9호선", "수도권9호선", "수도권 9호선", "서울 도시철도 9호선", "수도권 도시철도 9호선"),
+    "경의중앙선": ("경의중앙선", "경의선", "중앙선", "경의.중앙선"),
+    "수인분당선": ("수인분당선", "분당선", "수인선", "수인.분당선"),
+    "경춘선": ("경춘선",),
+    "경강선": ("경강선",),
+    "서해선": ("서해선", "대곡소사선"),
+    "공항철도": ("공항철도", "인천국제공항철도", "인천공항철도", "공항철도선", "인천국제공항선"),
+    "신분당선": ("신분당선",),
+    "우이신설선": ("우이신설선", "우이신설경전철"),
+    "신림선": ("신림선", "수도권 경량도시철도 신림선"),
+    "김포골드라인": ("김포골드라인", "김포도시철도"),
+    "의정부경전철": ("의정부경전철", "의정부선", "의정부"),
+    "용인에버라인": ("용인에버라인", "에버라인", "용인경전철"),
+    "인천1호선": ("인천1호선", "인천 1호선", "인천지하철 1호선"),
+    "인천2호선": ("인천2호선", "인천 2호선", "인천지하철 2호선"),
+    "GTX-A": ("GTX-A", "GTX A", "수도권광역급행철도 A", "GTX-A선"),
+}
+_ALIAS_INDEX = {alias.replace(" ", ""): canon for canon, aliases in LINE_ALIASES.items() for alias in aliases}
+
+
+def canonical_line(raw: str) -> str | None:
+    """노선명 표기를 표준 노선명으로. 서울교통공사 파일은 호선을 '1', '2' 숫자만으로 적는다."""
+    key = raw.strip().replace(" ", "")
+    if key.isdigit():
+        key = f"{key}호선"
+    return _ALIAS_INDEX.get(key)
+
+
+# 원본별 컬럼 별칭. 2026-09-28에 실제 파일 헤더로 확인했다.
+# 표준데이터: 역번호, 역사명, 노선번호, 노선명, 영문역사명, 한자역사명, 환승역구분, 환승노선번호, 환승노선명,
+#            역위도, 역경도, 운영기관명, 역사도로명주소, 역사전화번호, 데이터기준일자
+# 서울교통공사 역간거리: 연번, 호선, 역명, 소요시간(mm:ss), 역간거리(km), 호선별누계(km)
+# 서울교통공사 환승: 연번, 호선, 환승역명, 환승노선, 환승거리, 환승소요시간(mm:ss)
+COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
+    "std": {
+        "name": ("역사명",),
+        "line": ("노선명",),
+        "operator": ("운영기관명",),
+        "lat": ("역위도", "위도"),
+        "lng": ("역경도", "경도"),
+        "address": ("역사도로명주소", "도로명주소"),
+    },
+    "seoul": {
+        "line": ("호선",),
+        "name": ("역명",),
+        "minutes": ("운행시간(분)", "운행시간", "소요시간(분)", "소요시간"),
+        "km": ("역간거리(km)", "역간거리"),
+    },
+    "krail": {
+        "operator": ("철도운영기관명",),
+        "line": ("선명", "노선명"),
+        "name": ("역명",),
+        "km": ("역간거리", "역간거리(km)"),
+    },
+    "transfer": {
+        "line": ("호선",),
+        "name": ("환승역명",),
+        "to_line": ("환승노선",),
+        "minutes": ("환승소요시간", "환승소요시간(분)"),
+    },
+}
