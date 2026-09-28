@@ -27,11 +27,19 @@ def test_parse_assigns_sequential_ids_and_regions():
     assert rows[0] == StationRow(1, "홍대입구", "홍대입구", "2호선", "서울교통공사", 37.5571, 126.9245, "서울")
 
 
-def test_parse_skips_duplicate_name_and_line():
-    dup = ROWS[:1] + [dict(ROWS[0], 위도="37.5572")]
+def test_parse_skips_near_duplicate_within_group_radius():
+    # Coordinates about 100 m apart (well within 0.5 km GROUP_RADIUS_KM)
+    dup = ROWS[:1] + [dict(ROWS[0], 위도="37.5562", 경도="126.9235")]
     rows = parse_standard(dup)
     assert len(rows) == 1
     assert rows[0].name == "홍대입구"
+
+
+def test_parse_raises_far_duplicate_outside_group_radius():
+    # Coordinates about 3 km apart (exceeds 0.5 km GROUP_RADIUS_KM)
+    dup = ROWS[:1] + [dict(ROWS[0], 위도="37.5871", 경도="126.9245")]
+    with pytest.raises(ValueError, match="중복 역인데 좌표가 다름"):
+        parse_standard(dup)
 
 
 def test_parse_normalizes_name_but_keeps_raw():

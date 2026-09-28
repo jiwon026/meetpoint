@@ -14,7 +14,7 @@ GROUP_RADIUS_KM = 0.5
 DEFAULT_TRANSFER_MIN = 4.0
 DWELL_MIN = 0.5
 HAVERSINE_DETOUR = 1.15
-SPEED_KMH = {"urban": 32.0, "regional": 45.0, "gtx": 80.0}
+SPEED_KMH = {"urban": 60.0, "regional": 75.0, "gtx": 110.0}
 MAX_EDGE_KM = {"urban": 5.0, "regional": 12.0, "gtx": 25.0}
 LINE_CLASSES = tuple(SPEED_KMH)
 

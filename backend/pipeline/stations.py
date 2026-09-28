@@ -5,7 +5,8 @@
 
 from dataclasses import asdict, dataclass
 
-from pipeline.config import COLUMNS, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR, canonical_line
+from app.geo import haversine_km
+from pipeline.config import COLUMNS, GROUP_RADIUS_KM, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR, canonical_line
 from pipeline.io import pick, read_xlsx_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
 
@@ -36,7 +37,7 @@ def _in_metro(lat: float, lng: float) -> bool:
 def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
     cols = COLUMNS["std"]
     out: list[StationRow] = []
-    seen: set[tuple[str, str]] = set()
+    seen: dict[tuple[str, str], StationRow] = {}
     for row in rows:
         line = canonical_line(pick(row, cols["line"]))
         if line is None:
@@ -51,20 +52,23 @@ def parse_standard(rows: list[dict[str, str]]) -> list[StationRow]:
         name = normalize_station_name(raw_name)
         key = (name, line)
         if key in seen:
+            kept = seen[key]
+            dist = haversine_km(kept.lat, kept.lng, lat, lng)
+            if dist > GROUP_RADIUS_KM:
+                raise ValueError(f"중복 역인데 좌표가 다름: {key} {kept.lat},{kept.lng} vs {lat},{lng}")
             continue
-        seen.add(key)
-        out.append(
-            StationRow(
-                id=len(out) + 1,
-                name=name,
-                raw_name=raw_name,
-                line=line,
-                operator=pick(row, cols["operator"], required=False),
-                lat=lat,
-                lng=lng,
-                region=region_from_address(pick(row, cols["address"], required=False)),
-            )
+        station = StationRow(
+            id=len(out) + 1,
+            name=name,
+            raw_name=raw_name,
+            line=line,
+            operator=pick(row, cols["operator"], required=False),
+            lat=lat,
+            lng=lng,
+            region=region_from_address(pick(row, cols["address"], required=False)),
         )
+        seen[key] = station
+        out.append(station)
     return out
 
 
