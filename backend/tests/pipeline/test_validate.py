@@ -27,8 +27,21 @@ def test_bbox_flags_out_of_range():
 
 def test_edge_length_uses_class_limit():
     edges = [{"from_id": "1", "to_id": "2", "line": "2호선", "km": "8.5"}]
-    assert check_edge_lengths(edges, {"2호선": "urban"}) != []
-    assert check_edge_lengths(edges, {"2호선": "regional"}) == []
+    names = {"1": "홍대입구", "2": "강남"}
+    assert check_edge_lengths(edges, {"2호선": "urban"}, names) != []
+    assert check_edge_lengths(edges, {"2호선": "regional"}, names) == []
+
+
+def test_edge_length_skips_allowlisted_pair_only():
+    # 1호선 연천-전곡 8.7km는 실제로 긴 구간이라 허용 목록에 있다. 같은 노선 다른 쌍은 여전히 실패한다.
+    names = {"1": "전곡", "2": "연천", "3": "홍대입구", "4": "강남"}
+    allowed = [{"from_id": "1", "to_id": "2", "line": "1호선", "km": "8.7"}]
+    other = [{"from_id": "3", "to_id": "4", "line": "1호선", "km": "8.7"}]
+    wrong_line = [{"from_id": "1", "to_id": "2", "line": "2호선", "km": "8.7"}]
+    classes = {"1호선": "urban", "2호선": "urban"}
+    assert check_edge_lengths(allowed, classes, names) == []
+    assert check_edge_lengths(other, classes, names) != []
+    assert check_edge_lengths(wrong_line, classes, names) != []
 
 
 def test_connectivity_reports_components():

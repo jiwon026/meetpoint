@@ -11,7 +11,12 @@ METRO_LAT_RANGE = (36.9, 38.3)
 METRO_LNG_RANGE = (126.3, 127.9)
 
 GROUP_RADIUS_KM = 0.5
+# 실측 환승이 없는 환승의 도보와 대기를 합친 값.
 DEFAULT_TRANSFER_MIN = 4.0
+# 서울교통공사 환승소요시간은 환승거리를 1.2m/s로 걸은 도보 시간뿐이라 다음 열차 대기를 더한다.
+# 실측 도보 중앙값 1.5분 + 2.5분 = 기본값 4.0분이 되도록 잡았다. (Task 15, 2026-09-28)
+TRANSFER_WAIT_MIN = 2.5
+# 역마다 서는 시간. 서울교통공사 소요시간(정차 제외 운행시간)과 추정 간선 모두에 더한다.
 DWELL_MIN = 0.5
 HAVERSINE_DETOUR = 1.15
 # 선로 거리는 직선거리보다 짧을 수 없다. 원본 km가 직선거리 x 이 값보다 짧으면 행 밀림으로 보고 버린다.
@@ -36,8 +41,27 @@ EXPECTED_KM_DROPS: frozenset[tuple[str, str, str]] = frozenset(
         ("경의중앙선", "도라산", "임진강"),
     }
 )
-SPEED_KMH = {"urban": 60.0, "regional": 75.0, "gtx": 110.0}
+# 정차를 뺀 운행 속도. urban은 1~8호선 실측 운행시간 보정값(python -m pipeline.estimate --calibrate, 43.4).
+# regional과 gtx는 실측이 없어 처음 가정(32/45/80)의 비율을 유지한다: 43.4 x 45/32 = 61, 43.4 x 80/32 = 108.5 -> 110 유지.
+# (Task 15, 2026-09-28. 이전 60/75는 실측을 정차 포함으로 잘못 보고 맞춘 값)
+SPEED_KMH = {"urban": 43.4, "regional": 61.0, "gtx": 110.0}
 MAX_EDGE_KM = {"urban": 5.0, "regional": 12.0, "gtx": 25.0}
+# MAX_EDGE_KM을 넘지만 실제로 긴 구간. (노선, {정규화 역명 두 개}). 여기 없는 초과는 validate가 실패한다.
+# (Task 15, 2026-09-28 validate 실행에서 초과한 8쌍 전부. 원본 km: 연천-전곡 8.7, 청산-소요산 5.8, 지행-덕정 5.6,
+#  덕계-양주 5.3, 평택-성환 9.4, 금천구청-광명 5.18, 오남-별내별가람 9.02, 고촌-김포공항 5.91)
+EDGE_LENGTH_ALLOWLIST: frozenset[tuple[str, frozenset[str]]] = frozenset(
+    (line, frozenset(pair))
+    for line, pair in (
+        ("1호선", ("연천", "전곡")),
+        ("1호선", ("청산", "소요산")),
+        ("1호선", ("지행", "덕정")),
+        ("1호선", ("덕계", "양주")),
+        ("1호선", ("평택", "성환")),
+        ("1호선", ("금천구청", "광명")),
+        ("4호선", ("오남", "별내별가람")),
+        ("김포골드라인", ("고촌", "김포공항")),
+    )
+)
 LINE_CLASSES = tuple(SPEED_KMH)
 
 

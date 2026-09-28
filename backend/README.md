@@ -33,8 +33,24 @@ cp .env.example .env
 
 ## 데이터 적재
 
-stations, station_times, hubs 테이블은 별도 데이터 파이프라인 계획(dev/active/transit-data)에서 채운다.
-그 전까지는 tests/conftest.py의 시드와 같은 형태로 수동 적재해서 확인할 수 있다.
+역, 역간 시간표, 거점은 `pipeline/`이 만든 `data/out/*.csv`에서 적재한다. 원본은 `data/raw/`, 출처는 `data/SOURCES.md`.
+
+```bash
+.venv/Scripts/python -m scripts.init_db     # 처음 한 번
+.venv/Scripts/python -m pipeline.load       # .env의 DATABASE_URL에 적재
+```
+
+원본을 갱신했으면 다시 계산한다.
+
+```bash
+.venv/Scripts/python -m pipeline.run_all    # stations, edges, groups, times, validate
+.venv/Scripts/python -m pipeline.load
+```
+
+거점 목록은 `data/manual/hubs.csv`에서 읽는다. 이 파일만 고쳤으면 run_all 전체가 아니라 `python -m pipeline.times`, `python -m pipeline.validate`, `python -m pipeline.load` 세 개만 다시 실행하면 된다.
+
+거점 후보 점수를 다시 내려면 `python -m pipeline.hubs` (카카오 키 필요, 약 4,000회 호출).
+적재 후 서버를 재시작해야 시간표 캐시가 갱신된다.
 
 ## 배포 (Railway)
 

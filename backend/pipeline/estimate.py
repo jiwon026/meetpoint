@@ -30,10 +30,13 @@ def estimate_minutes(km: float, line_class: str) -> float:
 
 
 def calibrate_speed(pairs: list[tuple[float, float]]) -> float:
-    """(km, 분) 쌍에서 원점을 지나는 최소제곱: 분 - 정차 = km * (60 / 속도)."""
-    usable = [(km, m) for km, m in pairs if km > 0 and m > DWELL_MIN]
+    """(km, 분) 쌍에서 원점을 지나는 최소제곱: 분 = km * (60 / 속도).
+
+    서울교통공사 소요시간은 정차를 뺀 운행시간이라(2호선 잠실~강남 6구간 합 8.5분) 정차시간을 빼지 않는다.
+    """
+    usable = [(km, m) for km, m in pairs if km > 0 and m > 0]
     sxx = sum(km * km for km, _ in usable)
-    sxy = sum(km * (m - DWELL_MIN) for km, m in usable)
+    sxy = sum(km * m for km, m in usable)
     slope = sxy / sxx
     return 60.0 / slope
 

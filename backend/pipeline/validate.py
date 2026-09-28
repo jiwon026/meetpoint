@@ -4,9 +4,9 @@
 """
 
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
-from pipeline.config import MANUAL_DIR, MAX_EDGE_KM, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR
+from pipeline.config import EDGE_LENGTH_ALLOWLIST, MANUAL_DIR, MAX_EDGE_KM, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR
 from pipeline.edges import load_line_classes
 from pipeline.io import read_csv_rows
 from pipeline.times import build_adjacency, dijkstra, hub_node_ids
@@ -30,12 +30,17 @@ def check_bbox(stations: Iterable[dict[str, str]]) -> list[str]:
     return out
 
 
-def check_edge_lengths(edges: Iterable[dict[str, str]], classes: dict[str, str]) -> list[str]:
+def check_edge_lengths(edges: Iterable[dict[str, str]], classes: dict[str, str], names: Mapping[str, str]) -> list[str]:
+    """names는 역 id(문자열) -> 정규화 역명. EDGE_LENGTH_ALLOWLIST에 있는 (노선, 역 쌍)은 건너뛴다."""
     out = []
     for e in edges:
         limit = MAX_EDGE_KM[classes.get(e["line"], "urban")]
-        if float(e["km"]) > limit:
-            out.append(f"간선 거리 초과: {e['line']} {e['from_id']}-{e['to_id']} {e['km']}km > {limit}km")
+        if float(e["km"]) <= limit:
+            continue
+        a, b = names.get(e["from_id"], e["from_id"]), names.get(e["to_id"], e["to_id"])
+        if (e["line"], frozenset((a, b))) in EDGE_LENGTH_ALLOWLIST:
+            continue
+        out.append(f"간선 거리 초과: {e['line']} {a}({e['from_id']})-{b}({e['to_id']}) {e['km']}km > {limit}km")
     return out
 
 
@@ -112,7 +117,7 @@ def run_all_checks() -> list[str]:
     lookup = {(int(t["from_station_id"]), int(t["to_station_id"])): int(t["minutes"]) for t in times}
     problems = []
     problems += check_bbox(stations)
-    problems += check_edge_lengths(edges, classes)
+    problems += check_edge_lengths(edges, classes, {s["id"]: s["name"] for s in stations})
     problems += check_connectivity([int(s["id"]) for s in stations], edges, transfers)
     problems += check_hubs_have_nodes(hubs, stations)
     problems += check_times_complete(stations, hub_nodes, times)

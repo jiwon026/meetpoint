@@ -3,9 +3,9 @@ import pytest
 from pipeline.estimate import calibrate_speed, estimate_minutes, parse_mmss
 
 
-def test_urban_two_km_is_about_two_point_five_minutes():
-    # 2 / 60 * 60 + 0.5 = 2.5 (소수 1자리 반올림)
-    assert estimate_minutes(2.0, "urban") == pytest.approx(2.5, abs=0.05)
+def test_urban_two_km_is_about_three_point_three_minutes():
+    # 2 / 43.4 * 60 + 0.5 = 3.26 -> 3.3 (소수 1자리 반올림)
+    assert estimate_minutes(2.0, "urban") == pytest.approx(3.3, abs=0.05)
 
 
 def test_regional_is_faster_per_km():
@@ -26,13 +26,14 @@ def test_unknown_class_raises():
 
 
 def test_calibrate_recovers_speed():
+    # 서울교통공사 소요시간은 정차시간을 뺀 운행시간이라 분 = km / 속도 * 60 으로 맞춘다.
     speed = 30.0
-    pairs = [(km, km / speed * 60 + 0.5) for km in (0.8, 1.2, 1.5, 2.0, 3.1)]
+    pairs = [(km, km / speed * 60) for km in (0.8, 1.2, 1.5, 2.0, 3.1)]
     assert calibrate_speed(pairs) == pytest.approx(30.0, rel=1e-6)
 
 
 def test_calibrate_ignores_zero_km():
-    assert calibrate_speed([(0.0, 0.0), (2.0, 4.5)]) == pytest.approx(30.0, rel=1e-6)
+    assert calibrate_speed([(0.0, 0.0), (2.0, 4.0)]) == pytest.approx(30.0, rel=1e-6)
 
 
 @pytest.mark.parametrize(

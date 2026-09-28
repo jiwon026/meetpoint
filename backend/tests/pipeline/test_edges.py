@@ -175,9 +175,11 @@ def test_build_edges_measured_and_estimated():
     }
     edges = build_edges(segs, index, CLASSES)
     by_pair = {(e.from_id, e.to_id): e for e in edges}
-    assert by_pair[(1, 2)] == Edge(1, 2, "2호선", 0.7, 2.0, "measured")
+    # 실측 운행시간 2.0분에 정차시간 0.5분을 더한다(추정 간선과 같은 기준).
+    assert by_pair[(1, 2)] == Edge(1, 2, "2호선", 0.7, 2.5, "measured")
     e_regional = by_pair[(6, 7)]
-    assert e_regional.source == "estimated" and e_regional.km == 1.8 and e_regional.minutes == pytest.approx(1.9, abs=0.05)
+    # 1.8 / 61 * 60 + 0.5 = 2.27
+    assert e_regional.source == "estimated" and e_regional.km == 1.8 and e_regional.minutes == pytest.approx(2.3, abs=0.05)
     e_manual = by_pair[(8, 9)]
     assert e_manual.source == "estimated" and 0.8 < e_manual.km < 1.0  # 직선 0.79km x 1.15
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from app.geo import haversine_km
 from pipeline.config import (
     COLUMNS,
+    DWELL_MIN,
     EXPECTED_KM_DROPS,
     HAVERSINE_DETOUR,
     KRAIL_DISTANCE_GLOB,
@@ -271,7 +272,8 @@ def build_edges(
                 seen.add((a, b))
                 distance = km if km else round(haversine_km(prev.lat, prev.lng, cur.lat, cur.lng) * HAVERSINE_DETOUR, 2)
                 if minutes:
-                    edges.append(Edge(a, b, line, distance, round(minutes, 1), "measured"))
+                    # 실측은 정차를 뺀 운행시간이라 추정 간선과 같게 정차시간을 더한다.
+                    edges.append(Edge(a, b, line, distance, round(minutes + DWELL_MIN, 1), "measured"))
                 else:
                     edges.append(Edge(a, b, line, distance, estimate_minutes(distance, classes[line]), "estimated"))
     if unmatched:

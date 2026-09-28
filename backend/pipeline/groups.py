@@ -8,7 +8,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 
 from app.geo import haversine_km
-from pipeline.config import COLUMNS, DEFAULT_TRANSFER_MIN, GROUP_RADIUS_KM, MANUAL_DIR, OUT_DIR, canonical_line
+from pipeline.config import COLUMNS, DEFAULT_TRANSFER_MIN, GROUP_RADIUS_KM, MANUAL_DIR, OUT_DIR, TRANSFER_WAIT_MIN, canonical_line
 from pipeline.edges import load_aliases, load_stations, parse_duration
 from pipeline.io import pick, read_csv_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
@@ -106,7 +106,7 @@ def build_transfers(stations: Sequence[StationRow], group_of: dict[int, int], mi
             for b in ms[i + 1 :]:
                 measured = minutes_table.get((a.name, a.line, b.line)) or minutes_table.get((b.name, b.line, a.line))
                 if measured is not None:
-                    transfers.append(Transfer(a.id, b.id, measured, "measured"))
+                    transfers.append(Transfer(a.id, b.id, round(measured + TRANSFER_WAIT_MIN, 1), "measured"))
                 else:
                     transfers.append(Transfer(a.id, b.id, DEFAULT_TRANSFER_MIN, "default"))
     return transfers

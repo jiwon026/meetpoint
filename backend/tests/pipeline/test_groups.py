@@ -63,6 +63,7 @@ def test_build_transfers_uses_table_then_default():
     g = assign_groups(S, aliases={}, radius_km=0.5)
     table = {("홍대입구", "2호선", "경의중앙선"): 3.0}
     transfers = {(t.from_id, t.to_id): t for t in build_transfers(S, g, table)}
-    assert transfers[(3, 4)] == Transfer(3, 4, 3.0, "measured")
+    # 실측 환승 도보 3.0분에 대기 2.5분을 더한다. 기본값 4.0분은 도보와 대기를 합친 값이라 그대로.
+    assert transfers[(3, 4)] == Transfer(3, 4, 5.5, "measured")
     assert transfers[(3, 5)] == Transfer(3, 5, 4.0, "default")
     assert (1, 2) not in transfers
