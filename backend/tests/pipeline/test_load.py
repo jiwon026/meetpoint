@@ -1,11 +1,12 @@
+from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.hubs import load_hub_candidates
-from app.models import Base, Hub, Station, StationTime
+from app.models import Base, ContentCache, Hub, Station, StationTime
 from pipeline.io import write_csv
 from pipeline.load import load_all
 
@@ -58,3 +59,32 @@ def test_load_all_fills_tables_and_is_idempotent(tmp_path: Path):
         assert s.get(Station, 2).group_id == 1
         _, candidates = load_hub_candidates(s)
         assert {c.name: set(c.node_ids) for c in candidates} == {"홍대입구": {1, 2}, "강남": {3}}
+
+
+def _fk_engine():
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+    @event.listens_for(eng, "connect")
+    def _enable_fk(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(eng)
+    return eng
+
+
+def test_load_all_clears_hub_scoped_content_cache(tmp_path: Path):
+    out, manual = tmp_path / "out", tmp_path / "manual"
+    out.mkdir(); manual.mkdir()
+    _write_outputs(out, manual)
+    eng = _fk_engine()
+    load_all(eng, out, manual)
+    with Session(eng) as s:
+        s.add_all([
+            ContentCache(hub_id=1, kind="food", cache_key="places:1:food", payload=[], fetched_at=datetime(2026, 9, 1)),
+            ContentCache(hub_id=None, kind="events", cache_key="events:seoul:raw", payload=[], fetched_at=datetime(2026, 9, 1)),
+        ])
+        s.commit()
+    load_all(eng, out, manual)
+    with Session(eng) as s:
+        keys = set(s.scalars(select(ContentCache.cache_key)))
+    assert keys == {"events:seoul:raw"}

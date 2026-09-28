@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, delete, insert
 
-from app.models import Hub, Station, StationGroup, StationTime
+from app.models import ContentCache, Hub, Station, StationGroup, StationTime
 from pipeline.config import MANUAL_DIR, OUT_DIR
 from pipeline.io import read_csv_rows
 
@@ -52,6 +52,8 @@ def load_all(engine: Engine, out_dir: Path = OUT_DIR, manual_dir: Path = MANUAL_
     time_rows = [{"from_station_id": int(t["from_station_id"]), "to_station_id": int(t["to_station_id"]), "minutes": int(t["minutes"])} for t in read_csv_rows(out_dir / "station_times.csv")]
 
     with engine.begin() as conn:
+        # 거점별 캐시는 hubs.id를 참조하므로 거점보다 먼저 지운다. hub_id가 없는 캐시(서울시 행사 원본)는 그대로 둔다.
+        conn.execute(delete(ContentCache).where(ContentCache.hub_id.is_not(None)))
         for table in (StationTime, Hub, Station, StationGroup):
             conn.execute(delete(table))
         for table, rows in ((StationGroup, groups), (Station, station_rows), (Hub, hub_rows), (StationTime, time_rows)):
