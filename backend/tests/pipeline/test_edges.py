@@ -4,7 +4,9 @@ from pipeline.edges import (
     Edge,
     MatchError,
     StationIndex,
+    apply_segment_patches,
     build_edges,
+    drop_implausible_km,
     parse_krail_segments,
     parse_manual_segments,
     parse_seoul_segments,
@@ -53,6 +55,83 @@ def test_parse_krail_uses_distance_only():
     assert segs["경강선"] == [[("판교", None, None), ("이매", 1.8, None)]]
 
 
+def _krail(line, name, km, operator="코레일"):
+    return {"철도운영기관명": operator, "선명": line, "역명": name, "역간거리(km)": km}
+
+
+def test_parse_krail_starts_new_segment_when_line_label_changes():
+    # 코레일 통합 파일은 1호선 계통마다 연천부터 다시 적는다. 선명이 바뀌면 새 구간이다.
+    rows = [
+        _krail("1호선(경인선)", "동인천", "1.9"),
+        _krail("1호선(경인선)", "인천", "1.9"),
+        _krail("1호선(광명선)", "연천", "8.7"),
+        _krail("1호선(광명선)", "전곡", "3.3"),
+    ]
+    segs = parse_krail_segments(rows)
+    assert [[n for n, _, _ in seg] for seg in segs["1호선"]] == [["동인천", "인천"], ["연천", "전곡"]]
+
+
+def test_parse_krail_km_to_next_shifts_distance_to_following_station():
+    rows = [_krail("경강", "판교", "1.5"), _krail("경강", "성남", "2.0"), _krail("경강", "이매", "")]
+    segs = parse_krail_segments(rows, km_to_next=True)
+    assert segs["경강선"] == [[("판교", None, None), ("성남", 1.5, None), ("이매", 2.0, None)]]
+
+
+def test_parse_krail_km_to_next_keeps_segment_across_blank_distance():
+    # 9호선 파일은 신논현 뒤로 역간거리가 비어 있다. 다음 역까지 방식에서는 빈 값이 구간 끝이 아니다.
+    rows = [_krail("9호선", "신논현", ""), _krail("9호선", "언주", ""), _krail("9호선", "선정릉", "")]
+    segs = parse_krail_segments(rows, km_to_next=True)
+    assert [[n for n, _, _ in seg] for seg in segs["9호선"]] == [["신논현", "언주", "선정릉"]]
+
+
+def test_parse_krail_skips_out_of_area_names_and_breaks_there():
+    rows = [_krail("1호선(경부선)", n, "1") for n in ("평택", "성환", "직산", "천안")]
+    segs = parse_krail_segments(rows, skip_names={"직산", "천안"})
+    assert [[n for n, _, _ in seg] for seg in segs["1호선"]] == [["평택", "성환"]]
+
+
+def test_apply_segment_patches_breaks_inserts_and_prepends():
+    segs = {
+        "2호선": [[("충정로", None, None), ("시청", 1.1, 1.5), ("용답", 2.3, 3.0), ("신답", 1.0, 1.5)]],
+        "1호선": [[("외대앞", None, None), ("회기", 1.4, None), ("남영", 1.7, None)]],
+        "3호선": [[("지축", None, None), ("구파발", 1.5, 3.0)]],
+    }
+    patches = {
+        ("2호선", "시청", "용답"): ("|", "성수"),
+        ("1호선", "회기", "남영"): ("청량리", "|", "서울역"),
+        ("3호선", "", "지축"): ("삼송",),
+    }
+    out = apply_segment_patches(segs, patches)
+    assert out["2호선"] == [
+        [("충정로", None, None), ("시청", 1.1, 1.5)],
+        [("성수", None, None), ("용답", 2.3, 3.0), ("신답", 1.0, 1.5)],
+    ]
+    assert out["1호선"] == [
+        [("외대앞", None, None), ("회기", 1.4, None), ("청량리", None, None)],
+        [("서울역", None, None), ("남영", 1.7, None)],
+    ]
+    assert out["3호선"] == [[("삼송", None, None), ("지축", None, None), ("구파발", 1.5, 3.0)]]
+    assert segs["3호선"][0][0] == ("지축", None, None)  # 입력은 그대로
+
+
+def test_drop_implausible_km_discards_distance_shorter_than_straight_line():
+    # 판교-이매 직선 약 1.5km. 원본 행이 밀려 0.5km가 붙으면 버리고 직선거리 추정에 맡긴다.
+    index = StationIndex(S, aliases={})
+    segs = {
+        "경강선": [[("판교", None, None), ("이매", 0.5, None)]],
+        "2호선": [[("시청", None, None), ("을지로입구", 0.1, 2.0)]],
+    }
+    out = drop_implausible_km(segs, index)
+    assert out["경강선"] == [[("판교", None, None), ("이매", None, None)]]
+    assert out["2호선"] == segs["2호선"]  # 실측 분이 있는 구간은 그대로
+
+
+def test_drop_implausible_km_keeps_plausible_distance():
+    index = StationIndex(S, aliases={})
+    segs = {"경강선": [[("판교", None, None), ("이매", 1.8, None)]]}
+    assert drop_implausible_km(segs, index) == segs
+
+
 def test_parse_manual_orders_by_seq():
     rows = [
         {"line": "우이신설선", "seq": "2", "name": "솔밭공원"},
@@ -90,3 +169,9 @@ def test_station_index_resolves_alias():
     rows = S + [StationRow(10, "이수", "이수", "7호선", "서울교통공사", 37.4857, 126.9820, "서울")]
     index = StationIndex(rows, aliases={"총신대입구": "이수"})
     assert index.get("총신대입구", "7호선").id == 10
+
+
+def test_apply_segment_patches_fails_on_unused_rule():
+    segs = {"2호선": [[("시청", None, None), ("을지로입구", 0.7, 2.0)]]}
+    with pytest.raises(ValueError, match="쓰이지 않은"):
+        apply_segment_patches(segs, {("2호선", "시청", "용답"): ("|", "성수")})

@@ -3,7 +3,7 @@
 실행: python -m pipeline.edges
 """
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -12,9 +12,14 @@ from pipeline.config import (
     COLUMNS,
     HAVERSINE_DETOUR,
     KRAIL_DISTANCE_GLOB,
+    KRAIL_EXCLUDE,
+    KRAIL_KM_TO_NEXT,
+    KRAIL_OUT_OF_AREA,
+    KM_MIN_STRAIGHT_RATIO,
     MANUAL_DIR,
     OUT_DIR,
     RAW_DIR,
+    SEGMENT_PATCHES,
     canonical_line,
 )
 from pipeline.estimate import estimate_minutes
@@ -102,15 +107,33 @@ def parse_seoul_segments(rows: Iterable[dict[str, str]]) -> dict[str, list[Segme
     return segments
 
 
-def parse_krail_segments(rows: Iterable[dict[str, str]]) -> dict[str, list[Segment]]:
+def parse_krail_segments(
+    rows: Iterable[dict[str, str]], km_to_next: bool = False, skip_names: Collection[str] = ()
+) -> dict[str, list[Segment]]:
+    """국가철도공단 역간거리 행을 구간으로. 선명이나 운영기관이 바뀌면 새 구간이다.
+
+    km_to_next=False: 역간거리는 직전 역부터의 거리이고, 0이나 빈 값이면 새 구간을 시작한다.
+    km_to_next=True: 역간거리는 다음 역까지의 거리라 다음 행으로 넘긴다. 빈 값은 거리 미상일 뿐 구간 끝이 아니다.
+    skip_names(정규화 이름)에 든 역 행은 건너뛰고, 그 자리에서 구간을 끊는다.
+    """
     cols = COLUMNS["krail"]
     segments: dict[str, list[Segment]] = {}
+    prev_label: tuple[str, str] | None = None
+    prev_km: float | None = None
     for row in rows:
-        line = canonical_line(pick(row, cols["line"]))
-        if line is None:
+        label = (pick(row, cols["operator"], required=False), pick(row, cols["line"]))
+        name = pick(row, cols["name"])
+        line = canonical_line(label[1])
+        if line is None or normalize_station_name(name) in skip_names:
+            prev_label = None
             continue
         km = _to_float(pick(row, cols["km"], required=False))
-        _append(segments, line, pick(row, cols["name"]), km, None, not km)
+        new_label = label != prev_label
+        if km_to_next:
+            _append(segments, line, name, None if new_label else prev_km, None, new_label)
+        else:
+            _append(segments, line, name, km, None, new_label or not km)
+        prev_label, prev_km = label, km
     return segments
 
 
@@ -121,6 +144,69 @@ def parse_manual_segments(rows: Iterable[dict[str, str]]) -> dict[str, list[Segm
         line = canonical_line(row["line"]) or row["line"]
         _append(segments, line, row["name"], None, None, False)
     return segments
+
+
+SEGMENT_BREAK = "|"
+
+
+def apply_segment_patches(
+    segments_by_line: dict[str, list[Segment]], patches: dict[tuple[str, str, str], tuple[str, ...]]
+) -> dict[str, list[Segment]]:
+    """config.SEGMENT_PATCHES 규칙으로 원본 역 순서의 결함을 고친 새 구간 목록을 돌려준다.
+
+    키 (노선, 앞 역, 뒤 역)이 연속한 두 역과 맞으면 그 사이에 값의 역들을 끼우고, "|"에서 구간을 끊는다.
+    앞 역이 ""이면 구간 첫 역 앞에 끼운다. 한 번도 쓰이지 않은 규칙이 있으면 원본이 바뀐 것이므로 실패한다.
+    """
+    used: set[tuple[str, str, str]] = set()
+    out: dict[str, list[Segment]] = {}
+    for line, segments in segments_by_line.items():
+        new_segments: list[Segment] = []
+        for segment in segments:
+            current: Segment = []
+            prev = ""
+            for name, km, minutes in segment:
+                norm = normalize_station_name(name)
+                key = (line, prev, norm)
+                if key in patches:
+                    used.add(key)
+                    for inserted in patches[key]:
+                        if inserted == SEGMENT_BREAK:
+                            if current:
+                                new_segments.append(current)
+                            current = []
+                        else:
+                            current.append((inserted, None, None))
+                current.append((name, km, minutes) if current else (name, None, None))
+                prev = norm
+            new_segments.append(current)
+        out[line] = new_segments
+    unused = sorted(set(patches) - used)
+    if unused:
+        raise ValueError(f"쓰이지 않은 SEGMENT_PATCHES 규칙: {unused}")
+    return out
+
+
+def drop_implausible_km(
+    segments_by_line: dict[str, list[Segment]], index: StationIndex, min_ratio: float = KM_MIN_STRAIGHT_RATIO
+) -> dict[str, list[Segment]]:
+    """실측 분이 없는 구간의 km가 두 역 직선거리 x min_ratio보다 짧으면 버린 새 구간 목록을 돌려준다.
+
+    코레일 통합 파일은 1호선 서울교통공사 구간을 빼면서 뒤쪽 행의 거리가 한 칸씩 밀려 있다. 버린 km는
+    build_edges가 직선거리 x HAVERSINE_DETOUR로 채운다. 역 매칭 실패는 build_edges가 보고하므로 여기선 넘긴다.
+    """
+    out: dict[str, list[Segment]] = {}
+    for line, segments in segments_by_line.items():
+        new_segments: list[Segment] = []
+        for segment in segments:
+            fixed: Segment = segment[:1]
+            for (prev_name, _, _), (name, km, minutes) in zip(segment, segment[1:]):
+                a, b = index.get(prev_name, line), index.get(name, line)
+                if km and minutes is None and a and b and km < min_ratio * haversine_km(a.lat, a.lng, b.lat, b.lng):
+                    km = None
+                fixed.append((name, km, minutes))
+            new_segments.append(fixed)
+        out[line] = new_segments
+    return out
 
 
 def build_edges(
@@ -137,7 +223,7 @@ def build_edges(
                 if station is None:
                     unmatched.append((line, name))
                 resolved.append((station, km, minutes))
-            if unmatched:
+            if any(st is None for st, _, _ in resolved):
                 continue
             for (prev, _, _), (cur, km, minutes) in zip(resolved, resolved[1:]):
                 a, b = sorted((prev.id, cur.id))
@@ -186,12 +272,18 @@ def main() -> None:
     index = StationIndex(stations, load_aliases(MANUAL_DIR / "station_aliases.csv"))
     classes = load_line_classes(MANUAL_DIR / "line_classes.csv")
     seoul = parse_seoul_segments(read_csv_rows(require_raw("seoul_times")))
-    krail_rows = [row for p in sorted(RAW_DIR.glob(KRAIL_DISTANCE_GLOB)) for row in read_csv_rows(p)]
-    krail = parse_krail_segments(krail_rows)
-    # 1~8호선은 서울교통공사 실측을 우선한다. 국가철도공단 파일의 같은 노선 구간은 뺀다.
-    krail = {line: segs for line, segs in krail.items() if line not in seoul}
+    krail_paths = [p for p in sorted(RAW_DIR.glob(KRAIL_DISTANCE_GLOB)) if p.name not in KRAIL_EXCLUDE]
+    krail = _merge(
+        *(
+            parse_krail_segments(read_csv_rows(p), km_to_next=p.name in KRAIL_KM_TO_NEXT, skip_names=KRAIL_OUT_OF_AREA)
+            for p in krail_paths
+        )
+    )
     manual = parse_manual_segments(read_csv_rows(MANUAL_DIR / "line_orders.csv"))
-    edges = build_edges(_merge(seoul, krail, manual), index, classes)
+    # 노선으로 거르지 않는다. 서울교통공사 실측 구간이 먼저 들어가므로 같은 역 쌍은 build_edges의
+    # (a, b) 중복 제거로 실측이 남고, 국가철도공단 파일은 1호선 코레일 구간처럼 서울 파일에 없는 쌍만 보탠다.
+    segments = apply_segment_patches(_merge(seoul, krail, manual), SEGMENT_PATCHES)
+    edges = build_edges(drop_implausible_km(segments, index), index, classes)
     write_csv(OUT_DIR / "edges.csv", EDGE_FIELDS, [asdict(e) for e in edges])
     measured = sum(1 for e in edges if e.source == "measured")
     print(f"edges: {len(edges)} rows ({measured} measured) -> {OUT_DIR / 'edges.csv'}")
