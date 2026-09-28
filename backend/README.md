@@ -40,6 +40,8 @@ cp .env.example .env
 .venv/Scripts/python -m pipeline.load       # .env의 DATABASE_URL에 적재
 ```
 
+이 버전은 `stations`와 `hubs`에 `group_id` 컬럼과 `station_groups` 테이블을 추가했다. `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않으므로, 이전 버전으로 만든 DB(로컬 `dev.db` 포함)는 `station_groups`, `stations`, `hubs`, `station_times`, `content_cache` 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다.
+
 원본을 갱신했으면 다시 계산한다.
 
 ```bash
@@ -49,7 +51,7 @@ cp .env.example .env
 
 거점 목록은 `data/manual/hubs.csv`에서 읽는다. 이 파일만 고쳤으면 run_all 전체가 아니라 `python -m pipeline.times`, `python -m pipeline.validate`, `python -m pipeline.load` 세 개만 다시 실행하면 된다.
 
-거점 후보 점수를 다시 내려면 `python -m pipeline.hubs` (카카오 키 필요, 약 4,000회 호출).
+거점 후보 점수를 다시 내려면 `python -m pipeline.hubs` (카카오 키 필요, 약 4,500회 호출 (646그룹 x 7회)).
 적재 후 서버를 재시작해야 시간표 캐시가 갱신된다.
 
 ## 배포 (Railway)
@@ -58,6 +60,7 @@ cp .env.example .env
 - start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - 첫 배포 때 `python -m scripts.init_db` 를 한 번 실행해 테이블을 만든다.
 - 역 데이터를 적재한 뒤에는 서비스를 재시작한다. 시간표를 프로세스 메모리에 올리기 때문이다.
+- Supabase 첫 적재 순서: 테이블 정리(이전 버전 스키마가 있을 때만, 위 "데이터 적재" 참고), `python -m scripts.init_db`, `python -m pipeline.load`(로컬에서 `.env`의 `DATABASE_URL`을 Supabase로 두고 실행), 서비스 재시작. 적재 후 기존 방의 참가자 출발역 id가 바뀔 수 있어 결과가 달라질 수 있으니 적재는 사용량이 적을 때 한다.
 - cron: `python -m scripts.cleanup_expired` 를 하루 한 번.
 - `/health` 는 DB를 건드리지 않는다. 헬스체크가 DB 장애에 끌려가지 않는다.
 

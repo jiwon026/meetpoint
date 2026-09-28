@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from pipeline.edges import (
@@ -8,6 +10,7 @@ from pipeline.edges import (
     build_edges,
     check_km_drops,
     drop_implausible_km,
+    krail_direction,
     parse_krail_segments,
     parse_manual_segments,
     parse_seoul_segments,
@@ -211,3 +214,14 @@ def test_patch_sources_applies_each_source_with_its_km_direction():
     out_seoul, out_krail = patch_sources([(seoul, False), (krail, True)], patches)
     assert out_seoul["2호선"][1] == [("성수", None, None), ("용답", 2.3, 3.0)]
     assert out_krail["1호선"] == [[("회기", None, None), ("청량리", 1.4, None)], [("서울역", None, None), ("남영", None, None)]]
+
+
+def test_krail_direction_returns_registered_direction():
+    assert krail_direction(Path("raw") / "국가철도공단_코레일_역간거리.csv") == "to_next"
+    assert krail_direction(Path("raw") / "국가철도공단_공항철도_역간거리.csv") == "from_prev"
+
+
+def test_krail_direction_rejects_unregistered_file():
+    with pytest.raises(ValueError, match="config.KRAIL_KM_DIRECTION에 방향을 등록하세요") as info:
+        krail_direction(Path("raw") / "국가철도공단_새노선_역간거리.csv")
+    assert "국가철도공단_새노선_역간거리.csv" in str(info.value)

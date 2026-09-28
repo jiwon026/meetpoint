@@ -15,7 +15,7 @@ from pipeline.config import (
     HAVERSINE_DETOUR,
     KRAIL_DISTANCE_GLOB,
     KRAIL_EXCLUDE,
-    KRAIL_KM_TO_NEXT,
+    KRAIL_KM_DIRECTION,
     KRAIL_OUT_OF_AREA,
     KM_MIN_STRAIGHT_RATIO,
     MANUAL_DIR,
@@ -300,6 +300,21 @@ def load_stations(path: Path) -> list[StationRow]:
     ]
 
 
+KM_DIRECTIONS = ("to_next", "from_prev")
+
+
+def krail_directions(paths: Sequence[Path]) -> dict[str, str]:
+    """파일 이름 -> km 방향. 등록되지 않았거나 값이 틀린 파일이 하나라도 있으면 전부 모아 실패한다."""
+    missing = [p.name for p in paths if KRAIL_KM_DIRECTION.get(p.name) not in KM_DIRECTIONS]
+    if missing:
+        raise ValueError(f"km 방향이 없는 국가철도공단 파일 {missing}. config.KRAIL_KM_DIRECTION에 방향을 등록하세요")
+    return {p.name: KRAIL_KM_DIRECTION[p.name] for p in paths}
+
+
+def krail_direction(path: Path) -> str:
+    return krail_directions([path])[path.name]
+
+
 def _merge(*parts: dict[str, list[Segment]]) -> dict[str, list[Segment]]:
     merged: dict[str, list[Segment]] = {}
     for part in parts:
@@ -314,10 +329,11 @@ def main() -> None:
     classes = load_line_classes(MANUAL_DIR / "line_classes.csv")
     seoul = parse_seoul_segments(read_csv_rows(require_raw("seoul_times")))
     krail_paths = [p for p in sorted(RAW_DIR.glob(KRAIL_DISTANCE_GLOB)) if p.name not in KRAIL_EXCLUDE]
+    to_next = {name: d == "to_next" for name, d in krail_directions(krail_paths).items()}
     krail = [
         (
-            parse_krail_segments(read_csv_rows(p), km_to_next=p.name in KRAIL_KM_TO_NEXT, skip_names=KRAIL_OUT_OF_AREA),
-            p.name in KRAIL_KM_TO_NEXT,
+            parse_krail_segments(read_csv_rows(p), km_to_next=to_next[p.name], skip_names=KRAIL_OUT_OF_AREA),
+            to_next[p.name],
         )
         for p in krail_paths
     ]

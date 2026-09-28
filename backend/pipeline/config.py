@@ -1,3 +1,15 @@
+# 노선이 새로 개통되거나 원본이 갱신될 때 이 순서로 고친다.
+#  1. data/raw/ 원본을 교체하고 data/SOURCES.md의 받은 날짜를 갱신한다.
+#  2. 새 노선명 표기가 있으면 LINE_ALIASES에 추가한다.
+#  3. data/manual/line_classes.csv에 새 노선의 등급(urban, regional, gtx)을 적는다.
+#  4. 역 순서를 담은 원본 파일이 없는 노선은 data/manual/line_orders.csv에 순서를 적는다.
+#  5. 새 국가철도공단 역간거리 파일은 KRAIL_KM_DIRECTION에 km 방향을 등록한다.
+#     역간거리와 후행역간거리 두 컬럼이 있는 파일은 두 값을 비교해 어느 쪽이 직전 역부터인지 판단한다.
+#  6. python -m pipeline.run_all 을 실행한다.
+#  7. 실패하는 표(SEGMENT_PATCHES, EXPECTED_KM_DROPS, EDGE_LENGTH_ALLOWLIST)를 근거와 함께 갱신한다.
+#  8. python -m pipeline.load 로 DB에 적재한다.
+#  9. 서버를 재시작한다.
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -104,14 +116,18 @@ KRAIL_EXCLUDE = (
     # 인천2호선 파일 27행은 인천교통공사 파일의 인천2호선 27행과 역 순서, 거리 값이 같다.
     "국가철도공단_인천2호선_역간거리.csv",
 )
-# 역간거리 값이 '다음 역까지' 거리인 파일(마지막 역 칸이 비어 있다). 나머지 파일은 '직전 역부터' 거리다.
-# 좌표 직선거리와 두 해석을 비교해 오차 중앙값이 작은 쪽으로 정했다. (Task 13, 2026-09-28)
-KRAIL_KM_TO_NEXT = (
-    "국가철도공단_코레일_역간거리.csv",
-    "국가철도공단_수도권9호선_역간거리.csv",
-    "국가철도공단_에버라인_역간거리.csv",
-    "국가철도공단_인천교통공사_역간거리.csv",
-)
+# 읽는 국가철도공단 파일마다 역간거리 값의 방향. "to_next"는 다음 역까지 거리(마지막 역 칸이 비어 있다),
+# "from_prev"는 직전 역부터 거리다. 좌표 직선거리와 두 해석을 비교해 오차 중앙값이 작은 쪽으로 정했다. (Task 13, 2026-09-28)
+# KRAIL_EXCLUDE에 없는 파일이 여기 없으면 edges가 실패한다.
+KRAIL_KM_DIRECTION: dict[str, str] = {
+    "국가철도공단_코레일_역간거리.csv": "to_next",
+    "국가철도공단_수도권9호선_역간거리.csv": "to_next",
+    "국가철도공단_에버라인_역간거리.csv": "to_next",
+    "국가철도공단_인천교통공사_역간거리.csv": "to_next",
+    "국가철도공단_공항철도_역간거리.csv": "from_prev",
+    "국가철도공단_수도권5호선_역간거리.csv": "from_prev",
+    "국가철도공단_신분당선_역간거리.csv": "from_prev",
+}
 # 수도권 범위(METRO_LAT_RANGE) 밖이라 stations.csv에 없는 1호선 남쪽 끝 역. 국가철도공단 파일에서 이 역 행은 건너뛴다.
 KRAIL_OUT_OF_AREA = ("직산", "두정", "천안", "봉명", "쌍용", "아산", "탕정", "배방", "온양온천", "신창")
 # 원본 역 순서의 알려진 결함을 고치는 규칙. 키는 (노선, 앞 역, 뒤 역), 앞 역이 ""이면 구간의 첫 역이라는 뜻.
