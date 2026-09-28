@@ -35,3 +35,14 @@ class KakaoLocalClient:
             "keyword.json",
             {"query": query, "x": lng, "y": lat, "radius": radius, "size": size, "sort": "distance"},
         )
+
+    def _total(self, path: str, params: dict) -> int:
+        response = self._client.get(f"{KAKAO_LOCAL_BASE}/{path}", params=params, headers=self._headers)
+        response.raise_for_status()
+        return int(response.json().get("meta", {}).get("total_count", 0))
+
+    def count_category(self, code: str, lat: float, lng: float, radius: int = 600) -> int:
+        return self._total("category.json", {"category_group_code": code, "x": lng, "y": lat, "radius": radius, "size": 1})
+
+    def count_keyword(self, query: str, lat: float, lng: float, radius: int = 600) -> int:
+        return self._total("keyword.json", {"query": query, "x": lng, "y": lat, "radius": radius, "size": 1})

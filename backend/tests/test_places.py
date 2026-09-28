@@ -62,3 +62,15 @@ def test_second_call_is_served_from_cache(seeded):
     second = get_places(hub, "food", KakaoLocalClient("k"), cache)
     assert route.call_count == 1
     assert first == second
+
+
+@respx.mock
+def test_count_category_returns_meta_total():
+    respx.get(CATEGORY_URL).mock(return_value=httpx.Response(200, json={"meta": {"total_count": 42}, "documents": []}))
+    assert KakaoLocalClient("k").count_category("FD6", 37.5, 127.0) == 42
+
+
+@respx.mock
+def test_count_keyword_returns_meta_total():
+    respx.get(KEYWORD_URL).mock(return_value=httpx.Response(200, json={"meta": {"total_count": 7}, "documents": []}))
+    assert KakaoLocalClient("k").count_keyword("방탈출", 37.5, 127.0) == 7
