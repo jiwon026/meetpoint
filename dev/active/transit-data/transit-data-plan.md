@@ -274,7 +274,11 @@ def test_write_csv_round_trip(tmp_path: Path):
         ("수인분당선", "수인분당선"),
         ("분당선", "수인분당선"),
         ("GTX-A", "GTX-A"),
-        ("부산 1호선", None),
+        ("2", "2호선"),
+        ("수도권  도시철도 9호선", "9호선"),
+        ("인천지하철 1호선", "인천1호선"),
+        ("안산과천선", "4호선"),
+        ("부산 도시철도 1호선", None),
     ],
 )
 def test_canonical_line(raw, expected):
@@ -342,47 +346,56 @@ KRAIL_DISTANCE_GLOB = "국가철도공단_*역간거리*.csv"
 
 # 표준 노선명 -> 원본 파일들에 등장하는 표기. 원본 헤더를 확인하면서(Task 3) 늘린다.
 LINE_ALIASES: dict[str, tuple[str, ...]] = {
+    # 표준데이터(2026-06-30판) 노선명 표기를 2026-09-28에 확인해 반영했다.
     "1호선": ("1호선", "서울 1호선", "수도권1호선", "수도권 1호선", "경부선", "경인선", "경원선", "장항선"),
     "2호선": ("2호선", "서울 2호선"),
     "3호선": ("3호선", "서울 3호선", "일산선"),
-    "4호선": ("4호선", "서울 4호선", "안산선", "과천선", "진접선"),
+    "4호선": ("4호선", "서울 4호선", "안산선", "과천선", "안산과천선", "진접선"),
     "5호선": ("5호선", "서울 5호선", "수도권5호선", "수도권 5호선", "하남선"),
     "6호선": ("6호선", "서울 6호선"),
-    "7호선": ("7호선", "서울 7호선", "수도권7호선", "수도권 7호선"),
-    "8호선": ("8호선", "서울 8호선", "별내선"),
-    "9호선": ("9호선", "서울 9호선", "수도권9호선", "수도권 9호선"),
+    "7호선": ("7호선", "서울 7호선", "수도권7호선", "수도권 7호선", "도시철도 7호선"),
+    "8호선": ("8호선", "서울 8호선", "별내선", "수도권 광역철도 8호선"),
+    "9호선": ("9호선", "서울 9호선", "수도권9호선", "수도권 9호선", "서울 도시철도 9호선", "수도권 도시철도 9호선"),
     "경의중앙선": ("경의중앙선", "경의선", "중앙선", "경의.중앙선"),
     "수인분당선": ("수인분당선", "분당선", "수인선", "수인.분당선"),
     "경춘선": ("경춘선",),
     "경강선": ("경강선",),
     "서해선": ("서해선", "대곡소사선"),
-    "공항철도": ("공항철도", "인천국제공항철도", "인천공항철도", "공항철도선"),
+    "공항철도": ("공항철도", "인천국제공항철도", "인천공항철도", "공항철도선", "인천국제공항선"),
     "신분당선": ("신분당선",),
     "우이신설선": ("우이신설선", "우이신설경전철"),
-    "신림선": ("신림선",),
+    "신림선": ("신림선", "수도권 경량도시철도 신림선"),
     "김포골드라인": ("김포골드라인", "김포도시철도"),
-    "의정부경전철": ("의정부경전철", "의정부선"),
+    "의정부경전철": ("의정부경전철", "의정부선", "의정부"),
     "용인에버라인": ("용인에버라인", "에버라인", "용인경전철"),
-    "인천1호선": ("인천1호선", "인천 1호선"),
-    "인천2호선": ("인천2호선", "인천 2호선"),
+    "인천1호선": ("인천1호선", "인천 1호선", "인천지하철 1호선"),
+    "인천2호선": ("인천2호선", "인천 2호선", "인천지하철 2호선"),
     "GTX-A": ("GTX-A", "GTX A", "수도권광역급행철도 A", "GTX-A선"),
 }
 _ALIAS_INDEX = {alias.replace(" ", ""): canon for canon, aliases in LINE_ALIASES.items() for alias in aliases}
 
 
 def canonical_line(raw: str) -> str | None:
-    return _ALIAS_INDEX.get(raw.strip().replace(" ", ""))
+    """노선명 표기를 표준 노선명으로. 서울교통공사 파일은 호선을 '1', '2' 숫자만으로 적는다."""
+    key = raw.strip().replace(" ", "")
+    if key.isdigit():
+        key = f"{key}호선"
+    return _ALIAS_INDEX.get(key)
 
 
-# 원본별 컬럼 별칭. 포털 설명 기준이며 Task 3에서 실제 헤더로 확정한다.
+# 원본별 컬럼 별칭. 2026-09-28에 실제 파일 헤더로 확인했다.
+# 표준데이터: 역번호, 역사명, 노선번호, 노선명, 영문역사명, 한자역사명, 환승역구분, 환승노선번호, 환승노선명,
+#            역위도, 역경도, 운영기관명, 역사도로명주소, 역사전화번호, 데이터기준일자
+# 서울교통공사 역간거리: 연번, 호선, 역명, 소요시간(mm:ss), 역간거리(km), 호선별누계(km)
+# 서울교통공사 환승: 연번, 호선, 환승역명, 환승노선, 환승거리, 환승소요시간(mm:ss)
 COLUMNS: dict[str, dict[str, tuple[str, ...]]] = {
     "std": {
         "name": ("역사명",),
         "line": ("노선명",),
         "operator": ("운영기관명",),
-        "lat": ("위도",),
-        "lng": ("경도",),
-        "address": ("도로명주소", "역사도로명주소"),
+        "lat": ("역위도", "위도"),
+        "lng": ("역경도", "경도"),
+        "address": ("역사도로명주소", "도로명주소"),
     },
     "seoul": {
         "line": ("호선",),
@@ -521,6 +534,13 @@ git commit -m "feat: pipeline skeleton with config, io helpers and name normaliz
 ### Task 3: 원본 파일 확보와 헤더 확인
 
 이 태스크는 외부 사이트에서 파일을 받는 일이라 실행자가 다운로드를 못 하면 사용자에게 요청해야 한다. 코드 산출물은 `pipeline/inspect.py`와 `data/SOURCES.md`, 그리고 확인된 헤더에 맞춘 `config.py` 별칭 수정이다.
+
+**2026-09-28 진행 상황:** 사용자가 세 파일(표준데이터 XLSX 2026-06-30판, 서울교통공사 역간거리 2024-08-10판, 환승역 2026-08-31판)을 받아 `backend/data/raw/`에 계획의 파일명으로 넣었고 헤더도 확인해 `config.py` 코드에 반영했다. 남은 것은 국가철도공단 노선별 역간거리 CSV들이다. 확인된 사실:
+- 표준데이터 1,099행. 수도권 밖(부산, 대구, 대전, 광주, 동해선, 대경선, 부산김해경전철)은 `canonical_line`이 None을 돌려줘 걸러진다. 인천공항 자기부상철도도 제외한다.
+- 경전철 5개사(우이신설, 신림, 김포골드, 의정부, 용인에버라인) 역은 표준데이터에 있다.
+- **GTX-A 역은 표준데이터에 없다.** Task 13에서 `manual/extra_stations.csv`로 9개 역 좌표를 보충한다 (대곡, 연신내, 서울역, 수서, 구성은 다른 노선 노드 좌표를 복사하고, 운정중앙, 킨텍스, 성남, 동탄은 카카오 지오코딩으로 "OO역"을 검색).
+- 1호선 코레일 구간은 노선명 경부선, 경원선, 경인선, 장항선으로 들어 있다. 5호선에는 하남선 구간이 포함되어 있다.
+- 서울교통공사 두 파일은 cp949 인코딩, 호선 컬럼이 숫자만("1"), 소요시간과 환승소요시간은 mm:ss 형식이다.
 
 **Files:**
 - Create: `backend/pipeline/inspect.py`
@@ -981,7 +1001,7 @@ git commit -m "feat: distance based travel time estimate with calibration"
 
 **Interfaces:**
 - Consumes: `StationRow` (Task 4), `estimate_minutes` (Task 5), `haversine_km` (`app.geo`), `HAVERSINE_DETOUR`, `COLUMNS`, `canonical_line`, `normalize_station_name`, `read_csv_rows`, `pick`
-- Produces: `Edge(from_id, to_id, line, km, minutes, source)` frozen dataclass; `Segment = list[tuple[str, float | None, float | None]]` (역명, km_from_prev, minutes_from_prev); `parse_seoul_segments(rows) -> dict[str, list[Segment]]`; `parse_krail_segments(rows) -> dict[str, list[Segment]]`; `parse_manual_segments(rows) -> dict[str, list[Segment]]`; `MatchError(Exception)` with `.unmatched: list[tuple[str, str]]`; `StationIndex` (이름과 별칭으로 (name, line) -> StationRow 조회); `build_edges(segments_by_line, index, classes) -> list[Edge]`; `load_line_classes(path) -> dict[str, str]`; `load_aliases(path) -> dict[str, str]`; `EDGE_FIELDS`; `main()`이 `out/edges.csv`를 씀.
+- Produces: `Edge(from_id, to_id, line, km, minutes, source)` frozen dataclass; `Segment = list[tuple[str, float | None, float | None]]` (역명, km_from_prev, minutes_from_prev); `parse_duration(value: str) -> float | None` ('02:00'과 '1.5' 둘 다 분으로); `parse_seoul_segments(rows) -> dict[str, list[Segment]]`; `parse_krail_segments(rows) -> dict[str, list[Segment]]`; `parse_manual_segments(rows) -> dict[str, list[Segment]]`; `MatchError(Exception)` with `.unmatched: list[tuple[str, str]]`; `StationIndex` (이름과 별칭으로 (name, line) -> StationRow 조회); `build_edges(segments_by_line, index, classes) -> list[Edge]`; `load_line_classes(path) -> dict[str, str]`; `load_aliases(path) -> dict[str, str]`; `EDGE_FIELDS`; `main()`이 `out/edges.csv`를 씀.
 
 - [ ] **Step 1: manual 파일 작성**
 
@@ -1052,12 +1072,13 @@ CLASSES = {"2호선": "urban", "경강선": "regional", "우이신설선": "urba
 
 
 def test_parse_seoul_splits_segments_at_zero_minutes():
+    # 실제 파일 형식: 호선은 숫자만, 소요시간은 mm:ss
     rows = [
-        {"호선": "2호선", "역명": "시청", "운행시간(분)": "0", "역간거리(km)": "0"},
-        {"호선": "2호선", "역명": "을지로입구", "운행시간(분)": "2", "역간거리(km)": "0.7"},
-        {"호선": "2호선", "역명": "을지로3가", "운행시간(분)": "2", "역간거리(km)": "0.8"},
-        {"호선": "2호선", "역명": "성수", "운행시간(분)": "0", "역간거리(km)": "0"},
-        {"호선": "2호선", "역명": "용답", "운행시간(분)": "2", "역간거리(km)": "2.3"},
+        {"호선": "2", "역명": "시청", "소요시간": "00:00", "역간거리(km)": "0"},
+        {"호선": "2", "역명": "을지로입구", "소요시간": "02:00", "역간거리(km)": "0.7"},
+        {"호선": "2", "역명": "을지로3가", "소요시간": "01:30", "역간거리(km)": "0.8"},
+        {"호선": "2", "역명": "성수", "소요시간": "00:00", "역간거리(km)": "0"},
+        {"호선": "2", "역명": "용답", "소요시간": "02:00", "역간거리(km)": "2.3"},
     ]
     segs = parse_seoul_segments(rows)
     assert list(segs) == ["2호선"]
@@ -1066,6 +1087,7 @@ def test_parse_seoul_splits_segments_at_zero_minutes():
         ["성수", "용답"],
     ]
     assert segs["2호선"][0][1] == ("을지로입구", 0.7, 2.0)
+    assert segs["2호선"][0][2] == ("을지로3가", 0.8, 1.5)
 
 
 def test_parse_krail_uses_distance_only():
@@ -1184,17 +1206,27 @@ class StationIndex:
         return None
 
 
-def _to_float(value: str) -> float | None:
+def parse_duration(value: str) -> float | None:
+    """'2', '1.5', '02:00', '01:30' 을 분(float)으로. 빈 값이나 이상한 값은 None.
+
+    서울교통공사 파일의 소요시간과 환승소요시간은 mm:ss 형식이다.
+    """
     value = value.strip()
     if not value:
         return None
-    if ":" in value:  # 분:초 형식
+    if ":" in value:
         m, s = value.split(":", 1)
-        return float(m) + float(s) / 60
+        try:
+            return float(m) + float(s) / 60
+        except ValueError:
+            return None
     try:
         return float(value)
     except ValueError:
         return None
+
+
+_to_float = parse_duration
 
 
 def _append(segments: dict[str, list[Segment]], line: str, name: str, km: float | None, minutes: float | None, new_segment: bool) -> None:
@@ -1348,6 +1380,8 @@ git commit -m "feat: build adjacency edges from three sequence sources"
 
 `backend/tests/pipeline/test_groups.py`:
 ```python
+import pytest
+
 from pipeline.groups import (
     Transfer,
     assign_groups,
@@ -1397,9 +1431,14 @@ def test_group_rows_name_and_centroid():
 
 
 def test_parse_transfer_minutes_keys_by_normalized_name_and_lines():
-    rows = [{"호선": "2호선", "환승역명": "홍대입구", "환승노선": "경의중앙선", "환승소요시간": "3"}]
+    # 실제 파일은 호선을 숫자만으로, 소요시간을 mm:ss로 적는다.
+    rows = [
+        {"호선": "2", "환승역명": "홍대입구", "환승노선": "경의중앙선", "환승소요시간": "03:00"},
+        {"호선": "1", "환승역명": "서울역", "환승노선": "4호선", "환승소요시간": "02:13"},
+    ]
     table = parse_transfer_minutes(rows)
     assert table[("홍대입구", "2호선", "경의중앙선")] == 3.0
+    assert table[("서울", "1호선", "4호선")] == pytest.approx(2.2, abs=0.05)
 
 
 def test_build_transfers_uses_table_then_default():
@@ -1431,7 +1470,7 @@ from dataclasses import asdict, dataclass
 
 from app.geo import haversine_km
 from pipeline.config import COLUMNS, DEFAULT_TRANSFER_MIN, GROUP_RADIUS_KM, MANUAL_DIR, OUT_DIR, canonical_line
-from pipeline.edges import load_aliases, load_stations
+from pipeline.edges import load_aliases, load_stations, parse_duration
 from pipeline.io import pick, read_csv_rows, require_raw, write_csv
 from pipeline.names import normalize_station_name
 from pipeline.stations import STATION_FIELDS, StationRow
@@ -1511,14 +1550,10 @@ def parse_transfer_minutes(rows: Iterable[dict[str, str]]) -> dict[tuple[str, st
     for row in rows:
         line = canonical_line(pick(row, cols["line"]))
         to_line = canonical_line(pick(row, cols["to_line"]))
-        raw_minutes = pick(row, cols["minutes"], required=False).strip()
-        if line is None or to_line is None or not raw_minutes:
+        minutes = parse_duration(pick(row, cols["minutes"], required=False))
+        if line is None or to_line is None or minutes is None:
             continue
-        try:
-            minutes = float(raw_minutes)
-        except ValueError:
-            continue
-        table[(normalize_station_name(pick(row, cols["name"])), line, to_line)] = minutes
+        table[(normalize_station_name(pick(row, cols["name"])), line, to_line)] = round(minutes, 1)
     return table
 
 
