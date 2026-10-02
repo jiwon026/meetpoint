@@ -36,6 +36,7 @@ test("방 만들기부터 주변 둘러보기까지", async ({ page }) => {
   await page.getByRole("button", { name: "방 만들고 링크 받기" }).click();
 
   await expect(page).toHaveURL(/\/r\/[A-Za-z0-9]{6,8}$/);
+  const slug = new URL(page.url()).pathname.split("/").pop() ?? "";
   await expect(page.getByRole("heading", { name: "흐름 테스트 모임" })).toBeVisible();
 
   await addPerson(page, "홍대사람", "홍대입구");
@@ -45,6 +46,24 @@ test("방 만들기부터 주변 둘러보기까지", async ({ page }) => {
   await expect(page).toHaveURL(/\/result/);
   const cards = page.getByTestId("hub-card");
   await expect(cards).toHaveCount(5);
+
+  // 뒤로 가면 사람 추가 화면에 머물고(결과로 되튕기지 않음), 앞으로 가면 결과로 돌아온다.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9]{6,8}\?add=1$/);
+  await expect(page.getByRole("button", { name: "출발지 등록" })).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/\/result/);
+  await expect(cards).toHaveCount(5);
+
+  // 등록한 사람이 있는 브라우저가 add 없이 참여 주소로 들어오면 결과로 간다.
+  await page.goto(`/r/${slug}`);
+  await expect(page).toHaveURL(/\/result/);
+  await expect(cards).toHaveCount(5);
+
+  // 필터 검증이 의미가 있으려면 거르기 전 목록에 서울이 아닌 곳이 있어야 한다.
+  const before = await page.getByTestId("hub-summary").allTextContents();
+  expect(before).toHaveLength(5);
+  expect(before.some((text) => !text.startsWith("서울"))).toBe(true);
 
   // 지역을 서울만 남긴다. 상위 5곳을 자르기 전에 걸러지므로 여전히 5곳이 나와야 한다.
   await page.getByRole("button", { name: "경기", exact: true }).click();
