@@ -17,11 +17,17 @@ function JoinPage() {
     if (!adding && readMine(slug).length > 0) router.replace(`/r/${slug}/result`);
   }, [adding, slug, router]);
 
+  const showResult = () => {
+    // 뒤로 가기가 곧바로 결과로 되튕기지 않게, 지금 기록을 사람 추가 화면으로 바꿔 둔다.
+    window.history.replaceState(null, "", `/r/${slug}?add=1`);
+    router.push(`/r/${slug}/result`);
+  };
+
   return (
     <main>
       <StepIndicator current={2} slug={slug} />
       <RoomGate slug={slug}>
-        {(room) => <JoinScreen slug={slug} room={room} onShowResult={() => router.push(`/r/${slug}/result`)} />}
+        {(room) => <JoinScreen slug={slug} room={room} onShowResult={showResult} />}
       </RoomGate>
     </main>
   );

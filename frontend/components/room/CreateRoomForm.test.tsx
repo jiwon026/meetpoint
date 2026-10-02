@@ -62,3 +62,25 @@ test("서버 문구를 그대로 보여준다", async () => {
   await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("입력을 다시 확인해주세요");
 });
+
+test("성공 뒤에는 버튼이 비활성이라 다시 눌러도 요청은 한 번", async () => {
+  let posts = 0;
+  server.use(
+    http.post(`${API}/rooms`, () => {
+      posts += 1;
+      return HttpResponse.json(room({ slug: "k3x9pq" }), { status: 201 });
+    }),
+  );
+  const onCreated = vi.fn();
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={onCreated} />);
+  fill("금요일 저녁", "2026-10-10");
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
+  const button = screen.getByRole("button", { name: "만드는 중" });
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  await userEvent.click(button);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(posts).toBe(1);
+  expect(onCreated).toHaveBeenCalledOnce();
+});

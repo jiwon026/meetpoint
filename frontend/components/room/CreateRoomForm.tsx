@@ -20,6 +20,8 @@ export function CreateRoomForm({ today, onCreated }: Props) {
   const [theme, setTheme] = useState<ThemeId | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateRoom();
+  // 성공 뒤 다른 화면으로 넘어갈 때까지도 다시 누를 수 없게 막는다.
+  const busy = create.isPending || create.isSuccess;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -76,8 +78,8 @@ export function CreateRoomForm({ today, onCreated }: Props) {
             {problem}
           </p>
         )}
-        <button type="submit" disabled={create.isPending} className={PRIMARY_BUTTON}>
-          {create.isPending ? "만드는 중" : "방 만들고 링크 받기"}
+        <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
+          {busy ? "만드는 중" : "방 만들고 링크 받기"}
         </button>
       </form>
     </TicketCard>

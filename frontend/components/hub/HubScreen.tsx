@@ -29,7 +29,8 @@ export function HubScreen({ slug, hubId, filter, onGone }: Props) {
     if (missing) gone();
   }, [missing, gone]);
 
-  if (result.error) {
+  // 이미 불러온 거점이 있으면 재조회 실패로 화면을 지우지 않는다.
+  if (result.error && !rec) {
     return (
       <p role="alert" className={`${CARD} text-center font-semibold`}>
         {result.error.message}

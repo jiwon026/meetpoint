@@ -1,4 +1,5 @@
-import { screen, waitFor } from "@testing-library/react";
+import { focusManager } from "@tanstack/react-query";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
@@ -123,4 +124,30 @@ test("콘텐츠 API가 404면 onGone을 부른다", async () => {
   await waitFor(() => expect(onGone).toHaveBeenCalledOnce());
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(onGone).toHaveBeenCalledOnce();
+});
+
+test("거점을 불러온 뒤 재조회가 실패해도 제목과 탭이 남는다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  show();
+  expect(await screen.findByRole("heading", { name: "양재" })).toBeInTheDocument();
+
+  let failedCalls = 0;
+  server.use(
+    http.get(`${API}/rooms/abc123/result`, () => {
+      failedCalls += 1;
+      return HttpResponse.json({ detail: "서버에 문제가 생겼어요" }, { status: 500 });
+    }),
+  );
+  try {
+    act(() => focusManager.setFocused(false));
+    act(() => focusManager.setFocused(true));
+    await waitFor(() => expect(failedCalls).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole("heading", { name: "양재" })).toBeInTheDocument();
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  } finally {
+    act(() => focusManager.setFocused(undefined));
+  }
 });
