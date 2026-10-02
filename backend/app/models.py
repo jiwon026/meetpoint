@@ -65,6 +65,7 @@ class Room(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     regions: Mapped[list[str]] = mapped_column(JSON, default=lambda: list(REGIONS))
+    theme: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
 
     participants: Mapped[list["Participant"]] = relationship(
         back_populates="room", cascade="all, delete-orphan", order_by="Participant.id"

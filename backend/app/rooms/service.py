@@ -9,13 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cache import utcnow
-from app.options import REGIONS
+from app.options import REGIONS, THEME_OFF
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
 from app.geocoding.nearest import StationWalk, nearest_stations
-from app.hubs import load_hub_candidates
-from app.models import Participant, Room, Station
-from app.ranking.rank import ParticipantInput, rank_hubs
+from app.hubs import hub_lines, load_hub_candidates
+from app.models import Hub, Participant, Room, Station
+from app.ranking.rank import HubScore, ParticipantInput, rank_with_preference
 from app.rooms.slug import generate_slug
 from app.schemas import (
     LegOut,
@@ -61,6 +61,7 @@ def create_room(session: Session, data: RoomCreate) -> Room:
         created_at=now,
         expires_at=expires,
         regions=list(data.regions),
+        theme=data.theme,
     )
     session.add(room)
     session.commit()
@@ -132,7 +133,39 @@ def room_out(room: Room) -> RoomOut:
         meet_date=room.meet_date,
         expires_at=room.expires_at,
         regions=list(room.regions),
+        theme=room.theme,
         participants=[participant_out(p) for p in room.participants],
+    )
+
+
+def _applied_theme(room: Room, theme: str | None) -> str | None:
+    chosen = theme if theme is not None else room.theme
+    return None if chosen in (None, THEME_OFF) else chosen
+
+
+def _recommendation(score: HubScore, hub: Hub, lines: list[str], theme_match: bool) -> RecommendationOut:
+    return RecommendationOut(
+        hub_id=score.hub_id,
+        name=score.name,
+        region=hub.region,
+        tags=list(hub.tags),
+        vibe_summary=hub.vibe_summary,
+        lat=hub.lat,
+        lng=hub.lng,
+        max_minutes=score.max_minutes,
+        spread_minutes=score.spread_minutes,
+        lines=lines,
+        theme_match=theme_match,
+        legs=[
+            LegOut(
+                participant_id=l.participant_id,
+                nickname=l.nickname,
+                minutes=l.leg.total_minutes,
+                origin_station_name=l.leg.origin_station_name,
+                via=l.leg.via,
+            )
+            for l in score.legs
+        ],
     )
 
 
@@ -141,41 +174,37 @@ def compute_result(
     room: Room,
     matrix: StationTimeMatrix,
     regions: Sequence[str] | None = None,
+    theme: str | None = None,
 ) -> ResultOut:
     applied_regions = [r for r in REGIONS if r in (regions or room.regions)]
+    applied_theme = _applied_theme(room, theme)
     if len(room.participants) < 2:
-        return ResultOut(status="waiting", recommendations=[], regions=applied_regions)
+        return ResultOut(
+            status="waiting", recommendations=[], best_max_minutes=None,
+            regions=applied_regions, theme=applied_theme,
+        )
     inputs = [
         ParticipantInput(p.id, p.nickname, tuple(StationWalk(**d) for d in p.nearest_stations))
         for p in room.participants
     ]
-    hubs, candidates = load_hub_candidates(session)
+    stations = all_stations(session)
+    hubs, candidates = load_hub_candidates(session, stations)
     hub_by_id = {h.id: h for h in hubs}
     # 상위 5곳을 자르기 전에 지역으로 거른다. 자른 뒤 거르면 결과가 비어 보인다.
     in_region = [c for c in candidates if hub_by_id[c.hub_id].region in applied_regions]
-    scores = rank_hubs(inputs, in_region, matrix)
-    recommendations = [
-        RecommendationOut(
-            hub_id=s.hub_id,
-            name=s.name,
-            region=hub_by_id[s.hub_id].region,
-            tags=list(hub_by_id[s.hub_id].tags),
-            vibe_summary=hub_by_id[s.hub_id].vibe_summary,
-            lat=hub_by_id[s.hub_id].lat,
-            lng=hub_by_id[s.hub_id].lng,
-            max_minutes=s.max_minutes,
-            spread_minutes=s.spread_minutes,
-            legs=[
-                LegOut(
-                    participant_id=l.participant_id,
-                    nickname=l.nickname,
-                    minutes=l.leg.total_minutes,
-                    origin_station_name=l.leg.origin_station_name,
-                    via=l.leg.via,
-                )
-                for l in s.legs
-            ],
-        )
-        for s in scores
-    ]
-    return ResultOut(status="ready", recommendations=recommendations, regions=applied_regions)
+    matching = frozenset(
+        c.hub_id for c in in_region
+        if applied_theme is not None and applied_theme in hub_by_id[c.hub_id].themes
+    )
+    ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
+    lines = hub_lines(hubs, stations)
+    return ResultOut(
+        status="ready",
+        recommendations=[
+            _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching)
+            for s in ranking.scores
+        ],
+        best_max_minutes=ranking.best_max_minutes,
+        regions=applied_regions,
+        theme=applied_theme,
+    )

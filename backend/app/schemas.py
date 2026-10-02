@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.options import REGIONS, Region
+from app.options import REGIONS, Region, Theme
 
 
 class RoomCreate(BaseModel):
@@ -12,6 +12,7 @@ class RoomCreate(BaseModel):
     title: str = Field(min_length=1, max_length=40)
     meet_date: date
     regions: list[Region] = Field(default_factory=lambda: list(REGIONS), min_length=1)
+    theme: Theme | None = None
 
     @field_validator("regions")
     @classmethod
@@ -47,6 +48,7 @@ class RoomOut(BaseModel):
     meet_date: date
     expires_at: datetime
     regions: list[str]
+    theme: str | None
     participants: list[ParticipantOut]
 
 
@@ -68,13 +70,17 @@ class RecommendationOut(BaseModel):
     lng: float
     max_minutes: int
     spread_minutes: int
+    lines: list[str]
+    theme_match: bool
     legs: list[LegOut]
 
 
 class ResultOut(BaseModel):
     status: Literal["waiting", "ready"]
     recommendations: list[RecommendationOut]
+    best_max_minutes: int | None
     regions: list[str]
+    theme: str | None
 
 
 class StationOut(BaseModel):
