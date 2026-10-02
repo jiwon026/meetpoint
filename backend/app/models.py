@@ -3,6 +3,8 @@ from datetime import date, datetime
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.options import REGIONS
+
 
 class Base(DeclarativeBase):
     pass
@@ -61,6 +63,7 @@ class Room(Base):
     meet_date: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    regions: Mapped[list[str]] = mapped_column(JSON, default=lambda: list(REGIONS))
 
     participants: Mapped[list["Participant"]] = relationship(
         back_populates="room", cascade="all, delete-orphan", order_by="Participant.id"

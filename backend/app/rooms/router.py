@@ -15,6 +15,7 @@ from app.events.seoul import SeoulEventClient
 from app.events.service import get_events
 from app.geocoding.kakao import Geocoder
 from app.models import Hub
+from app.options import Region
 from app.places.kakao_local import KakaoLocalClient
 from app.places.service import get_places, place_cache_key
 from app.rooms import service
@@ -59,11 +60,12 @@ def add_participant(
 @router.get("/rooms/{slug}/result", response_model=ResultOut)
 def get_result(
     slug: str,
+    region: list[Region] | None = Query(default=None),
     db: Session = Depends(get_db),
     matrix: StationTimeMatrix = Depends(get_matrix),
 ) -> ResultOut:
     room = service.get_room(db, slug)
-    return service.compute_result(db, room, matrix)
+    return service.compute_result(db, room, matrix, regions=region)
 
 
 @router.get("/stations", response_model=list[StationOut])

@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.options import REGIONS, Region
 
 
 class RoomCreate(BaseModel):
@@ -9,6 +11,13 @@ class RoomCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=40)
     meet_date: date
+    regions: list[Region] = Field(default_factory=lambda: list(REGIONS), min_length=1)
+
+    @field_validator("regions")
+    @classmethod
+    def _canonical_regions(cls, value: list[str]) -> list[str]:
+        # 중복을 없애고 순서를 서울, 경기, 인천으로 고정한다
+        return [r for r in REGIONS if r in value]
 
 
 class ParticipantCreate(BaseModel):
@@ -37,6 +46,7 @@ class RoomOut(BaseModel):
     title: str
     meet_date: date
     expires_at: datetime
+    regions: list[str]
     participants: list[ParticipantOut]
 
 
@@ -64,6 +74,7 @@ class RecommendationOut(BaseModel):
 class ResultOut(BaseModel):
     status: Literal["waiting", "ready"]
     recommendations: list[RecommendationOut]
+    regions: list[str]
 
 
 class StationOut(BaseModel):

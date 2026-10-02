@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime, timedelta
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cache import utcnow
+from app.options import REGIONS
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
 from app.geocoding.nearest import StationWalk, nearest_stations
@@ -58,6 +60,7 @@ def create_room(session: Session, data: RoomCreate) -> Room:
         meet_date=data.meet_date,
         created_at=now,
         expires_at=expires,
+        regions=list(data.regions),
     )
     session.add(room)
     session.commit()
@@ -128,20 +131,29 @@ def room_out(room: Room) -> RoomOut:
         title=room.title,
         meet_date=room.meet_date,
         expires_at=room.expires_at,
+        regions=list(room.regions),
         participants=[participant_out(p) for p in room.participants],
     )
 
 
-def compute_result(session: Session, room: Room, matrix: StationTimeMatrix) -> ResultOut:
+def compute_result(
+    session: Session,
+    room: Room,
+    matrix: StationTimeMatrix,
+    regions: Sequence[str] | None = None,
+) -> ResultOut:
+    applied_regions = [r for r in REGIONS if r in (regions or room.regions)]
     if len(room.participants) < 2:
-        return ResultOut(status="waiting", recommendations=[])
+        return ResultOut(status="waiting", recommendations=[], regions=applied_regions)
     inputs = [
         ParticipantInput(p.id, p.nickname, tuple(StationWalk(**d) for d in p.nearest_stations))
         for p in room.participants
     ]
     hubs, candidates = load_hub_candidates(session)
     hub_by_id = {h.id: h for h in hubs}
-    scores = rank_hubs(inputs, candidates, matrix)
+    # 상위 5곳을 자르기 전에 지역으로 거른다. 자른 뒤 거르면 결과가 비어 보인다.
+    in_region = [c for c in candidates if hub_by_id[c.hub_id].region in applied_regions]
+    scores = rank_hubs(inputs, in_region, matrix)
     recommendations = [
         RecommendationOut(
             hub_id=s.hub_id,
@@ -166,4 +178,4 @@ def compute_result(session: Session, room: Room, matrix: StationTimeMatrix) -> R
         )
         for s in scores
     ]
-    return ResultOut(status="ready", recommendations=recommendations)
+    return ResultOut(status="ready", recommendations=recommendations, regions=applied_regions)
