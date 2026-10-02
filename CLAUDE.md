@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `dev/active/<task>/`: 진행 중이거나 끝난 태스크의 계획, 컨텍스트(결정과 한계), 체크리스트. 새 작업 전에 `*-context.md`의 "다음 계획에 넘길 것"을 읽는다.
 - `backend/data/SOURCES.md`: 원본 데이터 출처, 확인된 사실, 모든 상수 변경의 근거
 
-## 명령 (전부 `backend/` 안에서 실행)
+## 명령 (백엔드는 `backend/`, 프론트는 `frontend/` 안에서 실행)
 
 ```bash
 cd backend
@@ -24,6 +24,18 @@ cd backend
 ```
 
 한글을 출력하는 스크립트는 `PYTHONIOENCODING=utf-8`을 앞에 붙인다 (Git Bash에서 깨짐).
+
+프론트엔드:
+
+```bash
+cd frontend
+npm install                 # 처음 한 번
+npm run dev                 # http://localhost:3000 (백엔드가 8000에 떠 있어야 함)
+npm test                    # 단위 테스트
+npm test -- components/join # 폴더 하나
+npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 실행
+npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생성
+```
 
 데이터 파이프라인:
 
@@ -56,6 +68,14 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 사용자에게 보이는 에러 문구는 `rooms/service.py`의 `MSG_*` 상수와 `docs/design.md` 8절이 원본이다. 바꾸면 둘 다.
 
+### 프론트엔드 (`frontend/`)
+
+Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Query로 10초 폴링한다. 서버 쪽 코드는 `app/r/[slug]/layout.tsx`의 링크 미리보기 제목뿐이다.
+
+화면 로직은 `components/{join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
+
+지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 문구는 `lib/messages.ts`와 백엔드 `detail`만 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다.
+
 ### 파이프라인 (`backend/pipeline/`)
 
 공공데이터 -> `data/out/*.csv` -> DB. 단계별 모듈(`stations`, `edges`, `groups`, `times`, `validate`, `load`)은 각각 순수 함수 + 얇은 `main()`. 원본은 `data/raw/`(커밋됨, 수정 금지), 수동 데이터는 `data/manual/`.
@@ -66,7 +86,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 ## 규약
 
-- 테스트는 실동작 검증. 외부 API는 respx, DB는 SQLite 인메모리(`tests/conftest.py`의 `seeded` 픽스처: 역 6개, 거점 4개). 파이프라인은 픽스처 CSV/XLSX와 합성 소형 데이터(`tests/pipeline/test_run_all_synthetic.py`).
+- 테스트는 실동작 검증. 외부 API는 respx, DB는 SQLite 인메모리(`tests/conftest.py`의 `seeded` 픽스처: 역 6개, 거점 4개). 파이프라인은 픽스처 CSV/XLSX와 합성 소형 데이터(`tests/pipeline/test_run_all_synthetic.py`). 프론트는 Vitest와 MSW(`frontend/lib/test/`), 흐름 하나는 Playwright(`frontend/e2e/`).
 - SQLite에서 도는 코드가 Postgres(Supabase)에서도 돌아야 한다. 삭제 순서와 외래키(`content_cache.hub_id -> hubs`)에 주의. `DATABASE_URL`의 `postgresql://`은 `app/db.py`가 `postgresql+psycopg://`로 바꾼다.
 - 마이그레이션 도구 없음. 스키마가 바뀌면 테이블을 지우고 `init_db`부터.
 - 문서와 코드 문구에 엠대시(—)와 가운데 점(·)을 쓰지 않는다. 데이터의 `raw_name` 컬럼만 예외.

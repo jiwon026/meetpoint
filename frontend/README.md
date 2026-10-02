@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 우리지금만나 프론트엔드
 
-## Getting Started
+아래 명령은 전부 이 폴더(`frontend/`) 안에서 실행한다. 저장소 루트에서는 `cd frontend` 먼저.
 
-First, run the development server:
+## 로컬 실행
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+백엔드가 먼저 떠 있어야 한다 (`backend/README.md`, 포트 8000).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    cd frontend
+    npm install
+    cp .env.example .env.local
+    npm run dev
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+http://localhost:3000 에서 연다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 환경 변수 (`.env.local`)
 
-## Learn More
+| 이름 | 설명 |
+|---|---|
+| NEXT_PUBLIC_API_BASE | 백엔드 주소. 기본 http://localhost:8000 |
+| NEXT_PUBLIC_KAKAO_JS_KEY | 카카오 JavaScript 키. 비워두면 지도만 빠지고 나머지는 동작한다 |
 
-To learn more about Next.js, take a look at the following resources:
+지도를 쓰려면 카카오 개발자 콘솔의 앱 플랫폼 설정에서 Web 사이트 도메인에 `http://localhost:3000`을 등록한다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 명령
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 명령 | 하는 일 |
+|---|---|
+| `npm run dev` | 개발 서버 |
+| `npm test` | 단위 테스트 (Vitest). 키와 백엔드 없이 돈다 |
+| `npm run coverage` | 커버리지. `lib/`, `components/` 80% 미만이면 실패 |
+| `npm run e2e` | 흐름 테스트 (Playwright). 백엔드(8010)와 프론트(3100)를 직접 띄운다. 프론트는 빌드해서 띄우므로 1분 넘게 걸린다. 같은 `.next`를 쓰는 3000번 개발 서버는 끄고 실행 |
+| `npm run gen:api` | 백엔드 스키마에서 `lib/api/schema.d.ts` 다시 생성. 백엔드 응답 모양을 바꿨을 때 |
+| `npm run lint`, `npm run build` | 검사와 빌드 |
 
-## Deploy on Vercel
+## 구조
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `app/`: 경로. URL을 읽어 화면 컴포넌트에 넘기는 얇은 껍데기
+- `components/*/*Screen.tsx`: 화면 로직. 라우터에 의존하지 않아 그대로 테스트한다
+- `lib/api/`: fetch 래퍼, TanStack Query 훅, 생성된 타입
+- `lib/messages.ts`: 프론트 문구. 백엔드가 주는 문구(`detail`)는 그대로 보여준다
+- `app/globals.css`: 색 토큰. 컴포넌트에 색 값을 직접 쓰지 않는다

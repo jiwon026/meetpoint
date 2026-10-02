@@ -1860,13 +1860,13 @@ print(c.post('/places/search', json={'q': '강남역'}).json())
 ```
 
 Expected:
-- 필터 없음: 1위 판교, 최대 약 45분 (`transit-data-context.md`의 기록과 같아야 한다)
-- `region=서울`: 1위 가락시장, 최대 약 55분. 모든 줄의 지역이 서울
+- 필터 없음: 2호선 홍대입구 노드로 계산하면 1위 판교, 최대 약 44분 (공항철도 홍대입구 노드를 고르면 1위 서현 43분, 판교는 2위. 출발 노드에 따라 달라지는 것이지 결함이 아니다)
+- `region=서울`: 어느 홍대입구 노드를 골라도 1위 가락시장, 최대 약 54분. 모든 줄의 지역이 서울
 - `theme=cafe`, `theme=drink`: `best`는 필터 없음과 같고, 1위는 `best + 5` 이내이면서 `theme_match`가 참인 거점 (없으면 순서가 필터 없음과 같다)
 - 수원을 뺀 뒤 1위가 바뀜 (홍대입구와 잠실 사이 거점)
 - 주소 검색: 카카오 키가 `.env`에 있으면 `items`에 결과, 없으면 `error` 문구
 
-판교와 가락시장이 다르게 나오면 멈추고 원인을 찾는다 (지역 필터가 순위 계산 뒤에 걸렸거나 적재가 덜 된 경우).
+2호선 홍대입구 기준으로 판교와 가락시장이 다르게 나오면 멈추고 원인을 찾는다 (지역 필터가 순위 계산 뒤에 걸렸거나 적재가 덜 된 경우).
 
 - [ ] **Step 5: 전체 테스트와 커밋**
 
@@ -5464,9 +5464,9 @@ export default function Page() {
 
 - [ ] **Step 6: 브라우저 확인**
 
-방을 만들고 홍대입구, 수원, 잠실을 넣은 뒤 "추천 보기":
+방을 만들고 2호선 홍대입구, 수원, 잠실을 넣은 뒤 "추천 보기":
 - 카드 5장, 1위가 펼쳐져 있고 "1위" 도장, 노선 뱃지, 사람별 막대(가장 오래 걸리는 사람만 빨강)
-- 지역에서 경기와 인천을 끄면 주소가 `?region=서울`로 바뀌고 목록이 바뀐다 (1위 가락시장). 새로고침해도 유지된다
+- 지역에서 경기와 인천을 끄면 주소가 `?region=서울`로 바뀌고 목록이 바뀐다 (1위 가락시장, 약 54분). 새로고침해도 유지된다
 - 테마 "카페"를 켜면 주소에 `theme=cafe`, 맞는 카드에 "테마에 맞아요" 도장. 다시 누르면 `theme=any`
 - "사람 추가"를 누르면 참여 화면으로 가고 다시 추천으로 튕기지 않는다
 - 참여 화면에서 한 명만 남기고 빼면 추천 화면이 초대 안내로 바뀐다
@@ -6195,7 +6195,7 @@ git commit -m "feat: hub surroundings screen with content tabs and place pins"
 // E2E용 백엔드. 전용 SQLite 파일을 새로 만들어 파이프라인 산출물을 적재한 뒤 서버를 띄운다.
 // 카카오 키를 비워 외부 호출이 나가지 않게 한다 (콘텐츠 요청은 테스트가 가로챈다).
 import { execFileSync, spawn } from "node:child_process";
-import { rmSync } from "node:fs";
+import { existsSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6209,7 +6209,9 @@ const env = {
   PYTHONIOENCODING: "utf-8",
 };
 
-rmSync(path.join(backend, "e2e.db"), { force: true });
+// fs.rmSync는 Node 24의 Windows에서 한글 경로를 만나면 프로세스가 비정상 종료해서 unlinkSync를 쓴다.
+const db = path.join(backend, "e2e.db");
+if (existsSync(db)) unlinkSync(db);
 execFileSync(python, ["-m", "scripts.init_db"], { cwd: backend, env, stdio: "inherit" });
 execFileSync(python, ["-m", "pipeline.load"], { cwd: backend, env, stdio: "inherit" });
 
@@ -6239,9 +6241,10 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: "npm run dev -- --port 3100",
+      // 개발 서버는 화면 이동이 첫 컴파일과 겹치면 가끔 404를 보여줘서 흐름이 흔들린다. 빌드한 서버로 돈다.
+      command: "npm run build && npm run start -- --port 3100",
       url: "http://localhost:3100",
-      timeout: 120_000,
+      timeout: 180_000,
       reuseExistingServer: false,
       env: { NEXT_PUBLIC_API_BASE: "http://localhost:8010", NEXT_PUBLIC_KAKAO_JS_KEY: "" },
     },
@@ -6375,7 +6378,7 @@ http://localhost:3000 에서 연다.
 | `npm run dev` | 개발 서버 |
 | `npm test` | 단위 테스트 (Vitest). 키와 백엔드 없이 돈다 |
 | `npm run coverage` | 커버리지. `lib/`, `components/` 80% 미만이면 실패 |
-| `npm run e2e` | 흐름 테스트 (Playwright). 백엔드(8010)와 프론트(3100)를 직접 띄운다. 3000번 개발 서버는 끄고 실행 |
+| `npm run e2e` | 흐름 테스트 (Playwright). 백엔드(8010)와 프론트(3100)를 직접 띄운다. 프론트는 빌드해서 띄우므로 1분 넘게 걸린다. 같은 `.next`를 쓰는 3000번 개발 서버는 끄고 실행 |
 | `npm run gen:api` | 백엔드 스키마에서 `lib/api/schema.d.ts` 다시 생성. 백엔드 응답 모양을 바꿨을 때 |
 | `npm run lint`, `npm run build` | 검사와 빌드 |
 
@@ -6437,7 +6440,7 @@ Expected: 전부 통과
 저장소 루트에서 실행한다. 금지 문자를 명령에 직접 쓰지 않으려고 코드 번호로 찾는다.
 
 ```bash
-git diff main --name-only | grep -v "data/raw\|schema.d.ts\|package-lock.json" | PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python -c "
+git diff main --name-only | grep -v "data/raw\|schema.d.ts\|package-lock.json\|frontend/AGENTS.md" | PYTHONIOENCODING=utf-8 backend/.venv/Scripts/python -c "
 import sys
 bad = (chr(0x2014), chr(0x00B7))
 for path in sys.stdin.read().split():
@@ -6468,6 +6471,6 @@ git commit -m "test: end to end flow, coverage gate and run docs for the fronten
 
 - `backend/`에서 `.venv/Scripts/pytest -q`: 254 passed
 - `frontend/`에서 `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run coverage`(80% 이상), `npm run e2e` 전부 통과
-- 실데이터 확인: 홍대입구, 수원, 잠실 방에서 지역 전체면 1위 판교, 서울만이면 1위 가락시장
+- 실데이터 확인: 2호선 홍대입구, 수원, 잠실 방에서 지역 전체면 1위 판교(약 44분), 서울만이면 1위 가락시장(약 54분)
 - 브라우저에서 네 화면을 모바일 폭으로 끝까지 눌러보고 스크린샷을 사용자에게 보여줬다
 - `docs/design.md`, `backend/README.md`, `frontend/README.md`, `CLAUDE.md`, `backend/data/SOURCES.md`가 구현과 맞다
