@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const pretendard = localFont({
   src: "../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" className={pretendard.variable}>
       <body className="font-sans antialiased">
-        <div className="mx-auto min-h-dvh max-w-[480px] px-4 pb-32 pt-4">{children}</div>
+        <Providers>
+          <div className="mx-auto min-h-dvh max-w-[480px] px-4 pb-32 pt-4">{children}</div>
+        </Providers>
       </body>
     </html>
   );
