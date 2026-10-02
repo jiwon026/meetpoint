@@ -9,6 +9,15 @@
         "cd /d backend && .venv\\Scripts\\uvicorn.exe app.main:app --port 8000"
       ],
       "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": [
+        "/c",
+        "cd /d frontend && npm run dev"
+      ],
+      "port": 3000
     }
   ]
 }
