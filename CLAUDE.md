@@ -38,6 +38,8 @@ npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 
 npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생성
 ```
 
+이동 뒤에 `npm run dev` 화면이 Next의 404 페이지로 바뀌면 `npm run build` 다음 `npm run start`로 확인한다 (알려진 문제이고 원인은 모른다. `dev/active/frontend/frontend-context.md` 참고).
+
 데이터 파이프라인:
 
 ```bash
@@ -57,7 +59,7 @@ npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생
 
 FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외부 HTTP 호출은 클라이언트 클래스 안에서만 하고(`geocoding/kakao.py`, `places/kakao_local.py`, `events/seoul.py`, `events/kopis.py`) 서비스와 라우터는 `deps.py`에서 주입받는다. `deps.py`는 프로세스 공용 `httpx.Client` 하나와 역간 시간표 캐시(`get_matrix`)를 들고 있다.
 
-요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (`geocoding/nearest.py`로 가까운 역 최대 3개) -> `ranking/rank.py`의 `rank_hubs` -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
+요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (`geocoding/nearest.py`로 가까운 역 최대 3개) -> `ranking/rank.py`의 `rank_with_preference`(`rank_hubs`는 이것을 감싼 얇은 함수로 테스트에서만 쓴다) -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
 
 핵심 데이터 개념:
 - `Station`은 노선별 노드(환승역은 노선 수만큼). `StationGroup`은 물리적으로 같은 역. `Hub`는 거점이고 `group_id`로 노드들과 이어진다 (`app/hubs.py`). 이름으로 묶지 않는다: 신촌(2호선)과 신촌(경의중앙선)은 다른 그룹.
@@ -75,7 +77,7 @@ Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Quer
 
 화면 로직은 `components/{join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
 
-지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 문구는 `lib/messages.ts`와 백엔드 `detail`만 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다.
+지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다.
 
 ### 파이프라인 (`backend/pipeline/`)
 

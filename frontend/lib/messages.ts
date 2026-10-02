@@ -1,4 +1,5 @@
-// 프론트에서만 쓰는 문구. 백엔드가 주는 문구(detail)는 그대로 보여주므로 여기 없다.
+// 프론트에서만 쓰는 문구. 백엔드가 주는 문구(detail)는 그대로 보여주므로 여기서 다시 만들지 않는다.
+// 예외로 MSG_ROOM_FULL은 백엔드 문구와 같은 글이다. 참여 화면이 요청을 보내기 전에 먼저 보여주려고 둔다.
 // 바꾸면 docs/design.md 8절도 함께 고친다.
 export const MSG_NETWORK = "연결이 불안정해요. 잠시 후 다시 시도해주세요.";
 export const MSG_INVALID_INPUT = "입력을 다시 확인해주세요";
@@ -19,7 +20,6 @@ export const MSG_LEGS_MISSING = "이동시간을 불러오지 못했어요";
 export const MSG_THEME_MATCH = "테마에 맞아요";
 export const MSG_HUB_GONE = "추천이 바뀌었어요";
 export const MSG_NOTHING_NEARBY = "근처에서 찾지 못했어요";
-export const MSG_CONTENT_UNAVAILABLE = "지금 불러올 수 없어요";
 export const MSG_LINK_COPIED = "링크를 복사했어요";
 export const MSG_LINK_COPY_FAILED = "복사하지 못했어요. 주소창의 링크를 직접 복사해주세요.";
 export const MSG_ROOM_CREATED = "방을 만들었어요. 링크를 복사했어요";

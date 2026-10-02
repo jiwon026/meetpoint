@@ -224,7 +224,7 @@ frontend/
     layout.tsx                    글꼴, 공통 헤더, QueryClientProvider
     page.tsx                      4.1 방 만들기
     r/[slug]/
-      layout.tsx                  링크 미리보기 제목(generateMetadata), 404와 410 안내
+      layout.tsx                  링크 미리보기 제목(generateMetadata). 404와 410 안내는 RoomGate, ResultScreen, HubScreen이 각자 보여준다
       page.tsx                    4.2 참여
       result/page.tsx             4.3 추천
       hubs/[hubId]/page.tsx       4.4 주변

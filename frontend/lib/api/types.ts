@@ -11,7 +11,6 @@ export type RecommendationOut = Schemas["RecommendationOut"];
 export type LegOut = Schemas["LegOut"];
 export type StationOut = Schemas["StationOut"];
 export type PlaceSearchOut = Schemas["PlaceSearchOut"];
-export type PlaceSuggestOut = Schemas["PlaceSuggestOut"];
 export type ContentOut = Schemas["ContentOut"];
 
 // 백엔드 ContentOut.items는 dict 목록이라 스키마에 모양이 없다. 실제 모양은 app/places/service.py의 Place,
