@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from app.geocoding.nearest import StationWalk
 from app.models import Hub, Station
-from app.ranking.rank import HubCandidate, ParticipantInput, rank_hubs
+from app.ranking.rank import HubCandidate, ParticipantInput, Ranking, rank_hubs, rank_with_preference
 from app.transit.matrix import StationTimeMatrix
 
 
@@ -63,3 +63,62 @@ def test_hub_unreachable_by_anyone_is_dropped():
     ]
     hubs = [HubCandidate(10, "b는못감", (10,))]
     assert rank_hubs(participants, hubs, matrix) == []
+
+
+def _two_people():
+    return [
+        ParticipantInput(1, "a", (StationWalk(1, "A", 0, "walk"),)),
+        ParticipantInput(2, "b", (StationWalk(2, "B", 0, "walk"),)),
+    ]
+
+
+def _theme_world():
+    """거점 노드 10~13. 두 사람이 같은 시간을 쓰므로 최대 시간은 값 + 5(하차 도보): 25, 30, 31, 45."""
+    transit = {10: 20, 11: 25, 12: 26, 13: 40}
+    matrix = StationTimeMatrix({(p, node): m for node, m in transit.items() for p in (1, 2)})
+    hubs = [HubCandidate(node, f"거점{node}", (node,)) for node in transit]
+    return hubs, matrix
+
+
+def _ids(ranking: Ranking) -> list[int]:
+    return [s.hub_id for s in ranking.scores]
+
+
+def test_no_preference_matches_plain_fairness_order():
+    hubs, matrix = _theme_world()
+    ranking = rank_with_preference(_two_people(), hubs, matrix)
+    assert _ids(ranking) == [10, 11, 12, 13]
+    assert ranking.best_max_minutes == 25
+    assert [s.hub_id for s in rank_hubs(_two_people(), hubs, matrix)] == [10, 11, 12, 13]
+
+
+def test_preferred_hub_exactly_five_minutes_slower_goes_first():
+    hubs, matrix = _theme_world()
+    ranking = rank_with_preference(_two_people(), hubs, matrix, preferred_hub_ids=frozenset({11}))
+    assert _ids(ranking) == [11, 10, 12, 13]
+    assert ranking.best_max_minutes == 25
+
+
+def test_preferred_hub_six_minutes_slower_keeps_its_place():
+    hubs, matrix = _theme_world()
+    ranking = rank_with_preference(_two_people(), hubs, matrix, preferred_hub_ids=frozenset({12}))
+    assert _ids(ranking) == [10, 11, 12, 13]
+
+
+def test_only_preferred_hubs_within_tolerance_move_up():
+    hubs, matrix = _theme_world()
+    ranking = rank_with_preference(_two_people(), hubs, matrix, preferred_hub_ids=frozenset({11, 12, 13}))
+    assert _ids(ranking) == [11, 10, 12, 13]
+
+
+def test_best_is_reported_even_when_fastest_hub_is_cut():
+    hubs, matrix = _theme_world()
+    ranking = rank_with_preference(_two_people(), hubs, matrix, top_n=1, preferred_hub_ids=frozenset({11}))
+    assert _ids(ranking) == [11]
+    assert ranking.best_max_minutes == 25
+
+
+def test_no_reachable_hub_gives_empty_ranking():
+    matrix = StationTimeMatrix({(1, 10): 30})
+    ranking = rank_with_preference(_two_people(), [HubCandidate(10, "b는못감", (10,))], matrix)
+    assert ranking == Ranking(None, ())

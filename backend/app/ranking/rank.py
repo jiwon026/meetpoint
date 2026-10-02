@@ -5,6 +5,9 @@ from app.geocoding.nearest import StationWalk
 from app.transit.matrix import StationTimeMatrix
 from app.transit.travel import Leg, travel_minutes
 
+# 테마에 맞는 거점을 앞에 둘 때 공평함을 양보하는 한도(분). 측정값이 아니라 고른 값. 근거는 data/SOURCES.md.
+THEME_TOLERANCE_MINUTES = 5
+
 
 @dataclass(frozen=True)
 class ParticipantInput:
@@ -37,6 +40,12 @@ class HubScore:
     legs: tuple[ParticipantLeg, ...]
 
 
+@dataclass(frozen=True)
+class Ranking:
+    best_max_minutes: int | None
+    scores: tuple[HubScore, ...]
+
+
 def _score_hub(
     participants: Sequence[ParticipantInput],
     hub: HubCandidate,
@@ -59,12 +68,31 @@ def _score_hub(
     )
 
 
+def rank_with_preference(
+    participants: Sequence[ParticipantInput],
+    hubs: Sequence[HubCandidate],
+    matrix: StationTimeMatrix,
+    top_n: int = 5,
+    preferred_hub_ids: frozenset[int] = frozenset(),
+    tolerance_minutes: int = THEME_TOLERANCE_MINUTES,
+) -> Ranking:
+    """공평함 순위. 선호 거점은 가장 빠른 곳보다 tolerance_minutes 이내로만 느릴 때 앞에 둔다."""
+    scored = [s for h in hubs if (s := _score_hub(participants, h, matrix)) is not None]
+    if not scored:
+        return Ranking(None, ())
+    best = min(s.max_minutes for s in scored)
+
+    def key(s: HubScore) -> tuple[int, int, int, int]:
+        preferred = s.hub_id in preferred_hub_ids and s.max_minutes <= best + tolerance_minutes
+        return (0 if preferred else 1, s.max_minutes, s.sum_minutes, s.hub_id)
+
+    return Ranking(best, tuple(sorted(scored, key=key)[:top_n]))
+
+
 def rank_hubs(
     participants: Sequence[ParticipantInput],
     hubs: Sequence[HubCandidate],
     matrix: StationTimeMatrix,
     top_n: int = 5,
 ) -> list[HubScore]:
-    scored = [s for h in hubs if (s := _score_hub(participants, h, matrix)) is not None]
-    ordered = sorted(scored, key=lambda s: (s.max_minutes, s.sum_minutes, s.hub_id))
-    return ordered[:top_n]
+    return list(rank_with_preference(participants, hubs, matrix, top_n).scores)
