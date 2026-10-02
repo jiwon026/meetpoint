@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.options import REGIONS
@@ -81,6 +81,7 @@ class Participant(Base):
     lat: Mapped[float] = mapped_column(Float)  # 소수점 3자리로 반올림된 값만 저장
     lng: Mapped[float] = mapped_column(Float)
     nearest_stations: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
 
     room: Mapped[Room] = relationship(back_populates="participants")

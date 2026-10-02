@@ -40,6 +40,11 @@ class ParticipantOut(BaseModel):
     nickname: str
     nearest_station_name: str
     via: str
+    active: bool
+
+
+class ParticipantUpdate(BaseModel):
+    active: bool
 
 
 class RoomOut(BaseModel):

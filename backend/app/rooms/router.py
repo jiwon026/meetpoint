@@ -24,6 +24,7 @@ from app.schemas import (
     ContentOut,
     ParticipantCreate,
     ParticipantOut,
+    ParticipantUpdate,
     PlaceSearchIn,
     PlaceSearchOut,
     PlaceSuggestOut,
@@ -59,6 +60,19 @@ def add_participant(
 ) -> ParticipantOut:
     room = service.get_room(db, slug)
     return service.participant_out(service.add_participant(db, room, data, geocoder))
+
+
+@router.patch("/rooms/{slug}/participants/{participant_id}", response_model=ParticipantOut)
+def update_participant(
+    slug: str,
+    participant_id: int,
+    data: ParticipantUpdate,
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    room = service.get_room(db, slug)
+    return service.participant_out(
+        service.set_participant_active(db, room, participant_id, data.active)
+    )
 
 
 @router.get("/rooms/{slug}/result", response_model=ResultOut)

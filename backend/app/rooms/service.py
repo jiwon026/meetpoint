@@ -41,6 +41,7 @@ MSG_EXPIRED = "약속이 지난 방이에요"
 MSG_ROOM_NOT_FOUND = "방을 찾을 수 없어요"
 MSG_STATION_NOT_FOUND = "역을 찾을 수 없어요"
 MSG_ROOM_FULL = "참여 인원이 가득 찼어요 (최대 20명)"
+MSG_PARTICIPANT_NOT_FOUND = "참여자를 찾을 수 없어요"
 
 
 def _unique_slug(session: Session) -> str:
@@ -97,7 +98,7 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
 def add_participant(
     session: Session, room: Room, data: ParticipantCreate, geocoder: Geocoder
 ) -> Participant:
-    # 지오코딩 전에 막는다. 정원이 찼으면 외부 API를 부를 이유가 없다.
+    # 지오코딩 전에 막는다. 정원은 빠진 사람을 포함한 전체 행 수로 센다 (빼기를 반복해 행이 늘지 않게).
     if len(room.participants) >= MAX_PARTICIPANTS:
         raise HTTPException(status_code=422, detail=MSG_ROOM_FULL)
     lat, lng = _resolve_point(session, data, geocoder)
@@ -110,6 +111,7 @@ def add_participant(
         lat=round_coord(lat),
         lng=round_coord(lng),
         nearest_stations=[asdict(n) for n in nearest],
+        active=True,
         created_at=utcnow(),
     )
     session.add(participant)
@@ -119,10 +121,22 @@ def add_participant(
     return participant
 
 
+def set_participant_active(session: Session, room: Room, participant_id: int, active: bool) -> Participant:
+    participant = session.get(Participant, participant_id)
+    if participant is None or participant.room_id != room.id:
+        raise HTTPException(status_code=404, detail=MSG_PARTICIPANT_NOT_FOUND)
+    participant.active = active
+    session.commit()
+    session.refresh(participant)
+    session.refresh(room)
+    return participant
+
+
 def participant_out(p: Participant) -> ParticipantOut:
     first = p.nearest_stations[0] if p.nearest_stations else {"station_name": "", "via": "walk"}
     return ParticipantOut(
-        id=p.id, nickname=p.nickname, nearest_station_name=first["station_name"], via=first["via"]
+        id=p.id, nickname=p.nickname, nearest_station_name=first["station_name"],
+        via=first["via"], active=p.active,
     )
 
 
@@ -178,14 +192,15 @@ def compute_result(
 ) -> ResultOut:
     applied_regions = [r for r in REGIONS if r in (regions or room.regions)]
     applied_theme = _applied_theme(room, theme)
-    if len(room.participants) < 2:
+    present = [p for p in room.participants if p.active]
+    if len(present) < 2:
         return ResultOut(
             status="waiting", recommendations=[], best_max_minutes=None,
             regions=applied_regions, theme=applied_theme,
         )
     inputs = [
         ParticipantInput(p.id, p.nickname, tuple(StationWalk(**d) for d in p.nearest_stations))
-        for p in room.participants
+        for p in present
     ]
     stations = all_stations(session)
     hubs, candidates = load_hub_candidates(session, stations)
