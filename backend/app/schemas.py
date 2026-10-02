@@ -93,3 +93,19 @@ class ContentOut(BaseModel):
     kind: Literal["food", "cafe", "play", "event"]
     items: list[dict]
     error: str | None
+
+
+class PlaceSearchIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    q: str = Field(min_length=2, max_length=30)
+
+
+class PlaceSuggestOut(BaseModel):
+    name: str
+    address: str
+
+
+class PlaceSearchOut(BaseModel):
+    items: list[PlaceSuggestOut]
+    error: str | None
