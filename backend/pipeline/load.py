@@ -11,6 +11,7 @@ from sqlalchemy import Engine, delete, insert
 from app.models import ContentCache, Hub, Station, StationGroup, StationTime
 from pipeline.config import MANUAL_DIR, OUT_DIR
 from pipeline.io import read_csv_rows
+from pipeline.themes import split_list
 
 BATCH = 1000
 
@@ -38,7 +39,8 @@ def _hub_rows(manual_dir: Path, stations: list[dict[str, str]]) -> list[dict]:
             "lat": lat_lng[rep][0],
             "lng": lat_lng[rep][1],
             "region": h["region"],
-            "tags": [t.strip() for t in h["tags"].split(";") if t.strip()],
+            "tags": split_list(h["tags"]),
+            "themes": split_list(h["themes"]),
             "vibe_summary": h["vibe_summary"],
         })
     return rows

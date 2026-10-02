@@ -43,6 +43,7 @@ class Hub(Base):
     lng: Mapped[float] = mapped_column(Float)
     region: Mapped[str] = mapped_column(String(10))  # 서울, 경기, 인천
     tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    themes: Mapped[list[str]] = mapped_column(JSON, default=list)
     vibe_summary: Mapped[str] = mapped_column(String(120), default="")
 
 

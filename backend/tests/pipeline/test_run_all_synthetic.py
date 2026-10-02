@@ -109,9 +109,9 @@ def test_run_all_end_to_end_on_synthetic_sources(world: tuple[Path, Path]):
     run_all.run_edges()
     run_all.run_groups()
     group_id = {g["name"]: int(g["id"]) for g in read_csv_rows(out / "station_groups.csv")}
-    write_csv(manual / "hubs.csv", ["group_id", "name", "region", "tags", "vibe_summary"], [
-        {"group_id": group_id["가람"], "name": "가람", "region": "서울", "tags": "교통요지", "vibe_summary": "합성 거점"},
-        {"group_id": group_id["사랑"], "name": "사랑", "region": "서울", "tags": "환승;골목", "vibe_summary": "합성 환승 거점"},
+    write_csv(manual / "hubs.csv", ["group_id", "name", "region", "tags", "themes", "vibe_summary"], [
+        {"group_id": group_id["가람"], "name": "가람", "region": "서울", "tags": "교통요지", "themes": "food", "vibe_summary": "합성 거점"},
+        {"group_id": group_id["사랑"], "name": "사랑", "region": "서울", "tags": "환승;골목", "themes": "", "vibe_summary": "합성 환승 거점"},
     ])
 
     assert run_all.main() == 0
