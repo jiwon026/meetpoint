@@ -1,7 +1,7 @@
 # 프론트엔드 설계 문서
 
 작성일: 2026-10-02
-상태: 설계 확정 대기 (검토 후 구현 계획 작성)
+상태: 설계 확정 (2026-10-02). 구현 계획은 `dev/active/frontend/frontend-plan.md`
 관련 문서: `docs/design.md`(제품 설계), `dev/active/transit-data/transit-data-context.md`("다음 계획에 넘길 것")
 
 ## 0. 한 줄 요약
@@ -40,7 +40,7 @@
 | 지역 필터 | 추천 화면의 필터는 보는 사람 화면에서만 바뀜 (URL 쿼리) | 방 수정 API와 동시 수정 충돌을 피함 |
 | 테마 | 맛집, 카페, 술자리, 놀거리 중 하나(선택). 방에 저장, 추천 화면에서 바꿔보기 가능 | 근거 데이터가 있는 네 가지만. 스터디는 근거 없음 |
 | 테마와 순위 | 가장 빠른 곳보다 5분 이내로 더 걸리는 거점 중 테마에 맞는 곳을 앞으로 | 공평함은 5분까지만 양보 |
-| 주소 자동완성 | 백엔드 프록시 `GET /places/search` | 키가 브라우저에 안 나가고 pytest로 검증 가능 |
+| 주소 자동완성 | 백엔드 프록시 `POST /places/search` | 키가 브라우저에 안 나가고 pytest로 검증 가능 |
 | 대리 입력 | 한 브라우저에서 여러 명 등록 허용 | 방장이 친구 출발역을 대신 넣는 경우 |
 | 참가자 빼기 | 링크를 가진 누구나 빼고 다시 넣을 수 있음. 삭제가 아니라 계산 제외 | 못 오는 당사자는 링크를 다시 안 여는 경우가 많음. 되돌릴 수 있어야 실수와 장난에 안전 |
 | 지도 | 카카오 지도. 추천 화면에 거점 5곳 핀, 주변 화면에 장소 핀 | 실제 위치 확인 |
@@ -107,11 +107,11 @@
 
 ### 3.5 주소 검색 프록시
 
-- `GET /places/search?q=`: `q`는 2자 이상 30자 이하.
-- 카카오 키워드 검색을 REST 키로 호출해 최대 5건을 `{items: [{name, address}], error: str | None}`로 돌려준다.
+- `POST /places/search`, 본문 `{"q": "..."}`: `q`는 공백을 뺀 뒤 2자 이상 30자 이하. 검색어가 집 주소일 수 있어 URL 쿼리에 넣지 않는다 (서버 접근 로그에 남지 않게).
+- 카카오 키워드 검색을 REST 키로 호출해 수도권 범위 안의 결과 최대 5건을 `{items: [{name, address}], error: str | None}`로 돌려준다.
 - 실패하면 `items`는 빈 목록, `error`는 "지금 불러올 수 없어요". 상태 코드는 200.
 - 검색어는 저장하지 않고 로그에도 남기지 않는다.
-- 외부 호출은 기존 `places/kakao_local.py`의 `keyword_search`를 재사용하고 `deps.py`에서 주입받는다.
+- 외부 호출은 `places/kakao_local.py`의 `KakaoLocalClient`에 중심 좌표 없는 검색 메서드(`suggest`)를 더해 쓰고 `deps.py`에서 주입받는다.
 - 프론트는 고른 항목의 `address`를 기존 `ParticipantCreate.address`로 제출한다. 좌표를 클라이언트에서 받는 새 경로는 만들지 않는다.
 
 ### 3.6 참가자 빼기, 다시 넣기
@@ -149,7 +149,7 @@
 - 출발지 등록 폼
   - 닉네임(1~20자)
   - 탭 두 개: "지하철역 선택"(기본), "주소, 건물명 검색"
-  - 검색창 입력을 300ms 디바운스해서 역 탭은 `GET /stations?q=`, 주소 탭은 `GET /places/search?q=` 호출
+  - 검색창 입력을 300ms 디바운스해서 역 탭은 `GET /stations?q=`, 주소 탭은 `POST /places/search` 호출
   - 역 결과는 이름과 노선 색 뱃지, 주소 결과는 이름과 주소
   - 고르면 확인 칩 표시, "출발지 등록" 버튼 활성
   - 등록 후 폼을 비워 다음 사람을 넣을 수 있게 한다 (대리 입력)
@@ -167,8 +167,8 @@
 - 지역 칩 3개와 테마 칩 4개. 누르면 URL 쿼리(`?region=...&theme=...`)가 바뀌고 즉시 재조회. 쿼리가 없으면 방의 기본값. 필터된 링크를 공유하면 받은 사람도 같은 필터로 본다.
 - 카카오 지도: 거점 5곳 번호 핀. 펼친 카드의 핀을 강조.
 - 1위 카드는 펼쳐진 상태로 시작. 다른 카드를 누르면 그 카드가 펼쳐지고 나머지는 접힌다.
-- 접힌 카드: 순위, 거점 이름, 노선 뱃지, "최대 약 N분, 차이 N분", 테마 도장.
-- 펼친 카드: 위 내용에 더해 지역 뱃지, 태그, 분위기 한 줄, 3칸 수치(최장, 평균, 차이), 사람별 막대, "이 동네 둘러보기" 버튼.
+- 접힌 카드: 순위, 거점 이름, 노선 뱃지, "서울, 최대 약 N분, 차이 N분"(지역 포함), 테마 도장.
+- 펼친 카드: 위 내용에 더해 태그, 분위기 한 줄, 3칸 수치(최장, 평균, 차이), 사람별 막대, "이 동네 둘러보기" 버튼.
   - 평균은 `legs`에서 프론트가 계산한다.
   - 막대는 진녹색, 가장 오래 걸리는 사람만 빨강. 이 브라우저에서 넣은 사람 이름 옆에 "나".
   - `via == "bus"`면 "버스 15분 포함".
@@ -230,17 +230,19 @@ frontend/
       hubs/[hubId]/page.tsx       4.4 주변
   components/
     room/      CreateRoomForm, RegionChips, ThemePicker
-    join/      JoinForm, OriginSearch, Roster, ShareButtons, RoomSummary
-    result/    FilterBar, HubCard, LegBars, FairnessStats
-    hub/       HubHeader, ContentTabs, PlaceCard, EventCard
+    join/      RoomGate, JoinScreen, JoinForm, OriginSearch, Roster, ShareButtons, RoomSummary
+    result/    ResultScreen, FilterBar, HubCard, LegBars, FairnessStats
+    hub/       HubScreen, HubHeader, ContentTabs, PlaceCard, EventCard
     map/       KakaoMap
     ui/        StepIndicator, Stamp, TicketCard, Toast, LineBadge, StickyAction
   lib/
-    api/       client.ts, schema.d.ts(생성물), hooks.ts
-    regions.ts, themes.ts, lines.ts, format.ts, messages.ts, myParticipants.ts
+    api/       client.ts, types.ts, schema.d.ts(생성물), hooks.ts
+    constants.ts, regions.ts, themes.ts, lines.ts, format.ts, filter.ts, share.ts,
+    messages.ts, myParticipants.ts, useDebounced.ts
 ```
 
-- 스택: Next.js(App Router, 설치 시점 최신 안정판), TypeScript, Tailwind CSS, TanStack Query.
+- 화면 로직은 `*Screen.tsx` 컴포넌트에 두고 `app/` 페이지는 URL을 읽어 넘기기만 한다. 라우터 없이 컴포넌트를 테스트하기 위해서다.
+- 스택: Next.js 16(App Router), TypeScript, Tailwind CSS 4, TanStack Query 5.
 - 지도: `react-kakao-maps-sdk`. React 버전이 맞지 않으면 SDK 스크립트를 직접 로드하는 것으로 바꾼다. `KakaoMap` 컴포넌트 밖에서는 SDK를 건드리지 않는다.
 - 환경 변수 (`frontend/.env.local`, 예시는 `.env.example`): `NEXT_PUBLIC_API_BASE`(기본 `http://localhost:8000`), `NEXT_PUBLIC_KAKAO_JS_KEY`. JS 키가 없거나 SDK 로드에 실패하면 지도 자리만 접히고 나머지는 동작한다.
 - `.claude/launch.json`에 `frontend` 실행 설정 추가 (포트 3000).
@@ -250,7 +252,7 @@ frontend/
 | 화면 | 호출 | 갱신 |
 |---|---|---|
 | 4.1 | `POST /rooms` | 성공하면 4.2로 이동 |
-| 4.2 | `GET /rooms/{slug}`, `GET /stations`, `GET /places/search`, `POST .../participants`, `PATCH .../participants/{id}` | 방 정보 10초 폴링, 등록과 빼기 직후 즉시 재조회 |
+| 4.2 | `GET /rooms/{slug}`, `GET /stations`, `POST /places/search`, `POST .../participants`, `PATCH .../participants/{id}` | 방 정보 10초 폴링, 등록과 빼기 직후 즉시 재조회 |
 | 4.3 | `GET /rooms/{slug}/result` | 10초 폴링, 칩 변경 시 즉시 재조회 |
 | 4.4 | `GET .../hubs/{id}/content` | 탭을 처음 열 때 한 번 |
 
