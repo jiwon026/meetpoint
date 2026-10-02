@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ShareButtons } from "@/components/join/ShareButtons";
+import { KakaoMap } from "@/components/map/KakaoMap";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
 import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
@@ -80,21 +81,32 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
           {isAllRegions(data.regions) ? MSG_NO_ROUTE : MSG_NO_HUB_IN_REGION}
         </p>
       ) : (
-        <ol className="space-y-3">
-          {recs.map((rec, index) => (
-            <li key={rec.hub_id}>
-              <HubCard
-                rec={rec}
-                rank={index + 1}
-                expanded={rec.hub_id === open}
-                onToggle={() => setOpenId(rec.hub_id)}
-                best={data.best_max_minutes}
-                mine={mine}
-                href={`/r/${slug}/hubs/${rec.hub_id}${query}`}
-              />
-            </li>
-          ))}
-        </ol>
+        <>
+          <KakaoMap
+            pins={recs.map((rec, index) => ({
+              id: String(rec.hub_id),
+              lat: rec.lat,
+              lng: rec.lng,
+              label: String(index + 1),
+            }))}
+            activeId={open === null ? null : String(open)}
+          />
+          <ol className="space-y-3">
+            {recs.map((rec, index) => (
+              <li key={rec.hub_id}>
+                <HubCard
+                  rec={rec}
+                  rank={index + 1}
+                  expanded={rec.hub_id === open}
+                  onToggle={() => setOpenId(rec.hub_id)}
+                  best={data.best_max_minutes}
+                  mine={mine}
+                  href={`/r/${slug}/hubs/${rec.hub_id}${query}`}
+                />
+              </li>
+            ))}
+          </ol>
+        </>
       )}
       <StickyAction>
         <div className="grid grid-cols-2 gap-2">
