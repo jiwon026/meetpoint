@@ -134,6 +134,6 @@ Task 3에서 `python -m pipeline.inspect` 실행 결과, 위 16개 파일 전부
 - 초안은 `python -m pipeline.themes`가 만들었다. 이후에는 `hubs.csv`가 원본이고 손으로 고친다.
 - food, cafe, play: `data/out/hub_candidates.csv`의 장소 개수가 거점 100곳 중 상위 30위 이내이거나 관련 태그가 있으면 해당. 태그는 food `먹자골목`, `맛집`, `먹거리`, cafe `카페거리`, play `방탈출많음`, `영화관`.
 - drink: 태그 `술집많음`, `밤늦게까지`, `포차`. 술집 개수를 따로 세지 않았기 때문에 태그만 쓴다.
-- 상위 30(`THEME_TOP_N`)은 측정값이 아니라 고른 값이다. 테마마다 거점의 약 3분의 1이 해당하도록 잡았다.
+- 상위 30(`THEME_TOP_N`)은 측정값이 아니라 고른 값이다. 개수 상위 30곳에 태그로 해당하는 곳이 더해지므로 테마별 거점 수는 30보다 많다. 초안 기준 food 51곳, cafe 36곳, drink 34곳, play 36곳, 테마 없음 17곳이다.
 - 판교는 `hub_candidates.csv`에 없어서 태그로만 판정한다.
 - 모르는 테마 값이 있으면 `pipeline.validate`가 실패한다.
