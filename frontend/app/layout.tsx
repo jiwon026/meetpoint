@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { AppHeader } from "@/components/ui/AppHeader";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -22,7 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className={pretendard.variable}>
       <body className="font-sans antialiased">
         <Providers>
-          <div className="mx-auto min-h-dvh max-w-[480px] px-4 pb-32 pt-4">{children}</div>
+          <div className="mx-auto min-h-dvh max-w-[480px] px-4 pb-32 pt-4">
+            <AppHeader />
+            {children}
+          </div>
         </Providers>
       </body>
     </html>
