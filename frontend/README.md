@@ -33,6 +33,10 @@ http://localhost:3000 에서 연다.
 | `npm run gen:api` | 백엔드 스키마에서 `lib/api/schema.d.ts` 다시 생성. 백엔드 응답 모양을 바꿨을 때 |
 | `npm run lint`, `npm run build` | 검사와 빌드 |
 
+`npm run e2e`는 `frontend/.next`에 `NEXT_PUBLIC_API_BASE=http://localhost:8010`과 빈 카카오 키로 빌드한 결과를 남긴다. 그 뒤 다시 빌드하지 않고 `npm run start`를 하면 e2e 백엔드를 가리키고 지도가 없는 번들이 나간다. e2e 다음에는 `npm run build`를 다시 하고 `start`한다 (`npm run dev`는 영향 없음).
+e2e 준비물: `backend/.venv` 설치 완료, 처음 한 번 `npx playwright install chromium`.
+흐름 테스트는 `next dev`가 아니라 빌드한 서버로 돈다. `next dev`에서는 흐름이 약 40% 확률로 Next의 404 화면에 닿았고 원인은 모른다 (자세한 내용은 `dev/active/frontend/frontend-context.md`의 알려진 한계).
+
 ## 구조
 
 - `app/`: 경로. URL을 읽어 화면 컴포넌트에 넘기는 얇은 껍데기

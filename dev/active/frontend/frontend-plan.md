@@ -6219,6 +6219,7 @@ const server = spawn(python, ["-m", "uvicorn", "app.main:app", "--port", "8010"]
 const stop = () => server.kill();
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
+process.on("exit", stop); // Windows에서는 신호 처리기가 거의 불리지 않아 종료 시에도 서버를 끈다
 server.on("exit", (code) => process.exit(code ?? 0));
 ```
 
@@ -6241,7 +6242,9 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      // 개발 서버는 화면 이동이 첫 컴파일과 겹치면 가끔 404를 보여줘서 흐름이 흔들린다. 빌드한 서버로 돈다.
+      // next dev에서는 흐름이 약 40% 확률로 Next의 404 화면에 닿았다(원인 미상, 경로 미리 열기는 효과 없음).
+      // 빌드한 서버는 안정적이라 이것을 쓴다. 그래서 이 테스트는 개발 모드 동작을 덮지 않는다.
+      // 미검증 단서: 같은 기기에서 fs.rmSync가 한글 경로에서 Node를 죽였으니 경로를 먼저 의심해 볼 것.
       command: "npm run build && npm run start -- --port 3100",
       url: "http://localhost:3100",
       timeout: 180_000,

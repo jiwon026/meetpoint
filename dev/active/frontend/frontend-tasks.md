@@ -41,5 +41,5 @@
 - [x] `npm run coverage`: `lib/`, `components/` 80% 이상 (줄 97.31%)
 - [x] `npm run e2e` 1 passed
 - [ ] 실데이터 확인: 2호선 홍대입구, 수원, 잠실 방에서 지역 전체면 1위 판교(약 44분), 서울만이면 1위 가락시장(약 54분)
-- [x] 엠대시, 가운데 점 검사 통과 (Task 17 Step 7, `frontend/AGENTS.md`는 create-next-app 생성물이라 제외)
+- [x] 엠대시, 가운데 점 검사 통과 (Task 17 Step 7, `frontend/AGENTS.md`는 create-next-app 생성물이라 제외. 알려진 검출 1건: `CLAUDE.md`에서 금지 문자 두 개를 이름으로 말하는 규칙 문장 자체)
 - [ ] `docs/design.md`, `backend/README.md`, `frontend/README.md`, `CLAUDE.md`, `backend/data/SOURCES.md`가 구현과 일치

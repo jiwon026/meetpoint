@@ -76,10 +76,11 @@ Last Updated: 2026-10-02 (구현 완료, 최종 리뷰와 화면 확인 전. 브
 - Task 8: create-next-app이 만든 `frontend/AGENTS.md`와 `frontend/CLAUDE.md`는 그대로 둔다. `AGENTS.md`의 엠대시는 `next dev`가 그 블록을 다시 써서 고쳐도 남지 않는다. `package-lock.json`처럼 생성물로 보고 문장 부호 검사에서 `frontend/AGENTS.md`를 뺐다. 싫으면 두 파일을 지운다.
 - Task 8: `@types/node`는 스캐폴드의 ^20이 아니라 ^24다. vitest 5의 peer 범위가 요구한다 (런타임은 Node 24).
 - Task 8: Vitest 설정 파일은 Vite의 CJS 경고를 없애려고 `vitest.config.mts`로 했다.
+- Task 12: `app/page.tsx`는 렌더 중에 `todayIso()`를 부르지 않고 `useSyncExternalStore`(서버 스냅샷은 빈 문자열)로 오늘 날짜를 읽는다. 사전 렌더된 HTML에 빌드 날짜가 박히고 하이드레이션 불일치가 나는 것을 막기 위해서다 (Task 9 리뷰에서 넘어온 판정).
 - Task 13: 계획의 "확인을 취소하면 요청하지 않는다" 테스트는 아무것도 단언하지 않았다(MSW의 `onUnhandledRequest: "error"`는 fetch만 거부하고 테스트를 실패시키지 않는다). confirm이 불렸고 PATCH가 나가지 않았음을 단언하도록 고쳤다.
 - Task 13: 설계 4.2는 두 명 미만일 때 고정 영역에 초대 안내와 링크 복사 동작을 함께 둔다고 했는데 계획의 코드는 안내만 있었다. 설계를 따라 복사 버튼을 추가했다. 그래서 이 상태의 참여 화면에는 "초대 링크 복사" 버튼이 두 개(위쪽, 고정 영역)이고, 테스트와 흐름 테스트는 이 이름을 범위 없이 찾지 않는다.
 - Task 13: 출발지 검색 요청이 실패(네트워크, 5xx)해도 `OriginSearch`가 조용히 넘어가던 것을, 오류를 삼키지 않는다는 프로젝트 규칙에 따라 `error.message`를 보여주도록 고쳤다 (리뷰 Minor에서 1차 수정으로 승격).
-- Task 17: 흐름 테스트의 프론트 서버를 `npm run dev`가 아니라 `npm run build && npm run start`로 띄운다. 개발 서버는 화면 이동이 첫 컴파일과 겹칠 때 클라이언트 라우터가 가끔 404를 보여줘서 같은 테스트가 약 40% 확률로 실패했다(앱 코드는 `notFound`를 부르지 않는다). 빌드한 서버로 바꾼 뒤에는 연속 통과했다. 대신 실행이 1분 넘게 걸리고, 같은 `.next`를 쓰는 3000번 개발 서버는 꺼야 한다.
+- Task 17: 흐름 테스트의 프론트 서버를 `npm run dev`가 아니라 `npm run build && npm run start`로 띄운다. 이유와 알려진 범위는 "알려진 한계"의 개발 모드 404 항목. 실행이 1분 넘게 걸리고, 같은 `.next`를 쓰는 3000번 개발 서버는 꺼야 하며, 실행 뒤 `.next`에 e2e용 빌드(`NEXT_PUBLIC_API_BASE=http://localhost:8010`, 빈 카카오 키)가 남는다. 이어서 `npm run start`를 하려면 `npm run build`를 다시 한다.
 - Task 17: `e2e/start-backend.mjs`는 `fs.rmSync` 대신 `existsSync`와 `unlinkSync`로 `e2e.db`를 지운다. Node 24 Windows에서 `rmSync`가 한글 경로를 만나면 프로세스가 오류 메시지 없이 비정상 종료(종료 코드 3221226505)한다.
 - Task 17: `eslint.config.mjs`의 전역 무시 목록에 `coverage/**`, `playwright-report/**`, `test-results/**`를 더해 커버리지와 흐름 테스트 뒤에도 `npm run lint`가 깨끗하다.
 
@@ -106,8 +107,14 @@ Last Updated: 2026-10-02 (구현 완료, 최종 리뷰와 화면 확인 전. 브
 - 지도: `pinKey`가 순서에 민감해 좌표가 같아도 순위만 바뀌면 지도를 다시 맞추고 확대와 이동이 초기화된다. 핀이 하나면 경계가 퇴화해 최대 확대가 되고 여백이 없다. 키가 잘못됐거나 도메인이 등록되지 않으면 회색 자리가 접히지 않고 남을 수 있다. 지도 레이어가 고정 막대를 덮을 수 있다(`isolate`). 지도에 `aria-label`이나 `aria-hidden`이 없고 경계 효과 테스트가 없다. 실제 지도로 확인해야 하는 항목이 대부분이다.
 - 주변: `HubScreen`이 `result.error`면 이미 불러온 거점이 있어도 화면 전체를 바꾼다(창 포커스 재조회가 순간 네트워크 오류를 만나면 화면을 잃음). `result.error && !rec`가 안전하다. 행사 핀에는 번호가 있는데 `EventCard`에는 번호가 없고 선택도 안 된다. 항목 id 중복이면 React key 경고가 나고 행사 포스터에 `onError`가 없다(http 포스터는 https에서 혼합 콘텐츠로 막힘). `PlaceCard`가 토큰 목록에 없는 `text-white`를 쓴다. 캐시된 `ContentOut.error`는 재시도 수단 없이 세션 내내 남는다. 소프트 오류 문구에 role이 없다. 술자리 테마의 첫 탭, 404가 아닌 조회 오류, 포스터와 링크 렌더링, 활성 카드 강조 테스트가 없고 50ms 실시간 대기를 쓰는 테스트가 있다.
 
+추가로 미룬 테스트 빈틈
+- 백엔드: Task 1의 넓힌 질의 테스트는 개수(5)만 단언한다. Task 3의 `tests/test_rank.py`에 긴 import 줄이 있다.
+- 프론트 `lib/`: Task 9에 날짜 차이(연도 경계), `useDebounced` 언마운트, `readMine`의 배열이 아닌 JSON, 알 수 없는 값만 든 `toggleRegion` 테스트가 없다. Task 10에는 참가자 변경 뒤 방과 결과를 다시 불러오는지 확인하는 테스트와 `useHubContent` 테스트가 없다.
+- 프론트 화면: Task 11에 모르는 노선 뱃지, 선택 안 된 칩, 두 번째 토스트 테스트가 없다. Task 12에 진행 중 상태와 날짜가 오늘과 같은 경계 테스트가 없다.
+
 ## 알려진 한계
 
+- 흐름 테스트는 `next dev`가 아니라 빌드한 서버(`next build` + `next start`)로 돈다. `next dev`(Next 16.3.8, Turbopack, Windows)에서는 흐름이 클라이언트 쪽 화면 이동 뒤 Next 자체의 404 화면에 닿는 일이 약 40% 확률로 있었다. 원인은 모른다. 앱 코드는 `notFound`를 부르지 않는다. 경로를 미리 한 번씩 열어 두는 방법은 효과가 없었다. 빌드한 서버에서는 연속 통과했고, 그래서 이 테스트는 개발 모드 동작을 덮지 않는다. 검증하지 않은 단서: 같은 기기에서 `fs.rmSync`가 프로젝트의 한글 경로에서 Node 24를 비정상 종료시켰으니, 한글 경로가 의심스러우면 가장 먼저 시험할 것(예: 영문 경로로 복사해 `next dev`로 같은 흐름을 반복).
 - 역 id와 거점 id는 재적재하면 바뀔 수 있다. 추천 카드의 `legs` 누락 처리와 주변 화면의 되돌려보내기가 대비책이고 근본 해결(안정 id)은 범위 밖.
 - 참가자 출발지는 고칠 수 없다. 빼고 새로 등록한다. 빠진 사람도 정원 20명에 들어간다.
 - 빼기는 링크를 가진 누구나 할 수 있다. 되돌릴 수 있다는 것이 유일한 안전장치다.

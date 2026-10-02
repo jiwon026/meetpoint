@@ -33,7 +33,8 @@ npm install                 # 처음 한 번
 npm run dev                 # http://localhost:3000 (백엔드가 8000에 떠 있어야 함)
 npm test                    # 단위 테스트
 npm test -- components/join # 폴더 하나
-npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 실행
+npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 실행. .next에 e2e용 빌드(백엔드 8010, 지도 없음)가 남으므로
+                            # 이어서 npm run start를 하려면 npm run build부터 다시 (npm run dev는 영향 없음)
 npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생성
 ```
 

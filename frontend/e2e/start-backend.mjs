@@ -25,4 +25,5 @@ const server = spawn(python, ["-m", "uvicorn", "app.main:app", "--port", "8010"]
 const stop = () => server.kill();
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
+process.on("exit", stop); // Windows에서는 신호 처리기가 거의 불리지 않아 종료 시에도 서버를 끈다
 server.on("exit", (code) => process.exit(code ?? 0));
