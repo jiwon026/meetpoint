@@ -82,3 +82,11 @@ test("주소 검색이 실패하면 안내 문구를 보여준다", async () => 
   await user.type(screen.getByLabelText("출발지 검색"), "강남역");
   expect(await screen.findByText("지금 불러올 수 없어요")).toBeInTheDocument();
 });
+
+test("역 검색 요청이 실패하면 연결 안내 문구를 보여준다", async () => {
+  server.use(http.get(`${API}/stations`, () => new HttpResponse("Bad Gateway", { status: 502 })));
+  const user = userEvent.setup();
+  renderWithClient(<JoinForm slug="abc123" onJoined={vi.fn()} />);
+  await user.type(screen.getByLabelText("출발지 검색"), "강남");
+  expect(await screen.findByText("연결이 불안정해요. 잠시 후 다시 시도해주세요.")).toBeInTheDocument();
+});

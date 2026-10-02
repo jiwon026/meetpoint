@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, expect, test, vi } from "vitest";
@@ -48,10 +48,21 @@ test("빼기는 확인을 받은 뒤 PATCH를 보낸다", async () => {
 });
 
 test("확인을 취소하면 요청하지 않는다", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(false);
+  let patched = false;
+  server.use(
+    http.patch(`${API}/rooms/abc123/participants/1`, () => {
+      patched = true;
+      return HttpResponse.json(participant({ id: 1, active: false }));
+    }),
+  );
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
   renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
   await userEvent.click(screen.getByRole("button", { name: "민수 빼기" }));
-  // 요청이 나갔다면 핸들러가 없어 MSW가 테스트를 실패시킨다
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(confirm).toHaveBeenCalledWith("민수님을 계산에서 뺄까요? 다시 넣을 수 있어요");
+  // 요청이 나갔다면 도착할 시간을 준다
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(patched).toBe(false);
 });
 
 test("다시 넣기는 확인 없이 보낸다", async () => {
@@ -84,4 +95,12 @@ test("등록하면 이 브라우저가 넣은 사람으로 기억한다", async 
   await user.click(await screen.findByRole("button", { name: /강남/ }));
   await user.click(screen.getByRole("button", { name: "출발지 등록" }));
   await waitFor(() => expect(window.localStorage.getItem("wjm:room:abc123:mine")).toBe("[9]"));
+});
+
+test("한 명 이하면 초대 안내와 함께 링크 복사 버튼을 보여준다", async () => {
+  const user = userEvent.setup();
+  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: [TWO[0]] })} onShowResult={vi.fn()} />);
+  const hint = screen.getByText("친구를 초대하세요. 두 명부터 추천이 나와요.");
+  await user.click(within(hint.parentElement as HTMLElement).getByRole("button", { name: "초대 링크 복사" }));
+  expect(await screen.findByText("링크를 복사했어요")).toBeInTheDocument();
 });

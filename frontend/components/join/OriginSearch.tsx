@@ -46,6 +46,8 @@ export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
   const stationItems = stations.data ?? [];
   const placeItems = places.data?.items ?? [];
   const searched = mode === "station" ? stations.isSuccess : places.isSuccess;
+  // 검색 요청 자체가 실패한 경우 (연결 불량, 서버 오류). 지금 모드의 오류만 본다.
+  const requestError = mode === "station" ? stations.error : places.error;
   const empty = settled && searched && (mode === "station" ? stationItems : placeItems).length === 0;
 
   return (
@@ -72,6 +74,7 @@ export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
         className={INPUT}
       />
       {mode === "address" && places.data?.error && <p className="text-sm text-accent">{places.data.error}</p>}
+      {requestError && <p className="text-sm text-accent">{requestError.message}</p>}
       {empty && !(mode === "address" && places.data?.error) && (
         <p className="text-sm text-ink-mute">{MSG_NO_SEARCH_RESULT}</p>
       )}
