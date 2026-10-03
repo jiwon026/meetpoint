@@ -20,7 +20,7 @@ export function room(over: Partial<RoomOut> = {}): RoomOut {
 }
 
 export function leg(over: Partial<LegOut> = {}): LegOut {
-  return { participant_id: 1, nickname: "민수", minutes: 12, origin_station_name: "강남", via: "walk", ...over };
+  return { participant_id: 1, nickname: "민수", minutes: 12, origin_station_name: "강남", origin_lat: 37.4979, origin_lng: 127.0276, via: "walk", ...over };
 }
 
 export function rec(over: Partial<RecommendationOut> = {}): RecommendationOut {

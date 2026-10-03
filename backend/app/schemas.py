@@ -62,6 +62,9 @@ class LegOut(BaseModel):
     nickname: str
     minutes: int
     origin_station_name: str
+    # 출발역의 좌표. 참가자 좌표가 아니다. 역 id가 재적재로 사라졌으면 None.
+    origin_lat: float | None
+    origin_lng: float | None
     via: str
 
 

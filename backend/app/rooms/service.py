@@ -157,7 +157,9 @@ def _applied_theme(room: Room, theme: str | None) -> str | None:
     return None if chosen in (None, THEME_OFF) else chosen
 
 
-def _recommendation(score: HubScore, hub: Hub, lines: list[str], theme_match: bool) -> RecommendationOut:
+def _recommendation(
+    score: HubScore, hub: Hub, lines: list[str], theme_match: bool, station_by_id: dict[int, Station]
+) -> RecommendationOut:
     return RecommendationOut(
         hub_id=score.hub_id,
         name=score.name,
@@ -176,6 +178,8 @@ def _recommendation(score: HubScore, hub: Hub, lines: list[str], theme_match: bo
                 nickname=l.nickname,
                 minutes=l.leg.total_minutes,
                 origin_station_name=l.leg.origin_station_name,
+                origin_lat=getattr(station_by_id.get(l.leg.origin_station_id), "lat", None),
+                origin_lng=getattr(station_by_id.get(l.leg.origin_station_id), "lng", None),
                 via=l.leg.via,
             )
             for l in score.legs
@@ -213,10 +217,11 @@ def compute_result(
     )
     ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
     lines = hub_lines(hubs, stations)
+    station_by_id = {s.id: s for s in stations}
     return ResultOut(
         status="ready",
         recommendations=[
-            _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching)
+            _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching, station_by_id)
             for s in ranking.scores
         ],
         best_max_minutes=ranking.best_max_minutes,

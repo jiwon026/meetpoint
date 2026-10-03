@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ShareButtons } from "@/components/join/ShareButtons";
 import { KakaoMap } from "@/components/map/KakaoMap";
+import { legOrigins } from "@/lib/origins";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
 import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
@@ -90,6 +91,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
               label: String(index + 1),
             }))}
             activeId={open === null ? null : String(open)}
+            origins={legOrigins(recs.find((rec) => rec.hub_id === open)?.legs ?? [])}
           />
           <ol className="space-y-3">
             {recs.map((rec, index) => (
