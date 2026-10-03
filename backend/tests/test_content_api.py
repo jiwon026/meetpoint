@@ -131,3 +131,14 @@ def test_invalid_kind_is_422(client):
 def test_unknown_hub_is_404(client):
     slug = _room_slug(client)
     assert client.get(f"/rooms/{slug}/hubs/999/content", params={"kind": "food"}).status_code == 404
+
+
+@respx.mock
+def test_event_content_with_bad_seoul_key_returns_friendly_error(client):
+    body = "<RESULT><CODE>INFO-100</CODE><MESSAGE>invalid key</MESSAGE></RESULT>"
+    respx.get(url__startswith=SEOUL_PREFIX).mock(return_value=httpx.Response(200, text=body))
+    slug = _room_slug(client)
+    response = client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "event"})
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+    assert response.json()["error"] is not None

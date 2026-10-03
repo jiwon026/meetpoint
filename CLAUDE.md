@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `dev/active/<task>/`: 진행 중이거나 끝난 태스크의 계획, 컨텍스트(결정과 한계), 체크리스트. 새 작업 전에 `*-context.md`의 "다음 계획에 넘길 것"을 읽는다.
 - `backend/data/SOURCES.md`: 원본 데이터 출처, 확인된 사실, 모든 상수 변경의 근거
 
-## 명령 (전부 `backend/` 안에서 실행)
+## 명령 (백엔드는 `backend/`, 프론트는 `frontend/` 안에서 실행)
 
 ```bash
 cd backend
@@ -24,6 +24,21 @@ cd backend
 ```
 
 한글을 출력하는 스크립트는 `PYTHONIOENCODING=utf-8`을 앞에 붙인다 (Git Bash에서 깨짐).
+
+프론트엔드:
+
+```bash
+cd frontend
+npm install                 # 처음 한 번
+npm run dev                 # http://localhost:3000 (백엔드가 8000에 떠 있어야 함)
+npm test                    # 단위 테스트
+npm test -- components/join # 폴더 하나
+npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 실행. .next에 e2e용 빌드(백엔드 8010, 지도 없음)가 남으므로
+                            # 이어서 npm run start를 하려면 npm run build부터 다시 (npm run dev는 영향 없음)
+npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생성
+```
+
+이동 뒤에 `npm run dev` 화면이 Next의 404 페이지로 바뀌면 `npm run build` 다음 `npm run start`로 확인한다 (알려진 문제이고 원인은 모른다. `dev/active/frontend/frontend-context.md` 참고).
 
 데이터 파이프라인:
 
@@ -44,15 +59,25 @@ cd backend
 
 FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외부 HTTP 호출은 클라이언트 클래스 안에서만 하고(`geocoding/kakao.py`, `places/kakao_local.py`, `events/seoul.py`, `events/kopis.py`) 서비스와 라우터는 `deps.py`에서 주입받는다. `deps.py`는 프로세스 공용 `httpx.Client` 하나와 역간 시간표 캐시(`get_matrix`)를 들고 있다.
 
-요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (`geocoding/nearest.py`로 가까운 역 최대 3개) -> `ranking/rank.py`의 `rank_hubs` -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
+요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (`geocoding/nearest.py`로 가까운 역 최대 3개) -> `ranking/rank.py`의 `rank_with_preference`(`rank_hubs`는 이것을 감싼 얇은 함수로 테스트에서만 쓴다) -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
 
 핵심 데이터 개념:
 - `Station`은 노선별 노드(환승역은 노선 수만큼). `StationGroup`은 물리적으로 같은 역. `Hub`는 거점이고 `group_id`로 노드들과 이어진다 (`app/hubs.py`). 이름으로 묶지 않는다: 신촌(2호선)과 신촌(경의중앙선)은 다른 그룹.
 - `station_times`는 모든 노드에서 거점 노드까지의 분만 들어 있다. 없는 쌍은 `None`이고 그 거점은 순위에서 빠진다.
 - 참가자는 원문 주소를 저장하지 않는다. 좌표는 소수점 3자리, `nearest_stations`는 역 id 목록(JSON). 역 id는 원본 데이터 갱신 시 바뀔 수 있다(알려진 한계).
 - 콘텐츠는 `cache.py`의 `content_cache` 테이블에 24시간 캐시. 실패 시 만료 캐시라도 돌려주고 `error` 문구를 붙인다.
+- 방은 `regions`(서울, 경기, 인천 중 1개 이상)와 `theme`(없을 수 있음)을 가진다. 결과 API의 `region`, `theme` 쿼리가 방 기본값보다 우선한다. 지역 필터는 반드시 `rank_with_preference` 전에 건다.
+- 참가자는 지우지 않고 `active`를 끈다. 계산은 `active`만, 정원 20명은 전체 행 수.
 
 사용자에게 보이는 에러 문구는 `rooms/service.py`의 `MSG_*` 상수와 `docs/design.md` 8절이 원본이다. 바꾸면 둘 다.
+
+### 프론트엔드 (`frontend/`)
+
+Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Query로 10초 폴링한다. 서버 쪽 코드는 `app/r/[slug]/layout.tsx`의 링크 미리보기 제목뿐이다.
+
+화면 로직은 `components/{join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
+
+지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다.
 
 ### 파이프라인 (`backend/pipeline/`)
 
@@ -64,7 +89,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 ## 규약
 
-- 테스트는 실동작 검증. 외부 API는 respx, DB는 SQLite 인메모리(`tests/conftest.py`의 `seeded` 픽스처: 역 6개, 거점 4개). 파이프라인은 픽스처 CSV/XLSX와 합성 소형 데이터(`tests/pipeline/test_run_all_synthetic.py`).
+- 테스트는 실동작 검증. 외부 API는 respx, DB는 SQLite 인메모리(`tests/conftest.py`의 `seeded` 픽스처: 역 6개, 거점 4개). 파이프라인은 픽스처 CSV/XLSX와 합성 소형 데이터(`tests/pipeline/test_run_all_synthetic.py`). 프론트는 Vitest와 MSW(`frontend/lib/test/`), 흐름 하나는 Playwright(`frontend/e2e/`).
 - SQLite에서 도는 코드가 Postgres(Supabase)에서도 돌아야 한다. 삭제 순서와 외래키(`content_cache.hub_id -> hubs`)에 주의. `DATABASE_URL`의 `postgresql://`은 `app/db.py`가 `postgresql+psycopg://`로 바꾼다.
 - 마이그레이션 도구 없음. 스키마가 바뀌면 테이블을 지우고 `init_db`부터.
 - 문서와 코드 문구에 엠대시(—)와 가운데 점(·)을 쓰지 않는다. 데이터의 `raw_name` 컬럼만 예외.

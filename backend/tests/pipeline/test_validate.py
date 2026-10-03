@@ -2,6 +2,7 @@ from pipeline.validate import (
     check_bbox,
     check_connectivity,
     check_edge_lengths,
+    check_hub_themes,
     check_hubs_have_nodes,
     check_sanity,
     check_times_complete,
@@ -75,3 +76,12 @@ def test_same_name_groups_reported_not_failed():
     groups = GROUPS + [{"id": "4", "name": "홍대입구"}]
     report = report_same_name_groups(groups)
     assert report == ["홍대입구: groups [1, 4]"]
+
+
+def test_hub_themes_must_be_known_values():
+    ok = [{"name": "가", "themes": "food;cafe"}, {"name": "나", "themes": ""}]
+    assert check_hub_themes(ok) == []
+    problems = check_hub_themes([{"name": "다", "themes": "food;study"}, {"name": "라"}])
+    assert len(problems) == 2
+    assert "다" in problems[0] and "study" in problems[0]
+    assert "라" in problems[1]

@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.options import REGIONS, Region, Theme
 
 
 class RoomCreate(BaseModel):
@@ -9,6 +11,14 @@ class RoomCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=40)
     meet_date: date
+    regions: list[Region] = Field(default_factory=lambda: list(REGIONS), min_length=1)
+    theme: Theme | None = None
+
+    @field_validator("regions")
+    @classmethod
+    def _canonical_regions(cls, value: list[str]) -> list[str]:
+        # 중복을 없애고 순서를 서울, 경기, 인천으로 고정한다
+        return [r for r in REGIONS if r in value]
 
 
 class ParticipantCreate(BaseModel):
@@ -30,6 +40,11 @@ class ParticipantOut(BaseModel):
     nickname: str
     nearest_station_name: str
     via: str
+    active: bool
+
+
+class ParticipantUpdate(BaseModel):
+    active: bool
 
 
 class RoomOut(BaseModel):
@@ -37,6 +52,8 @@ class RoomOut(BaseModel):
     title: str
     meet_date: date
     expires_at: datetime
+    regions: list[str]
+    theme: str | None
     participants: list[ParticipantOut]
 
 
@@ -45,6 +62,9 @@ class LegOut(BaseModel):
     nickname: str
     minutes: int
     origin_station_name: str
+    # 출발역의 좌표. 참가자 좌표가 아니다. 역 id가 재적재로 사라졌으면 None.
+    origin_lat: float | None
+    origin_lng: float | None
     via: str
 
 
@@ -58,12 +78,17 @@ class RecommendationOut(BaseModel):
     lng: float
     max_minutes: int
     spread_minutes: int
+    lines: list[str]
+    theme_match: bool
     legs: list[LegOut]
 
 
 class ResultOut(BaseModel):
     status: Literal["waiting", "ready"]
     recommendations: list[RecommendationOut]
+    best_max_minutes: int | None
+    regions: list[str]
+    theme: str | None
 
 
 class StationOut(BaseModel):
@@ -75,4 +100,20 @@ class StationOut(BaseModel):
 class ContentOut(BaseModel):
     kind: Literal["food", "cafe", "play", "event"]
     items: list[dict]
+    error: str | None
+
+
+class PlaceSearchIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    q: str = Field(min_length=2, max_length=30)
+
+
+class PlaceSuggestOut(BaseModel):
+    name: str
+    address: str
+
+
+class PlaceSearchOut(BaseModel):
+    items: list[PlaceSuggestOut]
     error: str | None

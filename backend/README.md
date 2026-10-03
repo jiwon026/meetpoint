@@ -40,7 +40,7 @@ cp .env.example .env
 .venv/Scripts/python -m pipeline.load       # .env의 DATABASE_URL에 적재
 ```
 
-이 버전은 `stations`와 `hubs`에 `group_id` 컬럼과 `station_groups` 테이블을 추가했다. `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않으므로, 이전 버전으로 만든 DB(로컬 `dev.db` 포함)는 `station_groups`, `stations`, `hubs`, `station_times`, `content_cache` 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다.
+스키마가 바뀌면 `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `participants.active`, `hubs.themes`다. 이전 버전으로 만든 DB는 모든 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다. 방과 참여자 데이터도 함께 사라진다.
 
 원본을 갱신했으면 다시 계산한다.
 
@@ -50,6 +50,8 @@ cp .env.example .env
 ```
 
 거점 목록은 `data/manual/hubs.csv`에서 읽는다. 이 파일만 고쳤으면 run_all 전체가 아니라 `python -m pipeline.times`, `python -m pipeline.validate`, `python -m pipeline.load` 세 개만 다시 실행하면 된다.
+
+`hubs.csv`의 `themes` 열 초안은 `python -m pipeline.themes`가 만든다 (비어 있는 행만 채움, `--force`는 전부 다시 계산). 평소에는 손으로 고친다.
 
 거점 후보 점수를 다시 내려면 `python -m pipeline.hubs` (카카오 키 필요, 약 4,500회 호출 (646그룹 x 7회)).
 적재 후 서버를 재시작해야 시간표 캐시가 갱신된다.

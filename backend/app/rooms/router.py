@@ -15,13 +15,19 @@ from app.events.seoul import SeoulEventClient
 from app.events.service import get_events
 from app.geocoding.kakao import Geocoder
 from app.models import Hub
+from app.options import Region, Theme
 from app.places.kakao_local import KakaoLocalClient
 from app.places.service import get_places, place_cache_key
+from app.places.suggest import suggest_places
 from app.rooms import service
 from app.schemas import (
     ContentOut,
     ParticipantCreate,
     ParticipantOut,
+    ParticipantUpdate,
+    PlaceSearchIn,
+    PlaceSearchOut,
+    PlaceSuggestOut,
     ResultOut,
     RoomCreate,
     RoomOut,
@@ -56,14 +62,29 @@ def add_participant(
     return service.participant_out(service.add_participant(db, room, data, geocoder))
 
 
+@router.patch("/rooms/{slug}/participants/{participant_id}", response_model=ParticipantOut)
+def update_participant(
+    slug: str,
+    participant_id: int,
+    data: ParticipantUpdate,
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    room = service.get_room(db, slug)
+    return service.participant_out(
+        service.set_participant_active(db, room, participant_id, data.active)
+    )
+
+
 @router.get("/rooms/{slug}/result", response_model=ResultOut)
 def get_result(
     slug: str,
+    region: list[Region] | None = Query(default=None),
+    theme: Theme | Literal["any"] | None = Query(default=None),
     db: Session = Depends(get_db),
     matrix: StationTimeMatrix = Depends(get_matrix),
 ) -> ResultOut:
     room = service.get_room(db, slug)
-    return service.compute_result(db, room, matrix)
+    return service.compute_result(db, room, matrix, regions=region, theme=theme)
 
 
 @router.get("/stations", response_model=list[StationOut])
@@ -74,6 +95,22 @@ def stations(q: str = Query(default="", max_length=20), db: Session = Depends(ge
 MSG_CONTENT_UNAVAILABLE = "지금 불러올 수 없어요"
 MSG_HUB_NOT_FOUND = "거점을 찾을 수 없어요"
 ContentKind = Literal["food", "cafe", "play", "event"]
+
+
+@router.post("/places/search", response_model=PlaceSearchOut)
+def place_search(
+    data: PlaceSearchIn,
+    local_client: KakaoLocalClient = Depends(get_local_client),
+) -> PlaceSearchOut:
+    try:
+        found = suggest_places(local_client, data.q)
+    except httpx.HTTPError as exc:
+        # 검색어는 집 주소일 수 있어 남기지 않는다. 예외 클래스 이름만 기록한다.
+        logger.warning("place search failed error=%s", type(exc).__name__)
+        return PlaceSearchOut(items=[], error=MSG_CONTENT_UNAVAILABLE)
+    return PlaceSearchOut(
+        items=[PlaceSuggestOut(name=s.name, address=s.address) for s in found], error=None
+    )
 
 
 @router.get("/rooms/{slug}/hubs/{hub_id}/content", response_model=ContentOut)

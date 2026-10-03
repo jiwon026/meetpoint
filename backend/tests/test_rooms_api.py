@@ -135,6 +135,10 @@ def test_result_ranks_hubs_fairly(client):
         "홍대": "홍대입구", "수원": "수원", "잠실": "잠실"
     }
     assert top["max_minutes"] >= top["spread_minutes"]
+    # 지도에 출발역을 찍을 수 있게 역 좌표를 함께 준다 (집 좌표가 아니라 역의 좌표).
+    assert {l["nickname"]: (l["origin_lat"], l["origin_lng"]) for l in top["legs"]} == {
+        "홍대": (37.5571, 126.9245), "수원": (37.2660, 126.9999), "잠실": (37.5133, 127.1001)
+    }
 
 
 def test_expired_room_is_410(client, seeded):

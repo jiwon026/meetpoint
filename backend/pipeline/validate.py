@@ -6,9 +6,11 @@
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 
+from app.options import THEMES
 from pipeline.config import EDGE_LENGTH_ALLOWLIST, MANUAL_DIR, MAX_EDGE_KM, METRO_LAT_RANGE, METRO_LNG_RANGE, OUT_DIR
 from pipeline.edges import load_line_classes
 from pipeline.io import read_csv_rows
+from pipeline.themes import split_list
 from pipeline.times import build_adjacency, dijkstra, hub_node_ids
 
 # (출발 그룹 이름, 도착 그룹 이름, 최소 분, 최대 분)
@@ -63,6 +65,18 @@ def check_connectivity(station_ids: Sequence[int], edges: Iterable[dict[str, str
 def check_hubs_have_nodes(hubs: Iterable[dict[str, str]], stations: Iterable[dict[str, str]]) -> list[str]:
     groups_with_nodes = {int(s["group_id"]) for s in stations if s["group_id"]}
     return [f"거점에 노드 없음: {h['name']} (group {h['group_id']})" for h in hubs if int(h["group_id"]) not in groups_with_nodes]
+
+
+def check_hub_themes(hubs: Iterable[dict[str, str]]) -> list[str]:
+    problems = []
+    for h in hubs:
+        if "themes" not in h:
+            problems.append(f"거점에 themes 열 없음: {h['name']}")
+            continue
+        unknown = [t for t in split_list(h["themes"]) if t not in THEMES]
+        if unknown:
+            problems.append(f"거점 테마 값 오류: {h['name']} {unknown}")
+    return problems
 
 
 def check_times_complete(stations: Iterable[dict[str, str]], hub_nodes: set[int], times: Iterable[dict[str, str]]) -> list[str]:
@@ -120,6 +134,7 @@ def run_all_checks() -> list[str]:
     problems += check_edge_lengths(edges, classes, {s["id"]: s["name"] for s in stations})
     problems += check_connectivity([int(s["id"]) for s in stations], edges, transfers)
     problems += check_hubs_have_nodes(hubs, stations)
+    problems += check_hub_themes(hubs)
     problems += check_times_complete(stations, hub_nodes, times)
     problems += check_sanity(groups, stations, lookup, SANITY_CASES)
     for line in report_same_name_groups(groups):

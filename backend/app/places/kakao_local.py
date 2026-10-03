@@ -36,6 +36,10 @@ class KakaoLocalClient:
             {"query": query, "x": lng, "y": lat, "radius": radius, "size": size, "sort": "distance"},
         )
 
+    def suggest(self, query: str, rect: str, size: int = 5) -> list[dict]:
+        """중심 좌표 없이 키워드로 찾는다. rect는 "왼쪽 경도,아래 위도,오른쪽 경도,위 위도"."""
+        return self._get("keyword.json", {"query": query, "rect": rect, "size": size})
+
     def _total(self, path: str, params: dict) -> int:
         response = self._client.get(f"{KAKAO_LOCAL_BASE}/{path}", params=params, headers=self._headers)
         response.raise_for_status()

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -32,6 +34,14 @@ TIMES = {
     (4, 5): 28,
     (6, 1): 80, (6, 2): 60, (6, 3): 70, (6, 4): 75, (6, 5): 78,
 }
+
+# 테스트 속 방의 약속 날짜(2026-09-26)가 실제 날짜에 따라 만료되지 않도록 방 서비스의 시계를 고정한다.
+FROZEN_NOW = datetime(2026, 9, 20, 12, 0, 0)
+
+
+@pytest.fixture(autouse=True)
+def frozen_room_clock(monkeypatch):
+    monkeypatch.setattr("app.rooms.service.utcnow", lambda: FROZEN_NOW)
 
 
 @pytest.fixture

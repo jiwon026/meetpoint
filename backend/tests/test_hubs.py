@@ -1,4 +1,4 @@
-from app.hubs import hub_node_ids, load_hub_candidates
+from app.hubs import hub_lines, hub_node_ids, load_hub_candidates
 
 
 def test_hub_node_ids_covers_every_hub_station(seeded):
@@ -29,3 +29,17 @@ def test_hub_nodes_come_from_group_id_not_name(seeded):
     _, candidates = load_hub_candidates(seeded)
     hongdae = next(c for c in candidates if c.name == "홍대입구")
     assert set(hongdae.node_ids) == {1, 91}
+
+
+def test_hub_lines_are_sorted_distinct_lines_of_the_hub_group(seeded):
+    from app.stations import all_stations
+
+    seeded.add(Station(id=7, name="강남", line="신분당선", lat=37.4979, lng=127.0276, group_id=2))
+    seeded.add(Station(id=8, name="강남", line="2호선", lat=37.4979, lng=127.0276, group_id=2))
+    seeded.commit()
+    stations = all_stations(seeded)
+    hubs, candidates = load_hub_candidates(seeded, stations)
+    lines = hub_lines(hubs, stations)
+    assert lines[2] == ["2호선", "신분당선"]
+    assert lines[1] == ["2호선"]
+    assert set(next(c for c in candidates if c.name == "강남").node_ids) == {2, 7, 8}

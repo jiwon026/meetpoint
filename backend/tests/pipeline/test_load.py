@@ -32,9 +32,9 @@ def _write_outputs(out: Path, manual: Path) -> None:
         {"from_station_id": 2, "to_station_id": 2, "minutes": 0},
         {"from_station_id": 3, "to_station_id": 2, "minutes": 38},
     ])
-    write_csv(manual / "hubs.csv", ["group_id", "name", "region", "tags", "vibe_summary"], [
-        {"group_id": 1, "name": "홍대입구", "region": "서울", "tags": "밤늦게까지;20대", "vibe_summary": "밤늦게까지 북적이는 젊은 동네"},
-        {"group_id": 2, "name": "강남", "region": "서울", "tags": "교통요지", "vibe_summary": "어디서든 오기 쉬운 교통 중심"},
+    write_csv(manual / "hubs.csv", ["group_id", "name", "region", "tags", "themes", "vibe_summary"], [
+        {"group_id": 1, "name": "홍대입구", "region": "서울", "tags": "밤늦게까지;20대", "themes": "drink;play", "vibe_summary": "밤늦게까지 북적이는 젊은 동네"},
+        {"group_id": 2, "name": "강남", "region": "서울", "tags": "교통요지", "themes": "", "vibe_summary": "어디서든 오기 쉬운 교통 중심"},
     ])
 
 
@@ -55,6 +55,8 @@ def test_load_all_fills_tables_and_is_idempotent(tmp_path: Path):
     with Session(eng) as s:
         hub = s.scalar(select(Hub).where(Hub.name == "홍대입구"))
         assert hub.tags == ["밤늦게까지", "20대"] and hub.group_id == 1 and hub.station_id == 1
+        assert hub.themes == ["drink", "play"]
+        assert s.scalar(select(Hub).where(Hub.name == "강남")).themes == []
         assert s.get(StationTime, (2, 3)).minutes == 38
         assert s.get(Station, 2).group_id == 1
         _, candidates = load_hub_candidates(s)
