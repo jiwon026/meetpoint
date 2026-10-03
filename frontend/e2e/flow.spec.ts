@@ -33,6 +33,9 @@ test("방 만들기부터 주변 둘러보기까지", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("모임 이름").fill("흐름 테스트 모임");
   await page.getByLabel("약속 날짜").fill("2030-01-05");
+  for (const region of ["서울", "경기", "인천"]) {
+    await page.getByRole("button", { name: region, exact: true }).click();
+  }
   await page.getByRole("button", { name: "방 만들고 링크 받기" }).click();
 
   await expect(page).toHaveURL(/\/r\/[A-Za-z0-9]{6,8}$/);

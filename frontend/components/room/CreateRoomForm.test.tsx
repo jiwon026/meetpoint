@@ -9,17 +9,36 @@ import { CreateRoomForm } from "./CreateRoomForm";
 
 const TODAY = "2026-10-02";
 
-function fill(title: string, date: string) {
+function fill(title: string, date: string, regions: string[] = ["서울", "경기", "인천"]) {
   fireEvent.change(screen.getByLabelText("모임 이름"), { target: { value: title } });
   fireEvent.change(screen.getByLabelText("약속 날짜"), { target: { value: date } });
+  for (const region of regions) {
+    fireEvent.click(screen.getByRole("button", { name: region }));
+  }
 }
 
-test("기본은 지역 셋 다 켜짐, 테마 없음", () => {
+test("기본은 지역도 테마도 고르지 않은 상태", () => {
   renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
   for (const region of ["서울", "경기", "인천"]) {
-    expect(screen.getByRole("button", { name: region })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: region })).toHaveAttribute("aria-pressed", "false");
   }
   expect(screen.getByRole("button", { name: /맛집/ })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("지역을 고르지 않으면 요청하지 않고 안내한다", async () => {
+  let posts = 0;
+  server.use(
+    http.post(`${API}/rooms`, () => {
+      posts += 1;
+      return HttpResponse.json(room({ slug: "k3x9pq" }), { status: 201 });
+    }),
+  );
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2026-10-10", []);
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("만날 지역을 하나 이상 골라주세요");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(posts).toBe(0);
 });
 
 test("이름이 없으면 요청하지 않고 안내한다", async () => {

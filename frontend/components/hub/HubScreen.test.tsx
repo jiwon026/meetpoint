@@ -65,7 +65,7 @@ test("거점 정보와 테마에 맞는 탭의 장소를 보여준다", async ()
   expect(kinds).toEqual(["cafe"]);
   expect(screen.getByRole("tab", { name: "카페" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByText("도보 약 4분")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "카카오맵에서 보기" })).toHaveAttribute("href", PLACE.url);
+  expect(screen.getByRole("link", { name: "카카오맵에서 별점, 리뷰 보기" })).toHaveAttribute("href", PLACE.url);
 });
 
 test("테마가 없으면 맛집 탭부터, 탭을 바꾸면 그 종류를 한 번 불러온다", async () => {

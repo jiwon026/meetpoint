@@ -26,7 +26,7 @@ export function PlaceCard({ place, index, active, onSelect }: Props) {
         rel="noopener noreferrer"
         className="mt-2 inline-block text-sm font-semibold text-primary underline"
       >
-        카카오맵에서 보기
+        카카오맵에서 별점, 리뷰 보기
       </a>
     </article>
   );
