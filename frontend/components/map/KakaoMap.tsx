@@ -89,7 +89,7 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
         return (
           <CustomOverlayMap key={pin.id} position={{ lat: pin.lat, lng: pin.lng }} zIndex={active ? 3 : 2}>
             <span
-              className={`flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-card px-1.5 text-xs font-bold text-white ${active ? "bg-accent" : "bg-primary"}`}
+              className={`flex h-7 min-w-7 items-center justify-center whitespace-nowrap rounded-full border-2 border-card px-1.5 text-xs font-bold text-white ${active ? "bg-accent" : "bg-primary"}`}
             >
               {pin.label}
             </span>

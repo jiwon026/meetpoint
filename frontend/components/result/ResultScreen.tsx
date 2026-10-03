@@ -88,7 +88,8 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
               id: String(rec.hub_id),
               lat: rec.lat,
               lng: rec.lng,
-              label: String(index + 1),
+              // 1위 핀에는 이름을 붙여 한눈에 찾게 한다.
+              label: index === 0 ? `1위 ${rec.name}` : String(index + 1),
             }))}
             activeId={open === null ? null : String(open)}
             origins={legOrigins(recs.find((rec) => rec.hub_id === open)?.legs ?? [])}
