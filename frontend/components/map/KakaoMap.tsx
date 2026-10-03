@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CustomOverlayMap, Map, Polyline, useKakaoLoader } from "react-kakao-maps-sdk";
+import { CustomOverlayMap, Map, Polyline, ZoomControl, useKakaoLoader } from "react-kakao-maps-sdk";
 import type { MapOrigin } from "@/lib/origins";
 
 export type MapPin = { id: string; lat: number; lng: number; label: string };
@@ -59,6 +59,8 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
       scrollwheel={false}
       onIdle={() => setSettled(true)}
     >
+      {/* 휠 확대를 껐으니 확대, 축소 버튼을 둔다. 휴대폰에서는 두 손가락으로도 된다. */}
+      <ZoomControl position="RIGHT" />
       {settled &&
         target &&
         origins.map((origin) => (

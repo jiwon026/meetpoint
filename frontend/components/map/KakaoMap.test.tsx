@@ -7,6 +7,8 @@ vi.mock("react-kakao-maps-sdk", () => ({
   useKakaoLoader: vi.fn(),
   Map: ({ children }: { children: React.ReactNode }) => <div data-testid="map">{children}</div>,
   CustomOverlayMap: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Polyline: () => <div data-testid="line" />,
+  ZoomControl: () => <div data-testid="zoom" />,
 }));
 
 const PINS = [
@@ -47,4 +49,13 @@ test("핀마다 번호를 그리고 고른 핀을 강조한다", () => {
   const { getByText } = render(<KakaoMap pins={PINS} activeId="2" center={{ lat: 37.48, lng: 127.03 }} />);
   expect(getByText("1")).toHaveClass("bg-primary");
   expect(getByText("2")).toHaveClass("bg-accent");
+});
+
+test("출발역 이름표와 확대 버튼을 그린다", () => {
+  vi.stubEnv("NEXT_PUBLIC_KAKAO_JS_KEY", "test-key");
+  vi.mocked(useKakaoLoader).mockReturnValue([false, undefined]);
+  const origins = [{ id: "7", lat: 37.55, lng: 126.92, label: "홍대입구 (민수)" }];
+  const { getByText, getByTestId } = render(<KakaoMap pins={PINS} activeId="2" origins={origins} />);
+  expect(getByText("홍대입구 (민수)")).toBeInTheDocument();
+  expect(getByTestId("zoom")).toBeInTheDocument();
 });
