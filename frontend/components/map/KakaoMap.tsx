@@ -42,7 +42,14 @@ function LoadedMap({ appkey, pins, activeId, center, level = 5 }: Props & { appk
   if (loading || !start) return <div aria-hidden className={`${FRAME} bg-track`} />;
 
   return (
-    <Map center={{ lat: start.lat, lng: start.lng }} level={level} onCreate={setMap} className={FRAME}>
+    // 휠 확대를 끈다. 켜 두면 지도 위에서 휠을 굴릴 때 페이지가 내려가지 않고 지도만 확대된다.
+    <Map
+      center={{ lat: start.lat, lng: start.lng }}
+      level={level}
+      onCreate={setMap}
+      className={FRAME}
+      scrollwheel={false}
+    >
       {pins.map((pin) => {
         const active = pin.id === activeId;
         return (
