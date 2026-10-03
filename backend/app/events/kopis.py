@@ -3,14 +3,24 @@ from datetime import date
 
 import httpx
 
+from app.errors import UpstreamError
+
 KOPIS_BASE = "http://www.kopis.or.kr/openApi/restful"
 LIST_ROWS = 100
+SUCCESS_CODE = "00"
 LIST_FIELDS = ("mt20id", "prfnm", "fcltynm", "prfpdfrom", "prfpdto", "poster", "genrenm", "mt10id")
 FACILITY_FIELDS = ("mt10id", "fcltynm", "la", "lo")
 
 
 def _rows(xml_text: str, fields: tuple[str, ...]) -> list[dict]:
-    root = ET.fromstring(xml_text)
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as exc:
+        raise UpstreamError("kopis api: unparseable response") from exc
+    # 인증키 오류 같은 실패는 200과 함께 <db><returncode>02</returncode>... 로 온다. 정상 응답에는 returncode가 없다.
+    code = (root.findtext("db/returncode") or "").strip()
+    if code and code != SUCCESS_CODE:
+        raise UpstreamError(f"kopis api: returncode {code}")
     return [{f: (db.findtext(f) or "").strip() for f in fields} for db in root.findall("db")]
 
 

@@ -2,9 +2,11 @@ from datetime import date
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from app.cache import ContentCacheRepo
+from app.errors import UpstreamError
 from app.events.kopis import KopisClient
 from app.events.service import get_kopis_events
 from app.models import Hub, Station
@@ -66,3 +68,26 @@ def test_kopis_venue_coords_are_cached_across_calls(seeded):
 def test_kopis_returns_empty_for_seoul_hub(seeded):
     hub = seeded.get(Hub, 1)
     assert get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), ContentCacheRepo(seeded)) == []
+
+
+KEY_ERROR = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<dbs><db><returncode>02</returncode><errmsg>SERVICE KEY IS NOT REGISTERED ERROR</errmsg></db></dbs>"""
+
+
+@respx.mock
+def test_kopis_in_band_error_raises_and_is_not_cached(seeded):
+    listing = respx.get(f"{KOPIS}/pblprfr").mock(return_value=httpx.Response(200, text=KEY_ERROR))
+    hub = _suwon_hub(seeded)
+    cache = ContentCacheRepo(seeded)
+    with pytest.raises(UpstreamError):
+        get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), cache)
+    with pytest.raises(UpstreamError):
+        get_kopis_events(hub, date(2026, 9, 26), KopisClient("k"), cache)
+    assert listing.call_count == 2
+
+
+@respx.mock
+def test_kopis_unparseable_body_raises_upstream_error(seeded):
+    respx.get(f"{KOPIS}/pblprfr").mock(return_value=httpx.Response(200, text="<html>점검 중"))
+    with pytest.raises(UpstreamError):
+        KopisClient("k").list_performances(date(2026, 9, 26), "41")

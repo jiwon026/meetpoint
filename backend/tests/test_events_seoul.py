@@ -106,3 +106,14 @@ def test_top_level_no_data_code_returns_empty(seeded):
     payload = {"RESULT": {"CODE": "INFO-200", "MESSAGE": "해당하는 데이터가 없습니다."}}
     respx.get(url__startswith=SEOUL_URL_PREFIX).mock(return_value=httpx.Response(200, json=payload))
     assert SeoulEventClient("test-key").fetch_all() == []
+
+
+@respx.mock
+def test_non_json_error_body_raises_upstream_error(seeded):
+    # 인증키가 틀리면 json을 요청해도 200과 XML 오류 본문이 온다.
+    body = "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>"
+    respx.get(url__startswith=SEOUL_URL_PREFIX).mock(
+        return_value=httpx.Response(200, text=body, headers={"content-type": "application/xml;charset=UTF-8"})
+    )
+    with pytest.raises(UpstreamError):
+        SeoulEventClient("test-key").fetch_all()

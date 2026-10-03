@@ -22,6 +22,17 @@ def _rows_or_raise(payload: dict) -> list[dict]:
     return list(body.get("row", []))
 
 
+def _json_or_raise(response: httpx.Response) -> dict:
+    # 인증키가 없거나 틀리면 json을 요청해도 200과 XML 오류 본문(INFO-100)이 온다.
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise UpstreamError("seoul api: non-json response") from exc
+    if not isinstance(payload, dict):
+        raise UpstreamError("seoul api: unexpected response shape")
+    return payload
+
+
 class SeoulEventClient:
     """서울시 문화행사 정보(culturalEventInfo)를 전부 가져온다. 페이지는 1부터 1000 단위."""
 
@@ -37,7 +48,7 @@ class SeoulEventClient:
             url = f"{SEOUL_OPENAPI_BASE}/{self._api_key}/json/culturalEventInfo/{start}/{end}/"
             response = self._client.get(url)
             response.raise_for_status()
-            batch = _rows_or_raise(response.json())
+            batch = _rows_or_raise(_json_or_raise(response))
             rows.extend(batch)
             if len(batch) < PAGE_SIZE:
                 break
