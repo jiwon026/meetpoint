@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.db import get_db
 from app.deps import get_geocoder, get_matrix
+from app.errors import UpstreamError
 from app.geocoding.kakao import GeoPoint
 from app.main import create_app
 from app.models import Room
@@ -176,6 +177,27 @@ def test_geocoder_outage_returns_503_with_guidance(seeded):
 
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_geocoder] = lambda: BrokenGeocoder()
+    app.dependency_overrides[get_matrix] = lambda: StationTimeMatrix.load(seeded, {1, 2, 3, 4})
+    client = TestClient(app)
+    slug = _create_room(client)["slug"]
+    response = client.post(f"/rooms/{slug}/participants", json={"nickname": "a", "address": "홍대 근처"})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "주소를 찾지 못했어요. 역을 직접 골라주세요."
+
+
+class GarbledGeocoder:
+    def geocode(self, query: str):
+        raise UpstreamError("kakao local: non-json response")
+
+
+def test_geocoder_bad_response_returns_503_with_guidance(seeded):
+    app = create_app()
+
+    def _db():
+        yield seeded
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_geocoder] = lambda: GarbledGeocoder()
     app.dependency_overrides[get_matrix] = lambda: StationTimeMatrix.load(seeded, {1, 2, 3, 4})
     client = TestClient(app)
     slug = _create_room(client)["slug"]

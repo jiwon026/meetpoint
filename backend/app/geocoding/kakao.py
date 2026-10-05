@@ -3,7 +3,11 @@ from typing import Protocol
 
 import httpx
 
+from app.errors import UpstreamError
+from app.http_json import json_object
+
 KAKAO_LOCAL_BASE = "https://dapi.kakao.com/v2/local/search"
+KAKAO_SOURCE = "kakao local"
 
 
 @dataclass(frozen=True)
@@ -26,11 +30,13 @@ class KakaoGeocoder:
             f"{KAKAO_LOCAL_BASE}/{path}", params={"query": query, "size": 1}, headers=self._headers
         )
         response.raise_for_status()
-        documents = response.json().get("documents", [])
+        documents = json_object(response, KAKAO_SOURCE).get("documents", [])
         if not documents:
             return None
-        doc = documents[0]
-        return GeoPoint(lat=float(doc["y"]), lng=float(doc["x"]))
+        try:
+            return GeoPoint(lat=float(documents[0]["y"]), lng=float(documents[0]["x"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise UpstreamError(f"{KAKAO_SOURCE}: document without coordinates") from exc
 
     def geocode(self, query: str) -> GeoPoint | None:
         query = query.strip()

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.cache import utcnow
 from app.clock import kst_date
+from app.errors import UpstreamError
 from app.options import REGIONS, THEME_OFF
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
@@ -101,7 +102,7 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
         return station.lat, station.lng
     try:
         point = geocoder.geocode(data.address or "")
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, UpstreamError) as exc:
         logger.warning("geocode failed error=%s", type(exc).__name__)
         raise HTTPException(status_code=503, detail=MSG_ADDRESS_NOT_FOUND) from exc
     if point is None:

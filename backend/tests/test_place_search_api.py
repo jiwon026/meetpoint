@@ -64,3 +64,11 @@ def test_upstream_failure_returns_empty_items_with_message_and_does_not_log_quer
 def test_query_must_have_two_to_thirty_characters(client):
     for bad in ("a", "   ", "가" * 31):
         assert client.post("/places/search", json={"q": bad}).status_code == 422, bad
+
+
+@respx.mock
+def test_search_non_json_body_returns_friendly_error(client):
+    respx.get(KEYWORD_URL).mock(return_value=httpx.Response(200, text="<html>blocked</html>"))
+    response = client.post("/places/search", json={"q": "강남역"})
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "error": "지금 불러올 수 없어요"}
