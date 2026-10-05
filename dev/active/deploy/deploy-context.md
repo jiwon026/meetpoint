@@ -1,6 +1,6 @@
 # deploy 컨텍스트
 
-Last Updated: 2026-10-05
+Last Updated: 2026-10-06
 
 ## 무엇을 하는가
 
@@ -44,6 +44,20 @@ Last Updated: 2026-10-05
 - 서울시와 KOPIS 행사 API가 해외(싱가포르) 요청을 막을 수 있다. KOPIS는 2026-10-03에 국내 PC에서도 짧은 시간에 여러 번 부르자 `400 Request Blocked`를 돌려줬다. 올린 직후 가장 먼저 확인한다.
 - CI는 Linux와 Python 3.12, 로컬은 Windows와 Python 3.14다. CI에서 처음 드러나는 실패가 있을 수 있다.
 - Vercel Hobby는 비상업 용도 조건이다. 광고나 수익화를 붙이면 유료로 가야 한다.
+
+## 배포 결과 (2026-10-06)
+
+- 프론트 https://meetpoint-kappa.vercel.app , 백엔드 https://meetpoint-api-34hf.onrender.com , DB는 Supabase(싱가포르, Postgres 17).
+- 점검 결과는 `docs/deploy-design.md` 5.1절.
+- 미리 걱정한 위험 중 "행사 API가 해외 서버를 막는다"는 해당 없음으로 확인됐다. 서울시와 KOPIS 모두 싱가포르에서 응답한다.
+- CI 첫 실행에서 `npm ci`가 실패했다. Windows의 npm 11.6.1이 만든 잠금 파일에 `@emnapi/core`, `@emnapi/runtime`이 빠져 있었고, npm 11.21로 다시 만들어 해결했다. 잠금 파일을 갱신할 때는 `npx npm@11 install --package-lock-only`로 하고 `npx npm@11 ci --dry-run`으로 확인한다.
+- Render 서비스 이름 `meetpoint-api`는 이미 쓰이고 있어 주소에 `-34hf`가 붙었다.
+- 운영 DB에 점검용 방 3개(참가자 7명)가 있고 2026-10-06 통계에 들어 있다. 방은 약속 7일 뒤에 지워진다.
+
+## 배포 뒤 바로 할 것
+
+- 경기와 인천 행사 0건 버그 (KOPIS 목록에 `mt10id`가 없음). 원인과 고칠 방향은 `docs/deploy-design.md` 8절.
+- 사용자가 할 것: 잠든 서버의 안내 문구 확인, 그 뒤 UptimeRobot 등록, 카카오톡 링크 미리보기 확인.
 
 ## 다음 계획에 넘길 것 (2단계)
 

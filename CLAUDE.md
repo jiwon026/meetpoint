@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 우리지금만나 (GitHub: jiwon026/meetpoint). 친구들이 각자 출발지를 입력하면 "가장 오래 걸리는 사람의 이동시간"이 가장 짧은 만남 거점을 추천하고, 그 동네의 맛집, 카페, 놀거리, 행사를 보여주는 웹 서비스. 수도권 지하철 기준.
 
+운영 주소: 프론트 https://meetpoint-kappa.vercel.app (Vercel), 백엔드 https://meetpoint-api-34hf.onrender.com (Render 무료, 15분 뒤 잠듦), DB는 Supabase. `main`에 올라간 커밋은 CI 통과 후 자동 배포된다. 구성과 절차는 `docs/deploy-design.md`.
+
 문서를 먼저 읽을 것:
 - `docs/design.md`: 제품 설계와 확정 결정 (추천 규칙, 프라이버시, 에러 문구 8절)
 - `docs/transit-data-design.md`: 데이터 파이프라인 설계

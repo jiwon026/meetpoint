@@ -1,7 +1,7 @@
 # 배포 설계
 
 작성: 2026-10-05
-상태: 설계 확정, 구현 전. 구현 계획은 `dev/active/deploy/deploy-plan.md`.
+상태: 1단계 배포 완료 (2026-10-06). 프론트 https://meetpoint-kappa.vercel.app , 백엔드 https://meetpoint-api-34hf.onrender.com . 구현 계획과 진행 기록은 `dev/active/deploy/`.
 
 ## 0. 한 줄 요약
 
@@ -53,9 +53,9 @@
 |---|---|---|
 | Render | `DATABASE_URL` | Supabase 세션 모드 연결 문자열 |
 | Render | `KAKAO_REST_KEY`, `SEOUL_API_KEY`, `KOPIS_API_KEY` | 각 키 |
-| Render | `CORS_ORIGINS` | 프론트의 운영 주소 (예: `https://meetpoint.vercel.app`) |
+| Render | `CORS_ORIGINS` | 프론트의 운영 주소. 지금은 `https://meetpoint-kappa.vercel.app` |
 | Render | `PYTHON_VERSION` | `3.12.8` (`render.yaml`에 적는다) |
-| Vercel | `NEXT_PUBLIC_API_BASE` | Render 서비스 주소 (예: `https://meetpoint-api.onrender.com`) |
+| Vercel | `NEXT_PUBLIC_API_BASE` | Render 서비스 주소. 지금은 `https://meetpoint-api-34hf.onrender.com` (`meetpoint-api`가 이미 쓰이고 있어 뒤에 글자가 붙었다) |
 | Vercel | `NEXT_PUBLIC_KAKAO_JS_KEY` | 카카오 JavaScript 키 |
 | GitHub Actions secret | `DATABASE_URL` | Render와 같은 값 |
 
@@ -143,12 +143,12 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 
 1. Supabase 프로젝트 생성(싱가포르), 세션 모드 연결 문자열 확보.
 2. 로컬에서 `DATABASE_URL`을 Supabase로 두고 `scripts.init_db`, RLS SQL, `pipeline.load`. Data API 끄기.
-3. Render에 `render.yaml`로 서비스 생성, 환경 변수 입력. `/health`와 `/stations?q=강남` 확인.
-4. Vercel 프로젝트 생성, 환경 변수 입력, 배포.
-5. Render의 `CORS_ORIGINS`를 Vercel 주소로, 카카오 콘솔에 Vercel 주소 등록.
-6. GitHub secret `DATABASE_URL` 등록, 정리 작업을 수동으로 한 번 실행.
-7. UptimeRobot에 `/health` 모니터 등록.
-8. 운영 점검(5절).
+3. GitHub secret `DATABASE_URL` 등록. 예약된 정리 작업은 워크플로가 `main`에 올라간 날부터 돌기 때문에, 이 값이 없으면 매일 밤 실패한다.
+4. Render에 `render.yaml`로 서비스 생성, 환경 변수 입력. `/health`와 역 검색 확인.
+5. Vercel 프로젝트 생성(루트 디렉터리 `frontend`), 환경 변수 입력, 배포.
+6. Render의 `CORS_ORIGINS`를 Vercel 주소로, 카카오 콘솔에 Vercel 주소 등록.
+7. 정리 작업을 수동으로 한 번 실행.
+8. 운영 점검(5절). 잠든 서버의 안내 문구를 본 뒤에 UptimeRobot에 `/health` 모니터를 등록한다.
 
 계정 생성과 비밀 값 입력은 사용자가 한다. 단계마다 무엇을 누를지 안내한다.
 
@@ -164,6 +164,16 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 - 서버를 잠들게 둔 뒤(UptimeRobot 등록 전) 첫 접속에서 안내 문구가 보이고 약 1분 안에 화면이 뜨는지.
 - `daily_stats`에 오늘 행이 생기고 숫자가 맞는지.
 - 정리 작업 수동 실행이 성공하는지.
+
+### 5.1 점검 결과 (2026-10-06)
+
+- 방 만들기(브라우저, 2.3초), 역과 주소로 참여(카카오 지오코딩이 싱가포르에서 정상), 수도권 밖 주소 거절, 주소 검색, 추천 5곳과 지도(거점 핀, 출발역 이름표와 점선), 주변 화면의 카페와 지도: 정상.
+- 서울시 행사 API는 싱가포르에서 정상 응답한다 (거점마다 6~7건). KOPIS도 응답하지만 8절의 버그로 0건이다.
+- 날짜 검증 문구 두 개, 방 페이지의 `noindex, nofollow`, 허용하지 않은 Origin 차단, `/health`의 GET과 HEAD: 정상.
+- `daily_stats`에 한국 날짜로 숫자가 정확히 쌓인다. 점검하며 만든 시험용 방 3개와 참가자 7명이 2026-10-06 행에 들어 있다.
+- 정리 작업 수동 실행 성공. CI 첫 실행에서 `package-lock.json`에 Linux용 선택 패키지가 빠진 문제가 드러나 고쳤다.
+- 휴대폰에서의 전체 흐름: 사용자가 확인, 정상.
+- 아직 확인하지 않은 것: 잠든 서버에서의 안내 문구, UptimeRobot 등록과 Up 표시, 카카오톡 링크 미리보기, Render 로그에 주소와 키가 없는지(코드와 로컬 실행으로는 확인했다), Supabase Data API가 꺼졌는지의 외부 검증(사용자가 껐다고 확인. RLS는 8개 표 모두 켜진 것을 확인했다).
 
 ## 6. 2단계(홍보)에 할 것
 
@@ -191,3 +201,4 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 - 통계 기록은 요청이 자기 연결을 쥐고 있는 동안 연결 풀에서 연결을 하나 더 빌린다. 동시에 약 5건을 넘는 기록이 몰리면 요청이 아니라 통계가 늦어지거나 빠질 수 있다.
 - 서버 인스턴스가 하나라는 전제다. 시간표 캐시와 연결 풀 크기가 그 전제에 맞춰져 있다.
 - 개발 서버(`next dev`)의 간헐적 404는 운영(`next build`)과 무관하지만 원인은 여전히 모른다.
+- 경기와 인천 거점의 행사는 지금 항상 0건이다 (2026-10-06 운영 점검에서 확인). KOPIS 공연 목록(`pblprfr`)은 싱가포르에서도 정상 응답하지만 공연장 id(`mt10id`)가 목록에 없어서, 공연장 좌표를 구하지 못하고 모든 공연이 걸러진다. 테스트 픽스처(`tests/fixtures/kopis_list.xml`)에는 실제에 없는 `mt10id`가 들어 있어 테스트가 잡지 못했다. 고치려면 공연 상세(`pblprfr/{mt20id}`)에서 `mt10id`를 얻어야 하고, KOPIS가 짧은 시간의 연속 호출을 막으므로 캐시와 호출 간격을 함께 설계해야 한다. 서울 거점의 행사(서울시 API)는 정상이다.

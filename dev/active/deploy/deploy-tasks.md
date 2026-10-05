@@ -17,23 +17,23 @@
 
 ## C. 실제 배포 (사용자와 함께)
 
-- [ ] Task 8 Step 1: PR 병합
-- [ ] Task 8 Step 2: Supabase 프로젝트 (사용자)
-- [ ] Task 8 Step 3: 표 만들기, RLS, 적재, Data API 끄기
-- [ ] Task 8 Step 4: Render 서비스 (사용자)
-- [ ] Task 8 Step 5: Vercel 프로젝트 (사용자)
-- [ ] Task 8 Step 6: CORS와 카카오 도메인 연결
-- [ ] Task 8 Step 7: 정리 작업 수동 실행, UptimeRobot (사용자)
-- [ ] Task 8 Step 8: 운영 점검 8항목
+- [x] Task 8 Step 1: PR 병합
+- [x] Task 8 Step 2: Supabase 프로젝트 (사용자)
+- [x] Task 8 Step 3: 표 만들기, RLS, 적재, Data API 끄기
+- [x] Task 8 Step 4: Render 서비스 (사용자)
+- [x] Task 8 Step 5: Vercel 프로젝트 (사용자)
+- [x] Task 8 Step 6: CORS와 카카오 도메인 연결
+- [ ] Task 8 Step 7: 정리 작업 수동 실행(완료, 2026-10-06), UptimeRobot (사용자, 잠든 서버 확인 뒤에)
+- [ ] Task 8 Step 8: 운영 점검 (대부분 완료. 남은 것: 잠든 서버 안내 문구, 카카오톡 미리보기, Render 로그 눈으로 확인)
 - [ ] Task 8 Step 9: 기록과 마무리
 
 ## 완료 기준
 
 - [x] `backend`에서 `.venv/Scripts/pytest -q` 전부 통과 (2026-10-05, 289 passed)
 - [x] `frontend`에서 `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run e2e` 통과 (2026-10-05, 119 passed, e2e 1 passed)
-- [ ] GitHub의 `ci` 워크플로 통과
-- [ ] 운영 주소에서 방 만들기부터 주변 둘러보기까지 동작
+- [x] GitHub의 `ci` 워크플로 통과 (2026-10-05, 잠금 파일 수정 뒤)
+- [x] 운영 주소에서 방 만들기부터 주변 둘러보기까지 동작 (2026-10-06, PC 브라우저와 사용자 휴대폰)
 - [ ] 운영 로그에 주소, 검색어, API 키가 없음
-- [ ] `daily_stats`에 숫자가 쌓임
+- [x] `daily_stats`에 숫자가 쌓임 (2026-10-06)
 - [ ] 정리 작업이 예약대로 돌고, UptimeRobot이 서버를 깨워둠
 - [ ] 문서(`docs/deploy-design.md`, `docs/design.md`, `backend/README.md`, `CLAUDE.md`)가 실제 구성과 일치
