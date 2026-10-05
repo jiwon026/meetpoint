@@ -7,6 +7,7 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm import Session
 
 from app.cache import utcnow
@@ -223,8 +224,9 @@ def _mark_first_result(session: Session, room: Room) -> None:
         session.rollback()
         logger.warning("first result mark failed error=%s", type(exc).__name__)
         return
-    session.refresh(room)
     if claimed == 1:
+        # 다시 조회하지 않고 읽어 둔 값만 맞춘다. 조회가 실패해 이미 만든 응답을 잃지 않게.
+        set_committed_value(room, "first_result_at", now)
         bump(session, "rooms_with_result", now)
 
 

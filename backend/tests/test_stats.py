@@ -2,12 +2,13 @@ from datetime import date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 
 from app.db import get_db
 from app.deps import get_geocoder, get_matrix
 from app.main import create_app
 from app.models import DailyStat, Room
+import app.stats
 from app.stats import bump
 from app.transit.matrix import StationTimeMatrix
 from scripts.stats import summarize
@@ -109,3 +110,42 @@ def test_summarize_orders_by_day(session):
     bump(session, "rooms_created", datetime(2026, 9, 21, 3, 0))
     bump(session, "rooms_created", NOW)
     assert [r.day for r in summarize(session)] == [DAY, date(2026, 9, 21)]
+
+
+def test_bump_retries_once_when_another_request_created_the_row(session, monkeypatch):
+    bump(session, "rooms_created", NOW)   # 그날의 행이 이미 있다
+    real_increment = app.stats._increment
+    calls = []
+
+    def racing_increment(sess, day, column):
+        calls.append(column)
+        if len(calls) == 1:
+            return 0   # 행이 없다고 본 요청이 INSERT를 시도하다 기본 키 충돌을 맞는다
+        return real_increment(sess, day, column)
+
+    monkeypatch.setattr("app.stats._increment", racing_increment)
+    bump(session, "rooms_created", NOW)
+    assert len(calls) == 2
+    assert _row(session).rooms_created == 2
+
+
+def test_failed_bump_leaves_the_callers_objects_loaded(session):
+    room = Room(slug="abc", title="t", meet_date=DAY, created_at=NOW, expires_at=NOW)
+    session.add(room)
+    session.commit()
+    DailyStat.__table__.drop(session.get_bind())
+    bump(session, "rooms_created", NOW)
+    assert inspect(room).expired_attributes == set()
+
+
+def test_result_does_not_reload_the_room_after_marking(client, seeded, monkeypatch):
+    slug = _room(client)
+    _join(client, slug, "a", 1)
+    _join(client, slug, "b", 3)
+
+    def broken_refresh(*args, **kwargs):
+        raise RuntimeError("reload must not be needed")
+
+    monkeypatch.setattr(seeded, "refresh", broken_refresh)
+    assert client.get(f"/rooms/{slug}/result").json()["status"] == "ready"
+    assert _row(seeded).rooms_with_result == 1
