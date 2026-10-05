@@ -40,7 +40,11 @@ cp .env.example .env
 .venv/Scripts/python -m pipeline.load       # .env의 DATABASE_URL에 적재
 ```
 
-스키마가 바뀌면 `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `rooms.first_result_at`, `participants.active`, `hubs.themes`, 그리고 새 표 `daily_stats`다. 이전 버전으로 만든 DB는 모든 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다. 방과 참여자 데이터도 함께 사라진다.
+운영 DB(Supabase)를 새로 만드는 순서는 `migrations/README.md`를 따른다. RLS 단계가 들어 있다.
+
+`scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 스키마 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `rooms.first_result_at`, `participants.active`, `hubs.themes`, 그리고 새 표 `daily_stats`다. 그래서 이 변경 이전에 만든 로컬 `dev.db`는 파일을 지우고 `init_db`를 다시 실행한 뒤 `pipeline.load`로 적재해야 한다. 로컬의 방과 참여자 데이터는 함께 사라지지만 괜찮다.
+
+운영 DB(Supabase)는 표를 지우지 않는다. 구조를 바꿀 때는 `migrations/`의 번호 붙은 SQL을 `migrations/README.md`의 규칙대로 적용한다. 아직 운영 DB가 없으므로 위 변경에 대한 열 추가 SQL은 필요 없다. 첫 운영 DB는 현재 모델로 `init_db`가 만든다.
 
 원본을 갱신했으면 다시 계산한다.
 
@@ -61,7 +65,7 @@ cp .env.example .env
 설계와 순서는 `docs/deploy-design.md`. 서비스 정의는 저장소 루트의 `render.yaml`이다.
 
 - 무료 플랜, 싱가포르. 15분 동안 요청이 없으면 잠들고 깨는 데 약 1분 걸린다. UptimeRobot이 5분마다 `/health`를 불러 깨워둔다.
-- 파이썬 버전은 `render.yaml`의 `PYTHON_VERSION`(3.12.8)이다.
+- 파이썬 버전은 `render.yaml`의 `PYTHON_VERSION`(3.12.8)이다. 저장소에 있는 `backend/.python-version`(3.12)은 로컬 도구용이고 Render는 읽지 않는다.
 - `main`에 올라간 커밋 중 CI(`.github/workflows/ci.yml`)가 통과한 것만 자동으로 배포된다.
 - DB는 Supabase의 세션 모드 연결 문자열(`...pooler.supabase.com:5432`)을 쓴다. 직접 연결은 IPv6 전용이라 Render와 가정용 인터넷에서 닿지 않는다. 트랜잭션 모드(6543)는 쓰지 않는다.
 - 새 DB를 만드는 순서와 구조 변경 규칙은 `migrations/README.md`.

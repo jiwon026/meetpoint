@@ -13,8 +13,10 @@
 
 ## 새 DB를 만들 때
 
+로컬에서 `backend/` 폴더 안에서 실행한다. 그 셸에서만 `DATABASE_URL` 환경 변수에 Supabase 세션 모드 연결 문자열을 지정한다(환경 변수가 `.env`보다 우선하므로 `.env` 파일은 건드리지 않는다).
+
 1. `python -m scripts.init_db` (현재 모델대로 모든 표 생성)
-2. `001_enable_rls.sql` 실행
+2. `001_enable_rls.sql` 실행 (Supabase SQL 편집기에서, 또는 같은 연결로)
 3. `python -m pipeline.load`
 
 `init_db`가 최신 모델로 표를 만들기 때문에, 새 DB에는 그 뒤 번호의 열 추가 SQL을 실행할 필요가 없다. 번호가 붙은 변경 SQL은 이미 돌고 있는 DB를 따라오게 하는 용도다.
