@@ -35,6 +35,9 @@ Last Updated: 2026-10-05
 - 만료 방 삭제는 GitHub Actions. Render 무료에는 cron이 없고, 저장소가 비공개라 10분 간격 깨우기에는 Actions 시간이 모자라 깨우기는 UptimeRobot에 맡긴다.
 - 마이그레이션 도구를 들이지 않는다. `backend/migrations/`에 SQL을 번호 순서로 둔다.
 - Supabase Data API를 끄고 모든 표에 RLS를 켠다. 우리는 그 API를 쓰지 않는다.
+- `robots.txt`는 `/r/`를 막지 않는다. 막힌 크롤러는 방 페이지의 `noindex`를 읽지 못하고, 링크 미리보기 수집기는 robots.txt를 따르면 제목 미리보기를 잃을 수 있다. 검색 제외는 `noindex, nofollow` 메타 태그만으로 한다.
+- `/health`는 GET과 HEAD 둘 다 받는다. 무료 요금제의 UptimeRobot이 HEAD로 확인하기 때문이다.
+- 엔진은 `hide_parameters=True`로 만든다. DB 오류 문구에 닉네임, 좌표 같은 행 값이 실려 로그로 새지 않게 한다.
 
 ## 미리 아는 위험
 

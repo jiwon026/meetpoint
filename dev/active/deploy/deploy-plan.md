@@ -20,7 +20,7 @@
 - 백엔드: 라우터는 얇게, 로직은 서비스에. 외부 HTTP는 클라이언트 클래스 안에서만. SQLite와 Postgres 양쪽에서 도는 SQL만 쓴다.
 - 사용자에게 보이는 백엔드 문구는 `rooms/service.py`의 `MSG_*`와 `docs/design.md` 8절이 원본이다. 바꾸거나 더하면 둘 다 고친다.
 - 프론트: 상태, 에러, 안내 문구는 `lib/messages.ts`. 색은 `app/globals.css` 토큰만. 타입은 `npm run gen:api`로 생성한다(백엔드 스키마가 바뀐 태스크에서 실행).
-- 프라이버시: 닉네임, 좌표, 역, 슬러그, 주소, 검색어를 통계와 로그에 남기지 않는다.
+- 프라이버시: 닉네임, 좌표, 역, 주소, 검색어는 통계와 로그에 절대 남기지 않는다. 슬러그는 통계와 애플리케이션 로그 문구에 넣지 않는다(접근 로그의 경로에는 남는다).
 - 비밀 값(DB 비밀번호, API 키)은 저장소, 커밋, 채팅, 도구 출력에 넣지 않는다. 값을 확인할 때는 길이나 앞뒤 가림 처리만 출력한다.
 - 각 태스크가 끝날 때 기준: `backend`에서 `.venv/Scripts/pytest -q` 전부 통과, `frontend`에서 `npm test`, `npm run lint`, `npx tsc --noEmit` 통과.
 - 시작 기준선: 백엔드 258 passed, 프론트 109 passed (브랜치 `feat/deploy`, `main`의 c491fdd에서 갈라짐).
@@ -1684,17 +1684,17 @@ Task 7의 PR이 CI를 통과했는지 확인하고 사용자에게 병합 여부
 진행자 확인 (값을 출력하지 않는다):
 
 ```bash
-cd backend && awk -F= '/^DATABASE_URL/{print "length", length($2); print (index($2,"pooler.supabase.com:5432")>0 ? "session pooler ok" : "NOT session pooler")}' .env.production
+cd backend && awk -F= '/^DATABASE_URL/{v=substr($0,index($0,"=")+1); gsub(/\r/,"",v); print "length", length(v); print (index(v,"pooler.supabase.com:5432")>0 ? "session pooler ok" : "NOT session pooler")}' .env.production
 git status --short | grep -c "env.production"
 ```
 
-Expected: `session pooler ok`, 두 번째 명령은 `0` (git이 무시함).
+Expected: `session pooler ok`, 두 번째 명령은 `0` (git이 무시함). 파일을 메모장으로 저장하면 줄 끝이 CRLF일 수 있어, 이 단계의 모든 명령은 값을 읽을 때 캐리지 리턴(`\r`)을 지운다.
 
 - [ ] **Step 3: 표 만들기, RLS, 적재 (진행자)**
 
 ```bash
 cd backend
-export DATABASE_URL="$(grep ^DATABASE_URL= .env.production | cut -d= -f2-)"
+export DATABASE_URL="$(grep ^DATABASE_URL= .env.production | cut -d= -f2- | tr -d '\r\n')"
 .venv/Scripts/python -m scripts.init_db
 .venv/Scripts/python - <<'EOF'
 from pathlib import Path
@@ -1720,6 +1720,12 @@ Expected: `tables created`, 표 8개가 모두 `True`, 적재 개수(station_gro
 
 `backend/migrations/README.md`의 적용 기록 표에 001의 적용일을 적는다.
 
+바로 이어서 GitHub secret을 넣는다(진행자, 값을 출력하지 않는다). 이유: 예약 워크플로(`cleanup`)는 `main`에 올라가는 순간부터 매일 돌기 시작하는데, secret이 없으면 secret이 생길 때까지 매일 밤 실패하기 때문이다.
+
+```bash
+cd backend && grep ^DATABASE_URL= .env.production | cut -d= -f2- | tr -d '\r\n' | gh secret set DATABASE_URL --repo jiwon026/meetpoint
+```
+
 - [ ] **Step 4: Render 서비스 (사용자)**
 
 1. https://render.com 에서 GitHub 계정으로 가입.
@@ -1731,10 +1737,11 @@ Expected: `tables created`, 표 8개가 모두 `True`, 적재 개수(station_gro
 
 ```bash
 curl -s https://<api>/health
-curl -s "https://<api>/stations?q=강남" | head -c 200
+curl -s -I https://<api>/health | head -1
+curl -s "https://<api>/stations?q=%EA%B0%95%EB%82%A8" | head -c 200
 ```
 
-Expected: `{"ok":true}`, 강남 역 목록 JSON. 실패하면 Render의 Logs를 사용자에게 보여달라고 하거나 화면을 같이 본다. 흔한 원인: 연결 문자열의 비밀번호 기호, 세션 모드가 아닌 문자열, 빌드에서 파이썬 버전 오류.
+Expected: `{"ok":true}`, 두 번째 명령의 첫 줄에 `200`(HEAD 요청도 통과해야 UptimeRobot이 Up으로 본다), 강남 역 목록 JSON. `%EA%B0%95%EB%82%A8`은 강남을 퍼센트 인코딩한 것이다. Git Bash가 한글을 다른 인코딩으로 보낼 수 있어서 이렇게 쓴다. 실패하면 Render의 Logs를 사용자에게 보여달라고 하거나 화면을 같이 본다. 흔한 원인: 연결 문자열의 비밀번호 기호, 세션 모드가 아닌 문자열, 빌드에서 파이썬 버전 오류.
 
 - [ ] **Step 5: Vercel 프로젝트 (사용자)**
 
@@ -1760,10 +1767,9 @@ Expected: 첫 줄에 Vercel 주소가 보이고, 두 번째는 `0`.
 
 - [ ] **Step 7: 정리 작업과 깨우기**
 
-진행자 (값을 출력하지 않고 secret을 넣는다):
+진행자 (`DATABASE_URL` secret은 Step 3 직후에 이미 넣었다. 여기서는 수동 실행만 한다):
 
 ```bash
-cd backend && grep ^DATABASE_URL= .env.production | cut -d= -f2- | gh secret set DATABASE_URL --repo jiwon026/meetpoint
 gh workflow run cleanup --repo jiwon026/meetpoint
 sleep 20; gh run list --workflow cleanup --repo jiwon026/meetpoint --limit 1
 gh run watch --repo jiwon026/meetpoint $(gh run list --workflow cleanup --repo jiwon026/meetpoint --limit 1 --json databaseId -q '.[0].databaseId')
@@ -1772,6 +1778,8 @@ gh run watch --repo jiwon026/meetpoint $(gh run list --workflow cleanup --repo j
 Expected: 실행이 성공하고 로그에 `deleted 0 expired rooms`가 보인다.
 
 사용자: https://uptimerobot.com 가입, Add New Monitor, 종류 HTTP(s), URL `https://<api>/health`, 간격 5분, 알림은 본인 이메일. 이 단계는 Step 8의 "잠든 서버" 점검을 한 뒤에 한다.
+
+확인: 몇 분 안에 모니터가 Up으로 뜨는지 본다. `curl -s -I https://<api>/health | head -1`이 `200`인데도 Down이면 모니터의 요청 방식(HEAD 또는 GET)과 키워드 설정을 살펴본다.
 
 - [ ] **Step 8: 운영 점검 (`docs/deploy-design.md` 5절)**
 
@@ -1797,8 +1805,11 @@ curl -s https://<프로젝트>.vercel.app/robots.txt
 curl -s https://<프로젝트>.vercel.app/r/<만든 방의 slug> | grep -o '<meta name="robots"[^>]*>'
 ```
 
-7. 통계: 로컬에서 `DATABASE_URL`을 Step 3처럼 잠깐 내보내고 `python -m scripts.stats`. 점검하며 만든 방과 참가자 수가 오늘 날짜(한국 시간) 행에 맞게 잡혔는지.
+Expected: 방 페이지에 `noindex`가 들어간 `robots` 메타 태그가 보이고, `robots.txt`에는 `Disallow: /r/`가 없다. (막으면 크롤러가 `noindex`를 읽지 못하고 링크 미리보기도 잃을 수 있다.)
+
+7. 통계: 로컬에서 `DATABASE_URL`을 Step 3처럼 잠깐 내보내고(`export DATABASE_URL="$(grep ^DATABASE_URL= .env.production | cut -d= -f2- | tr -d '\r\n')"`) `python -m scripts.stats`, 끝나면 `unset DATABASE_URL`. 점검하며 만든 방과 참가자 수가 오늘 날짜(한국 시간) 행에 맞게 잡혔는지.
 8. 휴대폰(사용자): 같은 흐름을 한 번, 지도 위에서 손가락으로 쓸어내릴 때 불편한지.
+9. 카카오톡 미리보기(사용자): 카카오톡에 방 링크를 붙였을 때 방 제목 미리보기가 보이는지.
 
 문제가 나오면 고치고(작은 수정은 바로, 큰 것은 사용자와 상의) 다시 확인한다. 점검에서 만든 방은 약속 날짜 7일 뒤에 지워진다.
 
@@ -1814,6 +1825,8 @@ git add docs dev CLAUDE.md backend/migrations/README.md
 git commit -m "docs: record the stage 1 deployment and smoke test results"
 git push
 ```
+
+기록 커밋은 `main`을 최신으로 받은 뒤 새 브랜치 `docs/deploy-record`에서 만들고 pull request로 병합한다(위의 `git push`는 `git push -u origin docs/deploy-record`로 바꿔 쓴다). 이 pull request는 CI와 재배포를 일으키지만 무해하다.
 
 `backend/.env.production`은 지우지 않아도 되지만(무시됨) 사용자에게 그 파일에 운영 DB 비밀번호가 있다는 것을 알린다.
 
