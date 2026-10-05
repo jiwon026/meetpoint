@@ -1,4 +1,4 @@
-"""만료된 방과 오래된 콘텐츠 캐시를 지운다. Railway cron에서 하루 한 번 실행한다.
+"""만료된 방과 오래된 콘텐츠 캐시를 지운다. GitHub Actions(`.github/workflows/cleanup.yml`)가 하루 한 번 실행한다.
 
 실행: python -m scripts.cleanup_expired
 """

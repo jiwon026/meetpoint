@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docs/transit-data-design.md`: 데이터 파이프라인 설계
 - `dev/active/<task>/`: 진행 중이거나 끝난 태스크의 계획, 컨텍스트(결정과 한계), 체크리스트. 새 작업 전에 `*-context.md`의 "다음 계획에 넘길 것"을 읽는다.
 - `backend/data/SOURCES.md`: 원본 데이터 출처, 확인된 사실, 모든 상수 변경의 근거
+- `docs/deploy-design.md`: 배포 구성(Vercel, Render, Supabase), 단계별 출시 계획, DB 구조 변경 규칙
 
 ## 명령 (백엔드는 `backend/`, 프론트는 `frontend/` 안에서 실행)
 
@@ -71,6 +72,8 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 사용자에게 보이는 에러 문구는 `rooms/service.py`의 `MSG_*` 상수와 `docs/design.md` 8절이 원본이다. 바꾸면 둘 다.
 
+규모 통계는 `app/stats.py`의 `bump`가 `daily_stats`에 날짜별 개수만 올린다(한국 날짜). 본 작업의 커밋 뒤에 부르고 실패해도 요청을 깨지 않는다. 별도의 짧은 세션으로 쓰므로 요청의 세션을 커밋하거나 롤백하지 않는다. 개인 정보를 넣지 않는다.
+
 ### 프론트엔드 (`frontend/`)
 
 Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Query로 10초 폴링한다. 서버 쪽 코드는 `app/r/[slug]/layout.tsx`의 링크 미리보기 제목뿐이다.
@@ -91,7 +94,7 @@ Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Quer
 
 - 테스트는 실동작 검증. 외부 API는 respx, DB는 SQLite 인메모리(`tests/conftest.py`의 `seeded` 픽스처: 역 6개, 거점 4개). 파이프라인은 픽스처 CSV/XLSX와 합성 소형 데이터(`tests/pipeline/test_run_all_synthetic.py`). 프론트는 Vitest와 MSW(`frontend/lib/test/`), 흐름 하나는 Playwright(`frontend/e2e/`).
 - SQLite에서 도는 코드가 Postgres(Supabase)에서도 돌아야 한다. 삭제 순서와 외래키(`content_cache.hub_id -> hubs`)에 주의. `DATABASE_URL`의 `postgresql://`은 `app/db.py`가 `postgresql+psycopg://`로 바꾼다.
-- 마이그레이션 도구 없음. 스키마가 바뀌면 테이블을 지우고 `init_db`부터.
+- 마이그레이션 도구 없음. 로컬은 `dev.db`를 지우고 `init_db`부터. 운영 DB는 지우지 않고 `backend/migrations/`에 SQL을 더해 적용한다 (`backend/migrations/README.md`).
 - 문서와 코드 문구에 엠대시(—)와 가운데 점(·)을 쓰지 않는다. 데이터의 `raw_name` 컬럼만 예외.
 - Python 소스에 `　` 같은 이스케이프는 문자 그대로 남겨야 한다. 파일 쓰기 도구가 실제 보이지 않는 문자로 바꿔 넣는 경우가 있었으니 확인할 것.
 - 큰 작업은 `dev/active/<task>/`에 계획, 컨텍스트, 체크리스트 세 파일을 만들고 시작한다. 끝나면 컨텍스트에 결정과 한계를 남긴다.

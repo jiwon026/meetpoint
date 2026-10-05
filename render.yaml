@@ -1,0 +1,28 @@
+# Render Blueprint. 화면에서 New > Blueprint로 이 저장소를 고르면 아래 서비스가 만들어진다.
+# 무료 플랜은 15분 동안 요청이 없으면 잠든다. 유료로 올릴 때는 plan만 바꾼다.
+services:
+  - type: web
+    name: meetpoint-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    # CI(.github/workflows/ci.yml)가 통과한 커밋만 올린다.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # 아래 값은 저장소에 넣지 않는다. 서비스를 만들 때 화면에서 입력한다.
+      - key: DATABASE_URL
+        sync: false
+      - key: KAKAO_REST_KEY
+        sync: false
+      - key: SEOUL_API_KEY
+        sync: false
+      - key: KOPIS_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

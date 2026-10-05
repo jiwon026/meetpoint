@@ -1,7 +1,7 @@
 # 우리지금만나 설계 문서
 
 작성일: 2026-09-23
-상태: 백엔드, 데이터, 프론트엔드 구현 완료. 최종 리뷰 반영을 마쳤고 배포를 앞두고 있다 (`docs/frontend-design.md`)
+상태: 백엔드, 데이터, 프론트엔드 구현 완료. 배포 준비 중 (`docs/deploy-design.md`)
 
 ## 0. 한 줄 요약
 
@@ -49,7 +49,7 @@
 ## 4. 아키텍처
 
 ```
-[Next.js (Vercel)]  --HTTP-->  [FastAPI (Railway)]  --SQL-->  [Supabase Postgres]
+[Next.js (Vercel)]  --HTTP-->  [FastAPI (Render)]  --SQL-->  [Supabase Postgres]
                                      |
                                      +--> 카카오 로컬 API (맛집, 카페, 놀거리, 지오코딩)
                                      +--> 서울시 문화행사 API, KOPIS (행사)
@@ -62,7 +62,7 @@
 
 | 구성 요소 | 역할 | 배포 |
 |---|---|---|
-| backend | 방과 참여자 API, 지오코딩, 추천 계산, 콘텐츠 수집과 캐시 | Railway |
+| backend | 방과 참여자 API, 지오코딩, 추천 계산, 콘텐츠 수집과 캐시 | Render |
 | frontend | 화면 4개 (만들기, 참여, 추천, 둘러보기) + 카카오맵 | Vercel |
 | db | 방, 참여자, 거점, 역간 시간표, 콘텐츠 캐시 | Supabase |
 | scripts | 지하철 그래프 생성과 최단시간 계산. 노선 변경 시에만 재실행 | 로컬 실행 |
