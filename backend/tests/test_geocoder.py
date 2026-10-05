@@ -5,6 +5,7 @@ import httpx
 import pytest
 import respx
 
+from app.errors import UpstreamError
 from app.geocoding.kakao import GeoPoint, KakaoGeocoder
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -47,3 +48,17 @@ def test_geocode_raises_on_http_error():
     respx.get(ADDRESS_URL).mock(return_value=httpx.Response(500))
     with pytest.raises(httpx.HTTPStatusError):
         KakaoGeocoder(rest_key="k").geocode("아무거나")
+
+
+@respx.mock
+def test_geocode_raises_upstream_error_on_non_json_body():
+    respx.get(ADDRESS_URL).mock(return_value=httpx.Response(200, text="<html>blocked</html>"))
+    with pytest.raises(UpstreamError):
+        KakaoGeocoder(rest_key="k").geocode("서울 마포구 양화로 160")
+
+
+@respx.mock
+def test_geocode_raises_upstream_error_when_coordinates_are_missing():
+    respx.get(ADDRESS_URL).mock(return_value=httpx.Response(200, json={"documents": [{"x": "abc"}]}))
+    with pytest.raises(UpstreamError):
+        KakaoGeocoder(rest_key="k").geocode("서울 마포구 양화로 160")

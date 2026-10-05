@@ -1,6 +1,7 @@
 import httpx
 
-from app.geocoding.kakao import KAKAO_LOCAL_BASE
+from app.geocoding.kakao import KAKAO_LOCAL_BASE, KAKAO_SOURCE
+from app.http_json import json_object
 
 
 class KakaoLocalClient:
@@ -11,7 +12,7 @@ class KakaoLocalClient:
     def _get(self, path: str, params: dict) -> list[dict]:
         response = self._client.get(f"{KAKAO_LOCAL_BASE}/{path}", params=params, headers=self._headers)
         response.raise_for_status()
-        return list(response.json().get("documents", []))
+        return list(json_object(response, KAKAO_SOURCE).get("documents", []))
 
     def category_search(
         self, code: str, lat: float, lng: float, radius: int = 600, size: int = 15
@@ -43,7 +44,7 @@ class KakaoLocalClient:
     def _total(self, path: str, params: dict) -> int:
         response = self._client.get(f"{KAKAO_LOCAL_BASE}/{path}", params=params, headers=self._headers)
         response.raise_for_status()
-        return int(response.json().get("meta", {}).get("total_count", 0))
+        return int(json_object(response, KAKAO_SOURCE).get("meta", {}).get("total_count", 0))
 
     def count_category(self, code: str, lat: float, lng: float, radius: int = 600) -> int:
         return self._total("category.json", {"category_group_code": code, "x": lng, "y": lat, "radius": radius, "size": 1})

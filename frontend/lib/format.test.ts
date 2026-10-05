@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { aboutMinutes, average, dday, formatMeetDate, todayIso, walkMinutes } from "./format";
+import { aboutMinutes, addDaysIso, average, dday, formatMeetDate, todayIso, walkMinutes } from "./format";
 
 test("aboutMinutes", () => {
   expect(aboutMinutes(45)).toBe("약 45분");
@@ -29,4 +29,10 @@ test("dday", () => {
   expect(dday("2026-10-10", new Date(2026, 9, 6, 23, 30))).toBe("D-4");
   expect(dday("2026-10-10", new Date(2026, 9, 10, 8, 0))).toBe("D-DAY");
   expect(dday("2026-10-10", new Date(2026, 9, 12, 8, 0))).toBe("D+2");
+});
+
+test("addDaysIso는 달과 해를 넘겨 더한다", () => {
+  expect(addDaysIso("2026-10-05", 7)).toBe("2026-10-12");
+  expect(addDaysIso("2026-12-30", 3)).toBe("2027-01-02");
+  expect(addDaysIso("2026-10-05", 365)).toBe("2027-10-05");
 });

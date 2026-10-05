@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { SlowNote } from "@/components/ui/Loading";
 import { TicketCard } from "@/components/ui/TicketCard";
 import { INPUT, PRIMARY_BUTTON } from "@/components/ui/styles";
 import { useCreateRoom } from "@/lib/api/hooks";
 import type { RoomOut } from "@/lib/api/types";
-import { MSG_DATE_REQUIRED, MSG_PRIVACY, MSG_REGION_REQUIRED, MSG_TITLE_REQUIRED } from "@/lib/messages";
+import { MAX_MEET_DAYS_AHEAD } from "@/lib/constants";
+import { addDaysIso } from "@/lib/format";
+import {
+  MSG_DATE_REQUIRED,
+  MSG_DATE_TOO_FAR,
+  MSG_PRIVACY,
+  MSG_REGION_REQUIRED,
+  MSG_TITLE_REQUIRED,
+} from "@/lib/messages";
 import type { Region } from "@/lib/regions";
 import type { ThemeId } from "@/lib/themes";
 import { RegionChips } from "./RegionChips";
@@ -22,6 +31,8 @@ export function CreateRoomForm({ today, onCreated }: Props) {
   const create = useCreateRoom();
   // 성공 뒤 다른 화면으로 넘어갈 때까지도 다시 누를 수 없게 막는다.
   const busy = create.isPending || create.isSuccess;
+  // today는 첫 렌더에서 빈 문자열일 수 있다 (app/page.tsx 참고).
+  const maxDate = today ? addDaysIso(today, MAX_MEET_DAYS_AHEAD) : "";
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -32,6 +43,10 @@ export function CreateRoomForm({ today, onCreated }: Props) {
     }
     if (!meetDate || meetDate < today) {
       setProblem(MSG_DATE_REQUIRED);
+      return;
+    }
+    if (maxDate && meetDate > maxDate) {
+      setProblem(MSG_DATE_TOO_FAR);
       return;
     }
     if (regions.length === 0) {
@@ -64,6 +79,7 @@ export function CreateRoomForm({ today, onCreated }: Props) {
             type="date"
             value={meetDate}
             min={today}
+            max={maxDate || undefined}
             onChange={(event) => setMeetDate(event.target.value)}
             className={INPUT}
           />
@@ -85,6 +101,7 @@ export function CreateRoomForm({ today, onCreated }: Props) {
         <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
           {busy ? "만드는 중" : "방 만들고 링크 받기"}
         </button>
+        {create.isPending && <SlowNote />}
       </form>
     </TicketCard>
   );

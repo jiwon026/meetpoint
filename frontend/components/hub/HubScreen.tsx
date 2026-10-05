@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { Loading } from "@/components/ui/Loading";
 import { CARD } from "@/components/ui/styles";
 import { useResult } from "@/lib/api/hooks";
 import type { ResultFilter } from "@/lib/filter";
-import { MSG_LOADING } from "@/lib/messages";
 import { firstTab } from "@/lib/themes";
 import { ContentTabs } from "./ContentTabs";
 import { HubHeader } from "./HubHeader";
@@ -37,7 +37,7 @@ export function HubScreen({ slug, hubId, filter, onGone }: Props) {
       </p>
     );
   }
-  if (!rec) return <p className="py-10 text-center text-ink-mute">{MSG_LOADING}</p>;
+  if (!rec) return <Loading />;
 
   return (
     <div className="space-y-4">

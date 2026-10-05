@@ -1,6 +1,6 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
 import { API, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
@@ -55,6 +55,20 @@ test("지난 날짜는 요청하지 않고 안내한다", async () => {
   expect(screen.getByRole("alert")).toHaveTextContent("오늘 이후 날짜를 골라주세요");
 });
 
+test("1년 넘는 날짜는 요청하지 않고 안내한다", async () => {
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2027-10-03");
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("약속 날짜는 1년 안으로 골라주세요");
+});
+
+test("날짜 입력에 오늘과 1년 뒤를 범위로 건다", () => {
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  const input = screen.getByLabelText("약속 날짜");
+  expect(input).toHaveAttribute("min", "2026-10-02");
+  expect(input).toHaveAttribute("max", "2027-10-02");
+});
+
 test("고른 지역과 테마를 보내고 만든 방을 넘긴다", async () => {
   let body: unknown = null;
   server.use(
@@ -102,4 +116,27 @@ test("성공 뒤에는 버튼이 비활성이라 다시 눌러도 요청은 한 
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(posts).toBe(1);
   expect(onCreated).toHaveBeenCalledOnce();
+});
+
+test("만들기가 4초 넘게 걸리면 서버를 깨우는 중이라고 알린다", async () => {
+  server.use(
+    http.post(`${API}/rooms`, async () => {
+      await delay("infinite");
+      return HttpResponse.json(room());
+    }),
+  );
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+    fill("금요일 저녁", "2026-10-10");
+    fireEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+    await screen.findByRole("button", { name: "만드는 중" });
+    expect(screen.queryByText(/서버를 깨우는 중/)).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    expect(screen.getByText("서버를 깨우는 중이에요. 최대 1분쯤 걸려요.")).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });

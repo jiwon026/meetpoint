@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ShareButtons } from "@/components/join/ShareButtons";
 import { KakaoMap } from "@/components/map/KakaoMap";
 import { legOrigins } from "@/lib/origins";
+import { Loading } from "@/components/ui/Loading";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
 import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
@@ -14,7 +15,6 @@ import { filterQuery, type ResultFilter } from "@/lib/filter";
 import {
   MSG_LINK_COPIED,
   MSG_LINK_COPY_FAILED,
-  MSG_LOADING,
   MSG_NEED_TWO,
   MSG_NO_HUB_IN_REGION,
   MSG_NO_ROUTE,
@@ -49,7 +49,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
         </section>
       );
     }
-    return <p className="py-10 text-center text-ink-mute">{MSG_LOADING}</p>;
+    return <Loading />;
   }
 
   const data = result.data;

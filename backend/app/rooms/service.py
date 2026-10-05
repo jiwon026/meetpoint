@@ -1,14 +1,18 @@
 import logging
 from collections.abc import Sequence
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm import Session
 
 from app.cache import utcnow
+from app.clock import kst_date
+from app.errors import UpstreamError
 from app.options import REGIONS, THEME_OFF
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
@@ -27,6 +31,7 @@ from app.schemas import (
     RoomOut,
 )
 from app.stations import all_stations
+from app.stats import bump
 from app.transit.matrix import StationTimeMatrix
 
 logger = logging.getLogger(__name__)
@@ -34,6 +39,8 @@ logger = logging.getLogger(__name__)
 ROOM_KEEP_DAYS = 7
 SLUG_RETRIES = 5
 MAX_PARTICIPANTS = 20
+# 프론트엔드 lib/constants.ts에 같은 값이 있다. 바꾸면 둘 다.
+MAX_MEET_DAYS_AHEAD = 365
 
 MSG_ADDRESS_NOT_FOUND = "주소를 찾지 못했어요. 역을 직접 골라주세요."
 MSG_OUTSIDE_METRO = "아직 수도권만 지원해요"
@@ -42,6 +49,8 @@ MSG_ROOM_NOT_FOUND = "방을 찾을 수 없어요"
 MSG_STATION_NOT_FOUND = "역을 찾을 수 없어요"
 MSG_ROOM_FULL = "참여 인원이 가득 찼어요 (최대 20명)"
 MSG_PARTICIPANT_NOT_FOUND = "참여자를 찾을 수 없어요"
+MSG_DATE_PAST = "오늘 이후 날짜를 골라주세요"
+MSG_DATE_TOO_FAR = "약속 날짜는 1년 안으로 골라주세요"
 
 
 def _unique_slug(session: Session) -> str:
@@ -52,8 +61,18 @@ def _unique_slug(session: Session) -> str:
     return generate_slug(8)
 
 
+def _check_meet_date(meet_date: date, now: datetime) -> None:
+    # 먼 미래 날짜를 받으면 "약속 7일 뒤 삭제"가 사실상 무기한 보관이 된다.
+    today = kst_date(now)
+    if meet_date < today:
+        raise HTTPException(status_code=422, detail=MSG_DATE_PAST)
+    if meet_date > today + timedelta(days=MAX_MEET_DAYS_AHEAD):
+        raise HTTPException(status_code=422, detail=MSG_DATE_TOO_FAR)
+
+
 def create_room(session: Session, data: RoomCreate) -> Room:
     now = utcnow()
+    _check_meet_date(data.meet_date, now)
     expires = datetime.combine(data.meet_date, datetime.min.time()) + timedelta(days=ROOM_KEEP_DAYS)
     room = Room(
         slug=_unique_slug(session),
@@ -67,6 +86,7 @@ def create_room(session: Session, data: RoomCreate) -> Room:
     session.add(room)
     session.commit()
     session.refresh(room)
+    bump(session, "rooms_created", now)
     return room
 
 
@@ -87,7 +107,7 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
         return station.lat, station.lng
     try:
         point = geocoder.geocode(data.address or "")
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, UpstreamError) as exc:
         logger.warning("geocode failed error=%s", type(exc).__name__)
         raise HTTPException(status_code=503, detail=MSG_ADDRESS_NOT_FOUND) from exc
     if point is None:
@@ -118,6 +138,7 @@ def add_participant(
     session.commit()
     session.refresh(participant)
     session.refresh(room)
+    bump(session, "participants_added", participant.created_at)
     return participant
 
 
@@ -187,6 +208,29 @@ def _recommendation(
     )
 
 
+def _mark_first_result(session: Session, room: Room) -> None:
+    """추천이 처음 나온 방을 한 번만 센다. 폴링과 동시 요청에도 방당 한 번이다."""
+    if room.first_result_at is not None:
+        return
+    now = utcnow()
+    try:
+        claimed = session.execute(
+            update(Room)
+            .where(Room.id == room.id, Room.first_result_at.is_(None))
+            .values(first_result_at=now)
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        session.commit()
+    except SQLAlchemyError as exc:
+        session.rollback()
+        logger.warning("first result mark failed error=%s", type(exc).__name__)
+        return
+    if claimed == 1:
+        # 다시 조회하지 않고 읽어 둔 값만 맞춘다. 조회가 실패해 이미 만든 응답을 잃지 않게.
+        set_committed_value(room, "first_result_at", now)
+        bump(session, "rooms_with_result", now)
+
+
 def compute_result(
     session: Session,
     room: Room,
@@ -218,7 +262,7 @@ def compute_result(
     ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
     lines = hub_lines(hubs, stations)
     station_by_id = {s.id: s for s in stations}
-    return ResultOut(
+    result = ResultOut(
         status="ready",
         recommendations=[
             _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching, station_by_id)
@@ -228,3 +272,6 @@ def compute_result(
         regions=applied_regions,
         theme=applied_theme,
     )
+    # 응답을 다 만든 뒤에 표시한다. 통계 기록이 실패해도 응답은 그대로 나간다.
+    _mark_first_result(session, room)
+    return result

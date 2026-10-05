@@ -104,7 +104,7 @@ def place_search(
 ) -> PlaceSearchOut:
     try:
         found = suggest_places(local_client, data.q)
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, UpstreamError) as exc:
         # 검색어는 집 주소일 수 있어 남기지 않는다. 예외 클래스 이름만 기록한다.
         logger.warning("place search failed error=%s", type(exc).__name__)
         return PlaceSearchOut(items=[], error=MSG_CONTENT_UNAVAILABLE)

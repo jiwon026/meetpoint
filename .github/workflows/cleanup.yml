@@ -1,0 +1,29 @@
+name: cleanup
+
+on:
+  schedule:
+    # 매일 03:17 (한국 시간). GitHub의 cron은 UTC다.
+    - cron: "17 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install .
+      # 만료된 방과 30일 넘은 콘텐츠 캐시를 지운다. 이 접속이 Supabase 무료 플랜의 일주일 무활동 정지도 막는다.
+      - run: python -m scripts.cleanup_expired
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

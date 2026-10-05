@@ -5,6 +5,7 @@ export const MSG_NETWORK = "연결이 불안정해요. 잠시 후 다시 시도�
 export const MSG_INVALID_INPUT = "입력을 다시 확인해주세요";
 export const MSG_TITLE_REQUIRED = "모임 이름을 적어주세요";
 export const MSG_DATE_REQUIRED = "오늘 이후 날짜를 골라주세요";
+export const MSG_DATE_TOO_FAR = "약속 날짜는 1년 안으로 골라주세요";
 export const MSG_REGION_REQUIRED = "만날 지역을 하나 이상 골라주세요";
 export const MSG_NICKNAME_REQUIRED = "닉네임을 적어주세요";
 export const MSG_ORIGIN_REQUIRED = "출발지를 골라주세요";
@@ -26,6 +27,7 @@ export const MSG_LINK_COPY_FAILED = "복사하지 못했어요. 주소창의 링
 export const MSG_ROOM_CREATED = "방을 만들었어요. 링크를 복사했어요";
 export const MSG_ROOM_CREATED_NO_COPY = "방을 만들었어요";
 export const MSG_LOADING = "불러오는 중이에요";
+export const MSG_WAKING = "서버를 깨우는 중이에요. 최대 1분쯤 걸려요.";
 
 export function msgConfirmRemove(nickname: string): string {
   return `${nickname}님을 계산에서 뺄까요? 다시 넣을 수 있어요`;
