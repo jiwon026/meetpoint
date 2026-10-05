@@ -40,7 +40,7 @@ cp .env.example .env
 .venv/Scripts/python -m pipeline.load       # .env의 DATABASE_URL에 적재
 ```
 
-스키마가 바뀌면 `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `participants.active`, `hubs.themes`다. 이전 버전으로 만든 DB는 모든 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다. 방과 참여자 데이터도 함께 사라진다.
+스키마가 바뀌면 `scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `rooms.first_result_at`, `participants.active`, `hubs.themes`, 그리고 새 표 `daily_stats`다. 이전 버전으로 만든 DB는 모든 테이블을 지우고 `init_db`를 다시 실행한 뒤 적재한다. 로컬은 `dev.db` 파일을 지우면 된다. 방과 참여자 데이터도 함께 사라진다.
 
 원본을 갱신했으면 다시 계산한다.
 
@@ -70,3 +70,4 @@ cp .env.example .env
 
 - 만료 방 정리: `python -m scripts.cleanup_expired` 를 하루 한 번 (Railway cron). 만료된 방과 30일 넘은 콘텐츠 캐시를 함께 지운다.
 - 역간 시간표는 프로세스 시작 후 첫 결과 요청 때 메모리에 올라간다. 데이터 갱신 후에는 재시작한다.
+- 규모 통계: `python -m scripts.stats`가 `daily_stats`(날짜별 만든 방 수, 등록한 참가자 수, 추천까지 간 방 수)를 출력한다. 날짜는 한국 시간 기준이고 개인 정보는 들어 있지 않다. 방이 지워져도 남는다.

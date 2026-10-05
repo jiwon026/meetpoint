@@ -66,6 +66,8 @@ class Room(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     regions: Mapped[list[str]] = mapped_column(JSON, default=lambda: list(REGIONS))
     theme: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
+    # 추천이 처음 계산된 시각. 통계에서 방당 한 번만 세려고 둔다.
+    first_result_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     participants: Mapped[list["Participant"]] = relationship(
         back_populates="room", cascade="all, delete-orphan", order_by="Participant.id"
@@ -96,3 +98,14 @@ class ContentCache(Base):
     cache_key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     payload: Mapped[object] = mapped_column(JSON)
     fetched_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class DailyStat(Base):
+    """날짜별 개수만 담는다. 방이 지워져도 남는다. 개인 정보를 넣지 않는다."""
+
+    __tablename__ = "daily_stats"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)  # 한국 시간 기준
+    rooms_created: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    participants_added: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    rooms_with_result: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

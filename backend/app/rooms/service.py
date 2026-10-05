@@ -5,7 +5,8 @@ from datetime import date, datetime, timedelta
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.cache import utcnow
@@ -29,6 +30,7 @@ from app.schemas import (
     RoomOut,
 )
 from app.stations import all_stations
+from app.stats import bump
 from app.transit.matrix import StationTimeMatrix
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,7 @@ def create_room(session: Session, data: RoomCreate) -> Room:
     session.add(room)
     session.commit()
     session.refresh(room)
+    bump(session, "rooms_created", now)
     return room
 
 
@@ -133,6 +136,7 @@ def add_participant(
     session.commit()
     session.refresh(participant)
     session.refresh(room)
+    bump(session, "participants_added", participant.created_at)
     return participant
 
 
@@ -202,6 +206,28 @@ def _recommendation(
     )
 
 
+def _mark_first_result(session: Session, room: Room) -> None:
+    """추천이 처음 나온 방을 한 번만 센다. 폴링과 동시 요청에도 방당 한 번이다."""
+    if room.first_result_at is not None:
+        return
+    now = utcnow()
+    try:
+        claimed = session.execute(
+            update(Room)
+            .where(Room.id == room.id, Room.first_result_at.is_(None))
+            .values(first_result_at=now)
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        session.commit()
+    except SQLAlchemyError as exc:
+        session.rollback()
+        logger.warning("first result mark failed error=%s", type(exc).__name__)
+        return
+    session.refresh(room)
+    if claimed == 1:
+        bump(session, "rooms_with_result", now)
+
+
 def compute_result(
     session: Session,
     room: Room,
@@ -233,7 +259,7 @@ def compute_result(
     ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
     lines = hub_lines(hubs, stations)
     station_by_id = {s.id: s for s in stations}
-    return ResultOut(
+    result = ResultOut(
         status="ready",
         recommendations=[
             _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching, station_by_id)
@@ -243,3 +269,6 @@ def compute_result(
         regions=applied_regions,
         theme=applied_theme,
     )
+    # 응답을 다 만든 뒤에 표시한다. 통계 기록이 실패해도 응답은 그대로 나간다.
+    _mark_first_result(session, room)
+    return result
