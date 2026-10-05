@@ -27,6 +27,7 @@ export const MSG_LINK_COPY_FAILED = "복사하지 못했어요. 주소창의 링
 export const MSG_ROOM_CREATED = "방을 만들었어요. 링크를 복사했어요";
 export const MSG_ROOM_CREATED_NO_COPY = "방을 만들었어요";
 export const MSG_LOADING = "불러오는 중이에요";
+export const MSG_WAKING = "서버를 깨우는 중이에요. 최대 1분쯤 걸려요.";
 
 export function msgConfirmRemove(nickname: string): string {
   return `${nickname}님을 계산에서 뺄까요? 다시 넣을 수 있어요`;

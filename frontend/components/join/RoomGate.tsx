@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Loading } from "@/components/ui/Loading";
 import { CARD, PRIMARY_BUTTON } from "@/components/ui/styles";
 import { useRoom } from "@/lib/api/hooks";
 import type { RoomOut } from "@/lib/api/types";
-import { MSG_LOADING } from "@/lib/messages";
 
 type Props = { slug: string; children: (room: RoomOut) => ReactNode };
 
@@ -23,5 +23,5 @@ export function RoomGate({ slug, children }: Props) {
       </section>
     );
   }
-  return <p className="py-10 text-center text-ink-mute">{MSG_LOADING}</p>;
+  return <Loading />;
 }

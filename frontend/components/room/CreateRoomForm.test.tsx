@@ -1,6 +1,6 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
 import { API, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
@@ -116,4 +116,27 @@ test("성공 뒤에는 버튼이 비활성이라 다시 눌러도 요청은 한 
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(posts).toBe(1);
   expect(onCreated).toHaveBeenCalledOnce();
+});
+
+test("만들기가 4초 넘게 걸리면 서버를 깨우는 중이라고 알린다", async () => {
+  server.use(
+    http.post(`${API}/rooms`, async () => {
+      await delay("infinite");
+      return HttpResponse.json(room());
+    }),
+  );
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+    fill("금요일 저녁", "2026-10-10");
+    fireEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+    await screen.findByRole("button", { name: "만드는 중" });
+    expect(screen.queryByText(/서버를 깨우는 중/)).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+    expect(screen.getByText("서버를 깨우는 중이에요. 최대 1분쯤 걸려요.")).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });

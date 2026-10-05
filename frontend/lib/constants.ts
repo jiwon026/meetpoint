@@ -7,3 +7,6 @@ export const WALK_METERS_PER_MINUTE = 67;
 
 // 백엔드 rooms/service.py의 MAX_MEET_DAYS_AHEAD와 같은 값이다.
 export const MAX_MEET_DAYS_AHEAD = 365;
+
+// 이 시간이 지나도 응답이 없으면 무료 서버가 잠들었다 깨는 중이라고 본다.
+export const SLOW_MS = 4000;

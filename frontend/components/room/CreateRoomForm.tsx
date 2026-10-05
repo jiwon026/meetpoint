@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { SlowNote } from "@/components/ui/Loading";
 import { TicketCard } from "@/components/ui/TicketCard";
 import { INPUT, PRIMARY_BUTTON } from "@/components/ui/styles";
 import { useCreateRoom } from "@/lib/api/hooks";
@@ -100,6 +101,7 @@ export function CreateRoomForm({ today, onCreated }: Props) {
         <button type="submit" disabled={busy} className={PRIMARY_BUTTON}>
           {busy ? "만드는 중" : "방 만들고 링크 받기"}
         </button>
+        {create.isPending && <SlowNote />}
       </form>
     </TicketCard>
   );
