@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 ROOM_KEEP_DAYS = 7
 SLUG_RETRIES = 5
 MAX_PARTICIPANTS = 20
+# 프론트엔드 lib/constants.ts에 같은 값이 있다. 바꾸면 둘 다.
 MAX_MEET_DAYS_AHEAD = 365
 
 MSG_ADDRESS_NOT_FOUND = "주소를 찾지 못했어요. 역을 직접 골라주세요."

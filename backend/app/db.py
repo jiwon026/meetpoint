@@ -22,11 +22,20 @@ POOL_MAX_OVERFLOW = 5
 
 
 def make_engine(url: str) -> Engine:
+    # hide_parameters: 오류 문구에 닉네임, 좌표 같은 행 값이 실려 로그로 새지 않게 한다.
     url = normalize_database_url(url)
     if url.startswith("sqlite"):
-        return create_engine(url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+        return create_engine(
+            url, connect_args={"check_same_thread": False}, pool_pre_ping=True, hide_parameters=True
+        )
     # Supabase 세션 모드 풀러에 붙는다. 서버 인스턴스가 하나라는 전제의 크기다.
-    return create_engine(url, pool_pre_ping=True, pool_size=POOL_SIZE, max_overflow=POOL_MAX_OVERFLOW)
+    return create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_size=POOL_SIZE,
+        max_overflow=POOL_MAX_OVERFLOW,
+        hide_parameters=True,
+    )
 
 
 engine = make_engine(get_settings().database_url)
