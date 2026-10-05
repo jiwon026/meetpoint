@@ -188,3 +188,27 @@ def test_station_search_endpoint(client):
     body = client.get("/stations", params={"q": "입구"}).json()
     assert [s["name"] for s in body] == ["건대입구", "홍대입구"]
     assert set(body[0]) == {"id", "name", "line"}
+
+
+def test_create_room_rejects_past_date(client):
+    response = client.post("/rooms", json={"title": "t", "meet_date": "2026-09-19"})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "오늘 이후 날짜를 골라주세요"
+
+
+def test_create_room_accepts_today_and_one_year_ahead(client):
+    assert client.post("/rooms", json={"title": "t", "meet_date": "2026-09-20"}).status_code == 201
+    assert client.post("/rooms", json={"title": "t", "meet_date": "2027-09-20"}).status_code == 201
+
+
+def test_create_room_rejects_date_beyond_one_year(client):
+    response = client.post("/rooms", json={"title": "t", "meet_date": "2027-09-21"})
+    assert response.status_code == 422
+    assert response.json()["detail"] == "약속 날짜는 1년 안으로 골라주세요"
+
+
+def test_create_room_uses_korean_date_for_today(client, monkeypatch):
+    # UTC로는 9월 20일 15시 30분이지만 한국은 이미 21일이다.
+    monkeypatch.setattr("app.rooms.service.utcnow", lambda: datetime(2026, 9, 20, 15, 30))
+    response = client.post("/rooms", json={"title": "t", "meet_date": "2026-09-20"})
+    assert response.status_code == 422

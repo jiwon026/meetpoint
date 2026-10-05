@@ -55,6 +55,20 @@ test("지난 날짜는 요청하지 않고 안내한다", async () => {
   expect(screen.getByRole("alert")).toHaveTextContent("오늘 이후 날짜를 골라주세요");
 });
 
+test("1년 넘는 날짜는 요청하지 않고 안내한다", async () => {
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2027-10-03");
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("약속 날짜는 1년 안으로 골라주세요");
+});
+
+test("날짜 입력에 오늘과 1년 뒤를 범위로 건다", () => {
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  const input = screen.getByLabelText("약속 날짜");
+  expect(input).toHaveAttribute("min", "2026-10-02");
+  expect(input).toHaveAttribute("max", "2027-10-02");
+});
+
 test("고른 지역과 테마를 보내고 만든 방을 넘긴다", async () => {
   let body: unknown = null;
   server.use(

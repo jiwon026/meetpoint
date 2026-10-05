@@ -4,3 +4,6 @@ export const POLL_MS = 10_000;
 export const SEARCH_DEBOUNCE_MS = 300;
 // 도보 환산 속도. 측정값이 아니라 고른 값 (시속 4km).
 export const WALK_METERS_PER_MINUTE = 67;
+
+// 백엔드 rooms/service.py의 MAX_MEET_DAYS_AHEAD와 같은 값이다.
+export const MAX_MEET_DAYS_AHEAD = 365;

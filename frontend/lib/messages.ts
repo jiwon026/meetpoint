@@ -5,6 +5,7 @@ export const MSG_NETWORK = "연결이 불안정해요. 잠시 후 다시 시도�
 export const MSG_INVALID_INPUT = "입력을 다시 확인해주세요";
 export const MSG_TITLE_REQUIRED = "모임 이름을 적어주세요";
 export const MSG_DATE_REQUIRED = "오늘 이후 날짜를 골라주세요";
+export const MSG_DATE_TOO_FAR = "약속 날짜는 1년 안으로 골라주세요";
 export const MSG_REGION_REQUIRED = "만날 지역을 하나 이상 골라주세요";
 export const MSG_NICKNAME_REQUIRED = "닉네임을 적어주세요";
 export const MSG_ORIGIN_REQUIRED = "출발지를 골라주세요";
