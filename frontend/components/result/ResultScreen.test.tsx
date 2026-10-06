@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
 import type { ResultOut } from "@/lib/api/types";
+import { track } from "@/lib/analytics";
 import { NO_FILTER } from "@/lib/filter";
 import { API, leg, rec, result } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
@@ -133,4 +134,82 @@ test("결과 링크 복사는 필터가 붙은 주소를 복사한다", async ()
   await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("링크를 복사했어요"));
   expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/result?theme=cafe`);
+});
+
+test("준비된 결과를 처음 보여줄 때 한 번만 통계를 남기고, 다시 불러와도 반복하지 않는다", async () => {
+  serve(result({ recommendations: TWO_HUBS, theme: "cafe", regions: ["서울", "경기"] }));
+  const { rerender } = show();
+  await screen.findAllByTestId("hub-card");
+  expect(track).toHaveBeenCalledExactlyOnceWith("result_viewed", {
+    participant_count: 2,
+    regions: "서울,경기",
+    theme: "cafe",
+    recommendation_count: 2,
+  });
+
+  // 필터를 바꿔 다른 결과가 와도 같은 화면이므로 다시 남기지 않는다.
+  serve(result({ recommendations: [TWO_HUBS[1]], theme: null, regions: ["서울"] }));
+  rerender(
+    <ResultScreen
+      slug="abc123"
+      filter={{ regions: ["서울"], theme: null }}
+      onFilterChange={vi.fn()}
+      onAddPeople={vi.fn()}
+    />,
+  );
+  await waitFor(() => expect(screen.getAllByTestId("hub-card")).toHaveLength(1));
+  expect(vi.mocked(track).mock.calls.filter(([event]) => event === "result_viewed")).toHaveLength(1);
+});
+
+test("대기 상태에서는 결과 통계를 남기지 않는다", async () => {
+  serve(result({ status: "waiting", recommendations: [], best_max_minutes: null }));
+  show();
+  await screen.findByText("친구를 초대하세요. 두 명부터 추천이 나와요.");
+  expect(track).not.toHaveBeenCalled();
+});
+
+test("테마가 없는 결과는 theme을 none으로 남긴다", async () => {
+  serve(result({ recommendations: [rec()], theme: null }));
+  show();
+  await screen.findAllByTestId("hub-card");
+  expect(track).toHaveBeenCalledWith("result_viewed", expect.objectContaining({ theme: "none", recommendation_count: 1 }));
+});
+
+test("다른 카드를 펼칠 때만 그 카드의 순위를 남긴다", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  show();
+  const cards = await screen.findAllByTestId("hub-card");
+  vi.mocked(track).mockClear();
+  // 이미 펼쳐진 1위 카드를 누르는 것은 새로 여는 것이 아니다.
+  await userEvent.click(within(cards[0]).getByRole("button", { expanded: true }));
+  expect(track).not.toHaveBeenCalled();
+  await userEvent.click(within(cards[1]).getByRole("button", { expanded: false }));
+  expect(track).toHaveBeenCalledExactlyOnceWith("hub_card_opened", { rank: 2 });
+});
+
+test("길찾기 링크를 누르면 그 카드의 순위를 남긴다", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  show();
+  const cards = await screen.findAllByTestId("hub-card");
+  await userEvent.click(within(cards[0]).getByRole("link", { name: "민수 길찾기" }));
+  expect(track).toHaveBeenCalledWith("directions_clicked", { rank: 1 });
+  await userEvent.click(within(cards[1]).getByRole("button", { expanded: false }));
+  await userEvent.click(within(cards[1]).getByRole("link", { name: "수진 길찾기" }));
+  expect(track).toHaveBeenLastCalledWith("directions_clicked", { rank: 2 });
+});
+
+test("결과 링크를 복사하면 result로 남기고, 대기 화면의 초대 링크 복사도 result", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  const user = userEvent.setup();
+  const { unmount } = show();
+  await screen.findAllByTestId("hub-card");
+  await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
+  await waitFor(() => expect(track).toHaveBeenCalledWith("link_copied", { place: "result" }));
+  unmount();
+
+  vi.mocked(track).mockClear();
+  serve(result({ status: "waiting", recommendations: [], best_max_minutes: null }));
+  show();
+  await user.click(await screen.findByRole("button", { name: "초대 링크 복사" }));
+  await waitFor(() => expect(track).toHaveBeenCalledWith("link_copied", { place: "result" }));
 });

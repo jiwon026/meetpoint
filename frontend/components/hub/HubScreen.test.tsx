@@ -3,6 +3,7 @@ import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
+import { track } from "@/lib/analytics";
 import { NO_FILTER } from "@/lib/filter";
 import { API, rec, result } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
@@ -199,4 +200,87 @@ test("정렬은 맛집과 카페 탭에만 있고, 고른 정렬은 탭을 옮�
   await waitFor(() => expect(urls.at(-1)?.searchParams.get("kind")).toBe("cafe"));
   expect(urls.at(-1)?.searchParams.get("sort")).toBe("distance");
   expect(screen.getByRole("button", { name: "가까운 순" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("거점 화면을 처음 보여줄 때 한 번만 이름, 지역, 결과 안의 순위를 남긴다", async () => {
+  server.use(
+    http.get(`${API}/rooms/abc123/result`, () =>
+      HttpResponse.json(
+        result({ recommendations: [rec({ hub_id: 5, name: "교대", region: "서울" }), rec({ hub_id: 1, name: "판교", region: "경기" })] }),
+      ),
+    ),
+  );
+  serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  show();
+  await screen.findByText("양재 국밥집");
+  expect(track).toHaveBeenCalledWith("hub_viewed", { hub_name: "판교", region: "경기", rank: 2 });
+  // 탭을 바꿔 다시 그려져도 반복하지 않는다.
+  await userEvent.click(screen.getByRole("tab", { name: "카페" }));
+  await screen.findByText("양재 국밥집");
+  expect(vi.mocked(track).mock.calls.filter(([event]) => event === "hub_viewed")).toHaveLength(1);
+});
+
+test("거점이 없어 안내로 넘어갈 때는 hub_viewed를 남기지 않는다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: [], error: null }));
+  const onGone = show(vi.fn(), 999);
+  await waitFor(() => expect(onGone).toHaveBeenCalledOnce());
+  expect(track).not.toHaveBeenCalled();
+});
+
+test("다른 탭을 고르면 종류를 남기고, 이미 열린 탭을 다시 눌러서는 남기지 않는다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: kind === "event" ? [EVENT] : [PLACE], error: null }));
+  show();
+  await screen.findByText("양재 국밥집");
+  await userEvent.click(screen.getByRole("tab", { name: "맛집" }));
+  expect(vi.mocked(track).mock.calls.filter(([event]) => event === "content_tab_selected")).toHaveLength(0);
+  await userEvent.click(screen.getByRole("tab", { name: "행사" }));
+  expect(track).toHaveBeenLastCalledWith("content_tab_selected", { kind: "event" });
+  await userEvent.click(screen.getByRole("tab", { name: "놀거리" }));
+  expect(track).toHaveBeenLastCalledWith("content_tab_selected", { kind: "play" });
+});
+
+test("정렬을 바꾸면 종류와 정렬을 남기고, 같은 정렬을 다시 눌러서는 남기지 않는다", async () => {
+  serveResult();
+  serveContentUrls();
+  show();
+  await screen.findByText("소문난 한정식");
+  await userEvent.click(screen.getByRole("button", { name: "추천순" }));
+  expect(vi.mocked(track).mock.calls.filter(([event]) => event === "place_sort_changed")).toHaveLength(0);
+  await userEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+  expect(track).toHaveBeenLastCalledWith("place_sort_changed", { kind: "food", sort: "distance" });
+  await userEvent.click(screen.getByRole("tab", { name: "카페" }));
+  await userEvent.click(screen.getByRole("button", { name: "추천순" }));
+  expect(track).toHaveBeenLastCalledWith("place_sort_changed", { kind: "cafe", sort: "recommended" });
+});
+
+test("장소의 카카오맵 링크를 누르면 종류, 정렬, 위치(1부터)를 남긴다", async () => {
+  serveResult();
+  serveContent((kind) =>
+    HttpResponse.json({
+      kind,
+      items: [PLACE, { ...PLACE, id: "101", name: "두 번째 집", url: "https://place.map.kakao.com/101" }],
+      error: null,
+    }),
+  );
+  show();
+  await screen.findByText("두 번째 집");
+  const links = screen.getAllByRole("link", { name: "카카오맵에서 별점, 리뷰 보기" });
+  await userEvent.click(links[1]);
+  expect(track).toHaveBeenLastCalledWith("place_link_clicked", { kind: "food", sort: "recommended", position: 2 });
+  await userEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+  await userEvent.click((await screen.findAllByRole("link", { name: "카카오맵에서 별점, 리뷰 보기" }))[0]);
+  expect(track).toHaveBeenLastCalledWith("place_link_clicked", { kind: "food", sort: "distance", position: 1 });
+});
+
+test("정렬이 없는 놀거리 탭의 링크는 기본 정렬로 남긴다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  show();
+  await screen.findByText("양재 국밥집");
+  await userEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+  await userEvent.click(screen.getByRole("tab", { name: "놀거리" }));
+  await userEvent.click(await screen.findByRole("link", { name: "카카오맵에서 별점, 리뷰 보기" }));
+  expect(track).toHaveBeenLastCalledWith("place_link_clicked", { kind: "play", sort: "recommended", position: 1 });
 });

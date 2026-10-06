@@ -33,6 +33,11 @@ export function addDaysIso(iso: string, days: number): string {
   return todayIso(date);
 }
 
+// 두 날짜(YYYY-MM-DD) 사이의 일수. 뒤가 앞보다 이르면 음수.
+export function daysBetween(fromIso: string, toIso: string): number {
+  return Math.round((parseIsoDate(toIso).getTime() - parseIsoDate(fromIso).getTime()) / DAY_MS);
+}
+
 export function formatMeetDate(iso: string): string {
   const date = parseIsoDate(iso);
   return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`;

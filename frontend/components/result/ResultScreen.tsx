@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShareButtons } from "@/components/join/ShareButtons";
 import { KakaoMap } from "@/components/map/KakaoMap";
 import { legOrigins } from "@/lib/origins";
@@ -9,6 +9,7 @@ import { Loading } from "@/components/ui/Loading";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
 import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
+import { track } from "@/lib/analytics";
 import { useResult } from "@/lib/api/hooks";
 import { SERVICE_NAME } from "@/lib/constants";
 import { filterQuery, type ResultFilter } from "@/lib/filter";
@@ -20,7 +21,7 @@ import {
   MSG_NO_ROUTE,
 } from "@/lib/messages";
 import { readMine } from "@/lib/myParticipants";
-import { isAllRegions } from "@/lib/regions";
+import { isAllRegions, parseRegions } from "@/lib/regions";
 import { copyText } from "@/lib/share";
 import { FilterBar } from "./FilterBar";
 import { HubCard } from "./HubCard";
@@ -38,7 +39,21 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
   const [mine] = useState(() => readMine(slug));
   const toast = useToast();
 
-  if (!result.data) {
+  // 준비된 결과를 처음 보여줄 때 한 번만 통계를 남긴다. 폴링이나 필터 변경으로 다시 와도 반복하지 않는다.
+  const viewed = useRef(false);
+  const data = result.data;
+  useEffect(() => {
+    if (viewed.current || data?.status !== "ready") return;
+    viewed.current = true;
+    track("result_viewed", {
+      participant_count: data.recommendations[0]?.legs.length ?? 0,
+      regions: parseRegions(data.regions).join(","),
+      theme: data.theme ?? "none",
+      recommendation_count: data.recommendations.length,
+    });
+  }, [data]);
+
+  if (!data) {
     if (result.error) {
       return (
         <section role="alert" className={`${CARD} space-y-4 text-center`}>
@@ -52,12 +67,11 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
     return <Loading />;
   }
 
-  const data = result.data;
   if (data.status === "waiting") {
     return (
       <section className={`${CARD} space-y-4 text-center`}>
         <p className="font-bold">{MSG_NEED_TWO}</p>
-        <ShareButtons slug={slug} title={SERVICE_NAME} />
+        <ShareButtons slug={slug} title={SERVICE_NAME} place="result" />
         <button type="button" onClick={onAddPeople} className={PRIMARY_BUTTON}>
           사람 추가
         </button>
@@ -71,7 +85,9 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
   const open = recs.some((rec) => rec.hub_id === openId) ? openId : (recs[0]?.hub_id ?? null);
   const copyLink = async () => {
     const url = `${window.location.origin}/r/${slug}/result${query}`;
-    toast((await copyText(url)) ? MSG_LINK_COPIED : MSG_LINK_COPY_FAILED);
+    const copied = await copyText(url);
+    toast(copied ? MSG_LINK_COPIED : MSG_LINK_COPY_FAILED);
+    if (copied) track("link_copied", { place: "result" });
   };
 
   return (
@@ -101,7 +117,11 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
                   rec={rec}
                   rank={index + 1}
                   expanded={rec.hub_id === open}
-                  onToggle={() => setOpenId(rec.hub_id)}
+                  onToggle={() => {
+                    // 이미 펼쳐진 카드를 다시 누르는 것은 새로 여는 것이 아니다.
+                    if (rec.hub_id !== open) track("hub_card_opened", { rank: index + 1 });
+                    setOpenId(rec.hub_id);
+                  }}
                   best={data.best_max_minutes}
                   mine={mine}
                   href={`/r/${slug}/hubs/${rec.hub_id}${query}`}

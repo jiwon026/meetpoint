@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { KakaoMap } from "@/components/map/KakaoMap";
 import { Chip } from "@/components/ui/Chip";
+import { track } from "@/lib/analytics";
 import { useHubContent } from "@/lib/api/hooks";
 import type { EventItem, Place } from "@/lib/api/types";
 import { MSG_LOADING, MSG_NOTHING_NEARBY, MSG_SORT_NOTE } from "@/lib/messages";
@@ -42,13 +43,22 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
   }));
 
   const select = (next: ContentKind) => {
+    if (next !== kind) track("content_tab_selected", { kind: next });
     setActiveId(null);
     setKind(next);
   };
 
   const reorder = (next: PlaceSort) => {
+    // 정렬 칩은 맛집과 카페 탭에만 보인다.
+    if (next !== sort && (kind === "food" || kind === "cafe")) track("place_sort_changed", { kind, sort: next });
     setActiveId(null);
     setSort(next);
+  };
+
+  // 정렬을 고르지 않는 놀거리는 기본 정렬로 남긴다.
+  const linkClicked = (position: number) => {
+    if (kind === "event") return;
+    track("place_link_clicked", { kind, sort: isSortable(kind) ? sort : DEFAULT_PLACE_SORT, position });
   };
 
   return (
@@ -93,7 +103,13 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
       <ul className="space-y-2">
         {places.map((place, index) => (
           <li key={place.id}>
-            <PlaceCard place={place} index={index} active={place.id === activeId} onSelect={() => setActiveId(place.id)} />
+            <PlaceCard
+              place={place}
+              index={index}
+              active={place.id === activeId}
+              onSelect={() => setActiveId(place.id)}
+              onLinkClick={() => linkClicked(index + 1)}
+            />
           </li>
         ))}
         {events.map((event) => (

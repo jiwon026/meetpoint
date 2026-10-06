@@ -19,6 +19,9 @@ http://localhost:3000 에서 연다.
 |---|---|
 | NEXT_PUBLIC_API_BASE | 백엔드 주소. 기본 http://localhost:8000 |
 | NEXT_PUBLIC_KAKAO_JS_KEY | 카카오 JavaScript 키. 비워두면 지도만 빠지고 나머지는 동작한다 |
+| NEXT_PUBLIC_AMPLITUDE_API_KEY | Amplitude API 키. 익명 이용 통계를 보낸다. 비워두면 통계가 꺼진다 (로컬, 테스트, e2e는 비운다) |
+
+통계 이벤트는 `lib/analytics.ts`에 타입으로 정해 둔 것만 보낸다. 닉네임, 역 이름, 주소, 검색어, 좌표, 방 링크(슬러그)는 어떤 이벤트에도 넣지 않는다. 방 주소에 슬러그가 들어 있어서 페이지 주소를 보내는 자동 수집도 모두 꺼 두었다.
 
 지도를 쓰려면 카카오 개발자 콘솔의 앱 플랫폼 설정에서 Web 사이트 도메인에 `http://localhost:3000`을 등록한다.
 

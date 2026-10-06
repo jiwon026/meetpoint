@@ -4,10 +4,11 @@ import { useState, type FormEvent } from "react";
 import { SlowNote } from "@/components/ui/Loading";
 import { TicketCard } from "@/components/ui/TicketCard";
 import { INPUT, PRIMARY_BUTTON } from "@/components/ui/styles";
+import { track } from "@/lib/analytics";
 import { useCreateRoom } from "@/lib/api/hooks";
 import type { RoomOut } from "@/lib/api/types";
 import { MAX_MEET_DAYS_AHEAD } from "@/lib/constants";
-import { addDaysIso } from "@/lib/format";
+import { addDaysIso, daysBetween } from "@/lib/format";
 import {
   MSG_DATE_REQUIRED,
   MSG_DATE_TOO_FAR,
@@ -56,7 +57,18 @@ export function CreateRoomForm({ today, onCreated }: Props) {
     setProblem(null);
     create.mutate(
       { title: name, meet_date: meetDate, regions, theme },
-      { onSuccess: onCreated, onError: (error) => setProblem(error.message) },
+      {
+        onSuccess: (room) => {
+          track("room_created", {
+            regions: regions.join(","),
+            region_count: regions.length,
+            theme: theme ?? "none",
+            days_until_meet: daysBetween(today, room.meet_date),
+          });
+          onCreated(room);
+        },
+        onError: (error) => setProblem(error.message),
+      },
     );
   };
 

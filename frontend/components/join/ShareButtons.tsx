@@ -8,8 +8,8 @@ import { useCopyInviteLink } from "./useCopyInviteLink";
 
 const noSubscribe = () => () => {};
 
-export function ShareButtons({ slug, title }: { slug: string; title: string }) {
-  const copy = useCopyInviteLink(slug);
+export function ShareButtons({ slug, title, place }: { slug: string; title: string; place: "join" | "result" }) {
+  const copy = useCopyInviteLink(slug, place);
   // 서버 렌더와 첫 클라이언트 렌더가 같도록 공유 기능 유무는 마운트 뒤에만 읽는다.
   const canShare = useSyncExternalStore(
     noSubscribe,
