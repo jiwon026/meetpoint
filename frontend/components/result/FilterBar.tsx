@@ -1,5 +1,6 @@
 import { RegionChips } from "@/components/room/RegionChips";
 import { Chip } from "@/components/ui/Chip";
+import { track } from "@/lib/analytics";
 import type { ResultFilter } from "@/lib/filter";
 import { parseRegions } from "@/lib/regions";
 import { THEME_OFF, THEMES } from "@/lib/themes";
@@ -17,13 +18,23 @@ export function FilterBar({ filter, appliedRegions, appliedTheme, onChange }: Pr
   const theme = filter.theme === THEME_OFF ? null : (filter.theme ?? appliedTheme);
   return (
     <section aria-label="추천 조건" className="space-y-2">
-      <RegionChips value={regions} onChange={(next) => onChange({ ...filter, regions: next })} />
+      <RegionChips
+        value={regions}
+        onChange={(next) => {
+          track("result_filter_changed", { kind: "region", value: next.join(",") });
+          onChange({ ...filter, regions: next });
+        }}
+      />
       <div role="group" aria-label="테마" className="flex flex-wrap gap-2">
         {THEMES.map((item) => (
           <Chip
             key={item.id}
             selected={theme === item.id}
-            onClick={() => onChange({ ...filter, theme: theme === item.id ? THEME_OFF : item.id })}
+            onClick={() => {
+              const next = theme === item.id ? THEME_OFF : item.id;
+              track("result_filter_changed", { kind: "theme", value: next });
+              onChange({ ...filter, theme: next });
+            }}
           >
             {item.label}
           </Chip>

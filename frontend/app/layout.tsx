@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import localFont from "next/font/local";
 import { AppHeader } from "@/components/ui/AppHeader";
 import "./globals.css";
@@ -26,6 +27,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto min-h-dvh max-w-[480px] px-4 pb-32 pt-4">
             <AppHeader />
             {children}
+            {/* 아래 여백(pb-32)이 하단 고정 바보다 높아서 바에 가려지지 않는다 */}
+            <footer className="mt-10 text-center text-xs text-ink-mute">
+              <Link href="/privacy" className="underline">
+                개인정보 안내
+              </Link>
+            </footer>
           </div>
         </Providers>
       </body>

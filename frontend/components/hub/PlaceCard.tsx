@@ -2,9 +2,9 @@ import { CARD } from "@/components/ui/styles";
 import type { Place } from "@/lib/api/types";
 import { walkMinutes } from "@/lib/format";
 
-type Props = { place: Place; index: number; active: boolean; onSelect: () => void };
+type Props = { place: Place; index: number; active: boolean; onSelect: () => void; onLinkClick: () => void };
 
-export function PlaceCard({ place, index, active, onSelect }: Props) {
+export function PlaceCard({ place, index, active, onSelect, onLinkClick }: Props) {
   return (
     <article className={`${CARD} ${active ? "border-primary" : ""}`}>
       <button type="button" onClick={onSelect} className="flex w-full items-start gap-3 text-left">
@@ -22,6 +22,7 @@ export function PlaceCard({ place, index, active, onSelect }: Props) {
       </button>
       <a
         href={place.url}
+        onClick={onLinkClick}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-2 inline-block text-sm font-semibold text-primary underline"

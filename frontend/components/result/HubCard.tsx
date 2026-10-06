@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LineBadge } from "@/components/ui/LineBadge";
 import { Stamp } from "@/components/ui/Stamp";
 import { CARD, PRIMARY_BUTTON } from "@/components/ui/styles";
+import { track } from "@/lib/analytics";
 import type { RecommendationOut } from "@/lib/api/types";
 import { aboutMinutes } from "@/lib/format";
 import { MSG_LEGS_MISSING, MSG_THEME_MATCH, msgSlowerThanBest } from "@/lib/messages";
@@ -65,7 +66,12 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Pro
           ) : (
             <>
               <FairnessStats legs={rec.legs} spread={rec.spread_minutes} />
-              <LegBars legs={rec.legs} mine={mine} destination={{ name: rec.name, lat: rec.lat, lng: rec.lng }} />
+              <LegBars
+                legs={rec.legs}
+                mine={mine}
+                destination={{ name: rec.name, lat: rec.lat, lng: rec.lng }}
+                onDirections={() => track("directions_clicked", { rank })}
+              />
             </>
           )}
           <Link href={href} className={PRIMARY_BUTTON}>

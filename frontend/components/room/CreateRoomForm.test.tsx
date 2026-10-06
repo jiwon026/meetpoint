@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { expect, test, vi } from "vitest";
+import { track } from "@/lib/analytics";
 import { API, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
@@ -139,4 +140,40 @@ test("만들기가 4초 넘게 걸리면 서버를 깨우는 중이라고 알린
   } finally {
     vi.useRealTimers();
   }
+});
+
+test("방이 만들어지면 고른 지역과 테마, 약속까지 남은 날수를 통계로 남긴다", async () => {
+  server.use(http.post(`${API}/rooms`, () => HttpResponse.json(room({ meet_date: "2026-10-10" }), { status: 201 })));
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2026-10-10", ["경기", "서울"]);
+  await userEvent.click(screen.getByRole("button", { name: /카페/ }));
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  await waitFor(() => expect(track).toHaveBeenCalledOnce());
+  expect(track).toHaveBeenCalledWith("room_created", {
+    regions: "서울,경기",
+    region_count: 2,
+    theme: "cafe",
+    days_until_meet: 8,
+  });
+});
+
+test("테마를 고르지 않으면 none으로 남기고, 방 만들기가 실패하면 남기지 않는다", async () => {
+  server.use(http.post(`${API}/rooms`, () => HttpResponse.json(room(), { status: 201 })));
+  const { unmount } = renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2026-10-10", ["인천"]);
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  await waitFor(() => expect(track).toHaveBeenCalledOnce());
+  expect(track).toHaveBeenCalledWith(
+    "room_created",
+    expect.objectContaining({ regions: "인천", region_count: 1, theme: "none" }),
+  );
+  unmount();
+
+  vi.mocked(track).mockClear();
+  server.use(http.post(`${API}/rooms`, () => HttpResponse.json({ detail: "문제가 생겼어요" }, { status: 500 })));
+  renderWithClient(<CreateRoomForm today={TODAY} onCreated={vi.fn()} />);
+  fill("금요일 저녁", "2026-10-10");
+  await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("문제가 생겼어요");
+  expect(track).not.toHaveBeenCalled();
 });

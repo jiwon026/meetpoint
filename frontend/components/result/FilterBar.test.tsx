@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
+import { track } from "@/lib/analytics";
 import { FilterBar } from "./FilterBar";
 
 const ALL = ["서울", "경기", "인천"];
@@ -50,4 +51,20 @@ test("URL이 any면 방 테마가 있어도 꺼진 상태", () => {
   for (const label of ["맛집", "카페", "술자리", "놀거리"]) {
     expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
   }
+});
+
+test("필터를 바꾸면 지역은 쉼표로 이은 목록, 테마는 id나 any로 통계를 남긴다", async () => {
+  const { rerender } = render(
+    <FilterBar filter={{ regions: null, theme: null }} appliedRegions={ALL} appliedTheme={null} onChange={vi.fn()} />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "경기" }));
+  expect(track).toHaveBeenLastCalledWith("result_filter_changed", { kind: "region", value: "서울,인천" });
+  await userEvent.click(screen.getByRole("button", { name: "카페" }));
+  expect(track).toHaveBeenLastCalledWith("result_filter_changed", { kind: "theme", value: "cafe" });
+  rerender(
+    <FilterBar filter={{ regions: null, theme: null }} appliedRegions={ALL} appliedTheme="cafe" onChange={vi.fn()} />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "카페" }));
+  expect(track).toHaveBeenLastCalledWith("result_filter_changed", { kind: "theme", value: "any" });
+  expect(track).toHaveBeenCalledTimes(3);
 });

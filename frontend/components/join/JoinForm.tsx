@@ -7,7 +7,7 @@ import type { ParticipantOut } from "@/lib/api/types";
 import { MSG_NICKNAME_REQUIRED, MSG_ORIGIN_REQUIRED } from "@/lib/messages";
 import { OriginSearch, type Origin, type OriginMode } from "./OriginSearch";
 
-type Props = { slug: string; onJoined: (participant: ParticipantOut) => void };
+type Props = { slug: string; onJoined: (participant: ParticipantOut, method: OriginMode) => void };
 
 export function JoinForm({ slug, onJoined }: Props) {
   const [nickname, setNickname] = useState("");
@@ -39,7 +39,7 @@ export function JoinForm({ slug, onJoined }: Props) {
         setNickname("");
         setOrigin(null);
         setRound((n) => n + 1);
-        onJoined(participant);
+        onJoined(participant, origin.kind);
       },
       onError: (error) => {
         setProblem(error.message);

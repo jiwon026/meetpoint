@@ -10,9 +10,11 @@ type Props = {
   mine: readonly number[];
   // 추천 거점. 주면 사람마다 그곳까지의 길찾기 링크를 단다.
   destination?: MapPoint;
+  // 길찾기 링크를 눌렀을 때 부른다 (통계용).
+  onDirections?: () => void;
 };
 
-export function LegBars({ legs, mine, destination }: Props) {
+export function LegBars({ legs, mine, destination, onDirections }: Props) {
   const longest = Math.max(...legs.map((leg) => leg.minutes), 1);
   return (
     <ul className="space-y-2.5">
@@ -37,6 +39,7 @@ export function LegBars({ legs, mine, destination }: Props) {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${leg.nickname} 길찾기`}
+                    onClick={onDirections}
                     className="shrink-0 text-xs font-semibold text-primary underline"
                   >
                     길찾기

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, expect, test, vi } from "vitest";
+import { track } from "@/lib/analytics";
 import { API, participant, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
@@ -103,4 +104,85 @@ test("한 명 이하면 초대 안내와 함께 링크 복사 버튼을 보여�
   const hint = screen.getByText("친구를 초대하세요. 두 명부터 추천이 나와요.");
   await user.click(within(hint.parentElement as HTMLElement).getByRole("button", { name: "초대 링크 복사" }));
   expect(await screen.findByText("링크를 복사했어요")).toBeInTheDocument();
+});
+
+test("화면이 처음 열릴 때 한 번만 통계를 남기고, 다시 그려져도 반복하지 않는다", () => {
+  const { rerender } = renderWithClient(
+    <JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />,
+  );
+  expect(track).toHaveBeenCalledExactlyOnceWith("join_viewed", { participant_count: 2 });
+  // 폴링으로 방이 새로 와도 다시 남기지 않는다.
+  rerender(
+    <JoinScreen
+      slug="abc123"
+      room={room({ participants: [...TWO, participant({ id: 3, nickname: "지은", active: false })] })}
+      onShowResult={vi.fn()}
+    />,
+  );
+  expect(track).toHaveBeenCalledOnce();
+});
+
+test("역으로 등록하면 방법과 등록 뒤 인원을 통계로 남긴다", async () => {
+  server.use(
+    http.get(`${API}/stations`, () => HttpResponse.json([{ id: 222, name: "강남", line: "2호선" }])),
+    http.post(`${API}/rooms/abc123/participants`, () =>
+      HttpResponse.json(participant({ id: 9, nickname: "지은" }), { status: 201 }),
+    ),
+  );
+  const user = userEvent.setup();
+  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  await user.type(screen.getByLabelText("닉네임"), "지은");
+  await user.type(screen.getByLabelText("출발지 검색"), "강남");
+  await user.click(await screen.findByRole("button", { name: /강남/ }));
+  await user.click(screen.getByRole("button", { name: "출발지 등록" }));
+  await waitFor(() =>
+    expect(track).toHaveBeenCalledWith("participant_added", { method: "station", participant_count: 3 }),
+  );
+});
+
+test("주소로 등록하면 address로 남기고, 등록이 실패하면 남기지 않는다", async () => {
+  server.use(
+    http.post(`${API}/places/search`, () =>
+      HttpResponse.json({ items: [{ name: "우리집", address: "서울 어딘가 1" }], error: null }),
+    ),
+    http.post(`${API}/rooms/abc123/participants`, () =>
+      HttpResponse.json({ detail: "주소를 찾지 못했어요. 역을 직접 골라주세요." }, { status: 422 }),
+    ),
+  );
+  const user = userEvent.setup();
+  renderWithClient(<JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />);
+  await user.type(screen.getByLabelText("닉네임"), "지은");
+  await user.click(screen.getByRole("tab", { name: "주소, 건물명 검색" }));
+  await user.type(screen.getByLabelText("출발지 검색"), "우리집");
+  await user.click(await screen.findByRole("button", { name: /우리집/ }));
+  await user.click(screen.getByRole("button", { name: "출발지 등록" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("주소를 찾지 못했어요");
+  expect(track).not.toHaveBeenCalledWith("participant_added", expect.anything());
+
+  server.use(
+    http.post(`${API}/rooms/abc123/participants`, () =>
+      HttpResponse.json(participant({ id: 9, nickname: "지은" }), { status: 201 }),
+    ),
+  );
+  await user.click(screen.getByRole("tab", { name: "주소, 건물명 검색" }));
+  await user.type(screen.getByLabelText("출발지 검색"), "우리집");
+  await user.click(await screen.findByRole("button", { name: /우리집/ }));
+  await user.click(screen.getByRole("button", { name: "출발지 등록" }));
+  await waitFor(() =>
+    expect(track).toHaveBeenCalledWith("participant_added", { method: "address", participant_count: 1 }),
+  );
+});
+
+test("초대 링크를 복사하면 join으로 남기고, 복사에 실패하면 남기지 않는다", async () => {
+  const user = userEvent.setup();
+  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  await user.click(screen.getByRole("button", { name: "초대 링크 복사" }));
+  await screen.findByText("링크를 복사했어요");
+  expect(track).toHaveBeenCalledWith("link_copied", { place: "join" });
+
+  vi.mocked(track).mockClear();
+  vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
+  await user.click(screen.getByRole("button", { name: "초대 링크 복사" }));
+  await screen.findByText("복사하지 못했어요. 주소창의 링크를 직접 복사해주세요.");
+  expect(track).not.toHaveBeenCalled();
 });
