@@ -35,6 +35,7 @@ test("1위 카드가 펼쳐진 채로 시작하고 다른 카드를 누르면 �
   expect(within(cards[0]).getByText("1위")).toBeInTheDocument();
   expect(within(cards[1]).getByRole("button", { expanded: false })).toBeInTheDocument();
   expect(within(cards[1]).getByTestId("hub-summary")).toHaveTextContent("서울, 최대 약 25분, 차이 12분");
+  expect(screen.getByText(/지하철 이동 시간 기준이에요/)).toBeInTheDocument();
 
   await userEvent.click(within(cards[1]).getByRole("button", { expanded: false }));
   expect(within(cards[1]).getByRole("button", { expanded: true })).toBeInTheDocument();
@@ -82,6 +83,7 @@ test("지역을 좁혀서 추천이 없으면 지역을 넓히라고 안내한�
   serve(result({ recommendations: [], best_max_minutes: null, regions: ["인천"] }));
   show({ filter: { regions: ["인천"], theme: null } });
   expect(await screen.findByText("이 지역엔 추천할 곳이 없어요. 지역을 넓혀보세요.")).toBeInTheDocument();
+  expect(screen.queryByText(/지하철 이동 시간 기준이에요/)).toBeNull();
   // 필터는 그대로 보여서 다시 넓힐 수 있어야 한다
   expect(screen.getByRole("button", { name: "서울" })).toBeInTheDocument();
 });
