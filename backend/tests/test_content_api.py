@@ -163,3 +163,23 @@ def test_stale_cache_is_served_for_the_requested_sort(client, seeded):
     slug = _room_slug(client)
     assert client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food", "sort": "distance"}).json()["items"][0]["name"] == "가까운 옛날집"
     assert client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food"}).json()["items"] == []
+
+
+@respx.mock
+def test_drink_content_is_served(client):
+    docs = [
+        {
+            "id": "7", "place_name": "홍대 포차", "category_name": "음식점 > 술집 > 실내포장마차",
+            "road_address_name": "서울 마포구 어울마당로 1", "distance": "80",
+            "place_url": "http://place.map.kakao.com/7", "x": "126.92", "y": "37.55",
+        }
+    ]
+    respx.get("https://dapi.kakao.com/v2/local/search/keyword.json").mock(
+        return_value=httpx.Response(200, json={"documents": docs})
+    )
+    slug = _room_slug(client)
+    response = client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "drink", "sort": "distance"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["kind"] == "drink"
+    assert body["items"][0]["name"] == "홍대 포차"

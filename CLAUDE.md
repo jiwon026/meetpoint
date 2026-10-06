@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트
 
-우리지금만나 (GitHub: jiwon026/meetpoint). 친구들이 각자 출발지를 입력하면 "가장 오래 걸리는 사람의 이동시간"이 가장 짧은 만남 거점을 추천하고, 그 동네의 맛집, 카페, 놀거리, 행사를 보여주는 웹 서비스. 수도권 지하철 기준.
+우리지금만나 (GitHub: jiwon026/meetpoint). 친구들이 각자 출발지를 입력하면 "가장 오래 걸리는 사람의 이동시간"이 가장 짧은 만남 거점을 추천하고, 그 동네의 맛집, 카페, 술집, 놀거리, 행사를 보여주는 웹 서비스. 수도권 지하철 기준.
 
 운영 주소: 프론트 https://meetpoint-kappa.vercel.app (Vercel), 백엔드 https://meetpoint-api-34hf.onrender.com (Render 무료, 15분 뒤 잠듦), DB는 Supabase. `main`에 올라간 커밋은 CI 통과 후 자동 배포된다. 구성과 절차는 `docs/deploy-design.md`.
 
@@ -70,7 +70,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 - `station_times`는 모든 노드에서 거점 노드까지의 분만 들어 있다. 없는 쌍은 `None`이고 그 거점은 순위에서 빠진다.
 - 참가자는 원문 주소를 저장하지 않는다. 좌표는 소수점 3자리, `nearest_stations`는 역 id 목록(JSON). 역 id는 원본 데이터 갱신 시 바뀔 수 있다(알려진 한계).
 - 콘텐츠는 `cache.py`의 `content_cache` 테이블에 24시간 캐시. 실패 시 만료 캐시라도 돌려주고 `error` 문구를 붙인다.
-- 맛집과 카페는 `sort` 쿼리(`recommended` 기본, `distance`)로 정렬을 고른다. 추천순은 카카오의 정확도순이고 별점이 아니다. 카페는 `places/service.py`에서 분류 이름으로 만화카페, 보드카페 등을 걸러낸다. 이유와 근거는 `docs/design.md`의 콘텐츠 절.
+- 맛집, 카페, 술집은 `sort` 쿼리(`recommended` 기본, `distance`)로 정렬을 고른다. 추천순은 카카오의 정확도순이고 별점이 아니다. 카페는 `places/service.py`에서 분류 이름으로 만화카페, 보드카페 등을 걸러낸다. 술집은 분류 코드가 없어 음식점 안에서 "술집"을 검색한 뒤 분류 이름으로 거른다. 이유와 근거는 `docs/design.md`의 콘텐츠 절.
 - KOPIS(경기, 인천 공연) 목록에는 공연장 좌표와 id가 없다. `events/service.py`의 `resolve_venues`가 공연 상세와 공연장 정보를 조회해 이름별로 30일 캐시한다. 요청 중 새 조회는 `MAX_NEW_VENUE_LOOKUPS`곳까지이고 `scripts/warm_kopis_venues.py`가 매일 미리 채운다. 조회 실패는 예외로 올리지 않고 그 공연장만 건너뛴다. 외부 API의 테스트 픽스처는 실제 응답 모양과 맞는지 확인하고 만든다(이 버그는 픽스처에 실제에 없는 필드를 넣어서 생겼다).
 - 방은 `regions`(서울, 경기, 인천 중 1개 이상)와 `theme`(없을 수 있음)을 가진다. 결과 API의 `region`, `theme` 쿼리가 방 기본값보다 우선한다. 지역 필터는 반드시 `rank_with_preference` 전에 건다.
 - 참가자는 지우지 않고 `active`를 끈다. 계산은 `active`만, 정원 20명은 전체 행 수.

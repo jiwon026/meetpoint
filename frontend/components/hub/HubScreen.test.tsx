@@ -185,7 +185,7 @@ test("맛집은 추천순으로 먼저 보여주고, 가까운 순으로 바꾸�
   expect(urls).toHaveLength(2);
 });
 
-test("정렬은 맛집과 카페 탭에만 있고, 고른 정렬은 탭을 옮겨도 유지된다", async () => {
+test("정렬은 맛집, 카페, 술집 탭에만 있고, 고른 정렬은 탭을 옮겨도 유지된다", async () => {
   serveResult();
   const urls = serveContentUrls();
   show();
@@ -200,6 +200,19 @@ test("정렬은 맛집과 카페 탭에만 있고, 고른 정렬은 탭을 옮�
   await waitFor(() => expect(urls.at(-1)?.searchParams.get("kind")).toBe("cafe"));
   expect(urls.at(-1)?.searchParams.get("sort")).toBe("distance");
   expect(screen.getByRole("button", { name: "가까운 순" })).toHaveAttribute("aria-pressed", "true");
+  await userEvent.click(screen.getByRole("tab", { name: "술집" }));
+  await waitFor(() => expect(urls.at(-1)?.searchParams.get("kind")).toBe("drink"));
+  expect(urls.at(-1)?.searchParams.get("sort")).toBe("distance");
+});
+
+test("술자리 테마의 방은 술집 탭부터 연다", async () => {
+  serveResult("drink");
+  const kinds = serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  show();
+  await screen.findByText("양재 국밥집");
+  expect(kinds).toEqual(["drink"]);
+  expect(screen.getByRole("tab", { name: "술집" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("button", { name: "추천순" })).toBeInTheDocument();
 });
 
 test("거점 화면을 처음 보여줄 때 한 번만 이름, 지역, 결과 안의 순위를 남긴다", async () => {
