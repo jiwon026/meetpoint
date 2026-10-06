@@ -39,6 +39,7 @@ npm test -- components/join # 폴더 하나
 npm run e2e                 # 흐름 테스트. 3000번 개발 서버는 끄고 실행. .next에 e2e용 빌드(백엔드 8010, 지도 없음)가 남으므로
                             # 이어서 npm run start를 하려면 npm run build부터 다시 (npm run dev는 영향 없음)
 npm run gen:api             # 백엔드 스키마가 바뀌면 타입 다시 생성
+npm run gen:og              # 링크 미리보기 그림 다시 찍기 (scripts/og-image.html을 고친 뒤)
 ```
 
 이동 뒤에 `npm run dev` 화면이 Next의 404 페이지로 바뀌면 `npm run build` 다음 `npm run start`로 확인한다 (알려진 문제이고 원인은 모른다. `dev/active/frontend/frontend-context.md` 참고).

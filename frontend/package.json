@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "gen:api": "node scripts/gen-api.mjs",
+    "gen:og": "node scripts/gen-og.mjs",
     "e2e": "playwright test"
   },
   "dependencies": {
