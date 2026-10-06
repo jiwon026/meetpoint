@@ -1,6 +1,8 @@
+import hashlib
 import logging
+import time
 from dataclasses import asdict, dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 
@@ -137,15 +139,31 @@ def _kopis_dot_date(value: str) -> str:
     return value.replace(".", "-")
 
 
-def _venue_coords(mt10id: str, client: KopisClient, cache: ContentCacheRepo) -> tuple[float, float] | None:
-    if not mt10id:
-        return None
-    key = f"venue:kopis:{mt10id}"
-    cached = cache.get(key, VENUE_TTL)
-    if cached is None:
-        facility = client.facility(mt10id)
-        cached = {"la": facility.get("la", ""), "lo": facility.get("lo", "")}
-        cache.set(key, cached, kind="venue")
+# 한 요청에서 새로 찾는 공연장 수의 상한. 공연장 하나에 KOPIS 호출이 두 번(상세, 시설) 든다.
+# 남은 공연장은 다음 요청이나 scripts.warm_kopis_venues가 이어서 채운다.
+MAX_NEW_VENUE_LOOKUPS = 6
+# 요청 중 조회 사이의 쉼. KOPIS는 몰린 호출을 막는다.
+REQUEST_LOOKUP_PAUSE_SECONDS = 0.2
+# 조회가 이만큼 연달아 실패하면 KOPIS가 막고 있다고 보고 이번에는 더 찾지 않는다.
+MAX_CONSECUTIVE_LOOKUP_FAILURES = 3
+# 좌표를 못 구한 공연장은 하루 뒤에 다시 찾는다. 일시적인 빈 응답 때문에 한 달 동안 빠지지 않게 한다.
+VENUE_MISSING_TTL = timedelta(days=1)
+
+
+@dataclass(frozen=True)
+class VenueResolution:
+    coords: dict[str, tuple[float, float] | None]  # 공연장 이름별 좌표. 좌표가 없는 곳은 None, 못 찾아본 곳은 키가 없다.
+    looked_up: int  # 이번에 KOPIS에서 새로 찾은 공연장 수
+    failures: int  # 이번에 조회가 실패한 공연장 수
+
+
+def venue_cache_key(area: str, name: str) -> str:
+    # 공연장 이름은 길 수 있고 캐시 키 열은 120자다. 이름 대신 해시를 쓴다.
+    digest = hashlib.sha1(name.encode("utf-8")).hexdigest()[:20]
+    return f"venue:kopis:{area}:{digest}"
+
+
+def _coords_from(cached: dict) -> tuple[float, float] | None:
     try:
         lat, lng = float(cached["la"]), float(cached["lo"])
     except (TypeError, ValueError, KeyError):
@@ -153,6 +171,69 @@ def _venue_coords(mt10id: str, client: KopisClient, cache: ContentCacheRepo) -> 
     if lat == 0 or lng == 0:
         return None
     return lat, lng
+
+
+def _cached_venue(key: str, cache: ContentCacheRepo) -> dict | None:
+    cached = cache.get(key, VENUE_TTL)
+    if cached is None:
+        return None
+    if _coords_from(cached) is None and cache.get(key, VENUE_MISSING_TTL) is None:
+        return None
+    return cached
+
+
+def _look_up_venue(mt20id: str, client: KopisClient) -> dict[str, str]:
+    """공연 하나를 실마리로 그 공연장의 좌표를 구한다. id나 좌표가 없으면 빈 값을 돌려준다."""
+    mt10id = client.performance_facility_id(mt20id)
+    facility = client.facility(mt10id) if mt10id else {}
+    return {"la": facility.get("la", ""), "lo": facility.get("lo", "")}
+
+
+def resolve_venues(
+    area: str,
+    rows: list[dict],
+    client: KopisClient,
+    cache: ContentCacheRepo,
+    limit: int,
+    pause_seconds: float = 0.0,
+) -> VenueResolution:
+    """공연장 이름별 좌표를 구한다. 캐시에 없는 공연장은 limit곳까지만 KOPIS에서 찾는다.
+
+    한 공연장의 조회가 실패하면 그 공연장만 건너뛰고(캐시하지 않는다) 계속하되,
+    연달아 실패하면 KOPIS가 막고 있다고 보고 더 찾지 않는다. 예외를 밖으로 내보내지 않는다.
+    """
+    coords: dict[str, tuple[float, float] | None] = {}
+    deferred: set[str] = set()
+    looked_up = failures = consecutive_failures = 0
+    for row in rows:
+        name = row.get("fcltynm", "")
+        mt20id = row.get("mt20id", "")
+        if not name or not mt20id or name in coords or name in deferred:
+            continue
+        key = venue_cache_key(area, name)
+        cached = _cached_venue(key, cache)
+        if cached is None:
+            if looked_up + failures >= limit or consecutive_failures >= MAX_CONSECUTIVE_LOOKUP_FAILURES:
+                deferred.add(name)
+                continue
+            # 외부 호출 동안 DB 연결을 붙잡지 않는다.
+            cache.release()
+            if (looked_up or failures) and pause_seconds:
+                time.sleep(pause_seconds)
+            try:
+                cached = _look_up_venue(mt20id, client)
+            except (httpx.HTTPError, UpstreamError) as exc:
+                # 예외 클래스 이름만 남긴다. 요청 URL에는 API 키가 들어 있다.
+                logger.warning("kopis venue lookup failed error=%s", type(exc).__name__)
+                failures += 1
+                consecutive_failures += 1
+                deferred.add(name)
+                continue
+            consecutive_failures = 0
+            cache.set(key, cached, kind="venue")
+            looked_up += 1
+        coords[name] = _coords_from(cached)
+    return VenueResolution(coords=coords, looked_up=looked_up, failures=failures)
 
 
 def get_kopis_events(
@@ -166,15 +247,13 @@ def get_kopis_events(
     if rows is None:
         rows = client.list_performances(meet_date, area)
         cache.set(key, rows, kind="event")
+    venues = resolve_venues(
+        area, rows, client, cache, limit=MAX_NEW_VENUE_LOOKUPS, pause_seconds=REQUEST_LOOKUP_PAUSE_SECONDS
+    ).coords
     events: list[Event] = []
-    # 같은 공연장에서 하는 공연이 여러 건이면 좌표는 한 번만 구한다.
-    coords_by_facility: dict[str, tuple[float, float] | None] = {}
     for row in rows:
-        facility_id = row.get("mt10id", "")
-        if facility_id not in coords_by_facility:
-            coords_by_facility[facility_id] = _venue_coords(facility_id, client, cache)
-        coords = coords_by_facility[facility_id]
-        if coords is None:
+        coords = venues.get(row.get("fcltynm", ""))
+        if coords is None or not row.get("mt20id"):
             continue
         km = haversine_km(hub.lat, hub.lng, *coords)
         if km > EVENT_RADIUS_KM:

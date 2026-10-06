@@ -7,8 +7,10 @@
     <prfpdto>2026.09.26</prfpdto>
     <fcltynm>수원 SK아트리움</fcltynm>
     <poster>http://example.com/jazz.jpg</poster>
+    <area>경기도</area>
     <genrenm>대중음악</genrenm>
-    <mt10id>FC001</mt10id>
+    <openrun>N</openrun>
+    <prfstate>공연예정</prfstate>
   </db>
   <db>
     <mt20id>PF003</mt20id>
@@ -17,8 +19,10 @@
     <prfpdto>2026.09.26</prfpdto>
     <fcltynm>수원 SK아트리움</fcltynm>
     <poster>http://example.com/jazz.jpg</poster>
+    <area>경기도</area>
     <genrenm>대중음악</genrenm>
-    <mt10id>FC001</mt10id>
+    <openrun>N</openrun>
+    <prfstate>공연예정</prfstate>
   </db>
   <db>
     <mt20id>PF002</mt20id>
@@ -27,7 +31,9 @@
     <prfpdto>2026.09.30</prfpdto>
     <fcltynm>먼 공연장</fcltynm>
     <poster></poster>
+    <area>경기도</area>
     <genrenm>연극</genrenm>
-    <mt10id>FC002</mt10id>
+    <openrun>N</openrun>
+    <prfstate>공연중</prfstate>
   </db>
 </dbs>

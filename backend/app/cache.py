@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import ContentCache
@@ -33,6 +34,14 @@ class ContentCacheRepo:
         return None if row is None else row.payload
 
     def set(self, key: str, payload: object, kind: str, hub_id: int | None = None) -> None:
+        try:
+            self._write(key, payload, kind, hub_id)
+        except IntegrityError:
+            # 다른 요청이 같은 키를 먼저 넣었다. 이제 행이 있으니 그 행을 고친다.
+            self._session.rollback()
+            self._write(key, payload, kind, hub_id)
+
+    def _write(self, key: str, payload: object, kind: str, hub_id: int | None) -> None:
         row = self._row(key)
         if row is None:
             row = ContentCache(cache_key=key, kind=kind, hub_id=hub_id)
@@ -41,4 +50,8 @@ class ContentCacheRepo:
         row.kind = kind
         row.hub_id = hub_id
         row.fetched_at = self._now()
+        self._session.commit()
+
+    def release(self) -> None:
+        """읽기만 한 트랜잭션을 끝내 연결을 풀에 돌려준다. 오래 걸리는 외부 호출 전에 부른다."""
         self._session.commit()
