@@ -136,7 +136,7 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 
 - `render.yaml`: 웹 서비스 하나. `runtime: python`, `plan: free`, `region: singapore`, `rootDir: backend`, `buildCommand: pip install .`, `startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT`, `healthCheckPath: /health`, `autoDeployTrigger: checksPass`, 비밀 값은 `sync: false`.
 - `.github/workflows/ci.yml`: push와 PR에서 백엔드 `pytest`(Python 3.12), 프론트 `npm test`, `npm run lint`, `npx tsc --noEmit`. 흐름 테스트(Playwright)는 시간이 길어 CI에 넣지 않고 로컬에서 돌린다.
-- `.github/workflows/cleanup.yml`: 매일 한국 시간 새벽에 `python -m scripts.cleanup_expired`. 수동 실행도 가능하게 한다. 실패하면 GitHub가 메일로 알린다. 이 실행이 Supabase의 일주일 무활동 정지도 막는다.
+- `.github/workflows/cleanup.yml`: 매일 한국 시간 새벽에 `python -m scripts.cleanup_expired`. 같은 워크플로의 `warm-venues` 작업이 `python -m scripts.warm_kopis_venues`로 KOPIS 공연장 좌표를 미리 채운다(secret `KOPIS_API_KEY` 필요). 수동 실행도 가능하게 한다. 실패하면 GitHub가 메일로 알린다. 이 실행이 Supabase의 일주일 무활동 정지도 막는다.
 - Vercel은 설정 파일 없이 화면에서 루트 디렉터리를 `frontend`로 지정한다.
 
 ### 4.2 순서
@@ -204,4 +204,4 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 - 통계 기록은 요청이 자기 연결을 쥐고 있는 동안 연결 풀에서 연결을 하나 더 빌린다. 동시에 약 5건을 넘는 기록이 몰리면 요청이 아니라 통계가 늦어지거나 빠질 수 있다.
 - 서버 인스턴스가 하나라는 전제다. 시간표 캐시와 연결 풀 크기가 그 전제에 맞춰져 있다.
 - 개발 서버(`next dev`)의 간헐적 404는 운영(`next build`)과 무관하지만 원인은 여전히 모른다.
-- 경기와 인천 거점의 행사는 지금 항상 0건이다 (2026-10-06 운영 점검에서 확인). KOPIS 공연 목록(`pblprfr`)은 싱가포르에서도 정상 응답하지만 공연장 id(`mt10id`)가 목록에 없어서, 공연장 좌표를 구하지 못하고 모든 공연이 걸러진다. 테스트 픽스처(`tests/fixtures/kopis_list.xml`)에는 실제에 없는 `mt10id`가 들어 있어 테스트가 잡지 못했다. 고치려면 공연 상세(`pblprfr/{mt20id}`)에서 `mt10id`를 얻어야 하고, KOPIS가 짧은 시간의 연속 호출을 막으므로 캐시와 호출 간격을 함께 설계해야 한다. 서울 거점의 행사(서울시 API)는 정상이다.
+- 경기와 인천 거점의 행사가 항상 0건이던 문제(2026-10-06 운영 점검에서 발견)는 2026-10-07에 고쳤다. KOPIS 공연 목록에 공연장 id가 없는데 테스트 픽스처에는 있어서 테스트가 잡지 못했던 것이다. 지금은 공연 상세와 공연장 정보를 조회해 좌표를 얻고 이름별로 30일 캐시한다. 남은 한계: 요청 중에는 새 공연장을 10곳까지만 찾으므로, 예약 작업(`cleanup` 워크플로의 `warm-venues`)이 채우기 전에는 일부 공연만 보일 수 있다. 목록은 날짜와 지역마다 100건까지만 읽는다. KOPIS가 호출을 막으면 행사 탭은 "지금 불러올 수 없어요"가 된다.

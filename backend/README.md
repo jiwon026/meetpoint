@@ -76,4 +76,5 @@ cp .env.example .env
 
 - 만료 방 정리: GitHub Actions의 `cleanup` 워크플로가 하루 한 번 `python -m scripts.cleanup_expired`를 실행한다. 만료된 방과 30일 넘은 콘텐츠 캐시를 함께 지운다. 수동 실행은 `gh workflow run cleanup`.
 - 역간 시간표는 프로세스 시작 후 첫 결과 요청 때 메모리에 올라간다. 데이터 갱신 후에는 재시작한다.
+- 공연장 좌표 미리 채우기: `cleanup` 워크플로의 `warm-venues` 작업이 하루 한 번 `python -m scripts.warm_kopis_venues`를 실행한다. 앞으로 14일 동안의 경기, 인천 공연을 훑어 공연장 좌표를 캐시에 넣는다(한 번에 150곳까지, 공연장 사이에 1초 쉼). `DATABASE_URL`과 `KOPIS_API_KEY`가 필요하다.
 - 규모 통계: `python -m scripts.stats`가 `daily_stats`(날짜별 만든 방 수, 등록한 참가자 수, 추천까지 간 방 수)를 출력한다. 날짜는 한국 시간 기준이고 개인 정보는 들어 있지 않다. 방이 지워져도 남는다.

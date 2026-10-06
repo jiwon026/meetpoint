@@ -8,7 +8,9 @@ from app.errors import UpstreamError
 KOPIS_BASE = "http://www.kopis.or.kr/openApi/restful"
 LIST_ROWS = 100
 SUCCESS_CODE = "00"
-LIST_FIELDS = ("mt20id", "prfnm", "fcltynm", "prfpdfrom", "prfpdto", "poster", "genrenm", "mt10id")
+# 목록에는 공연장 id(mt10id)가 없다. 공연장 이름(fcltynm)만 있고 id는 상세에서 얻는다.
+LIST_FIELDS = ("mt20id", "prfnm", "fcltynm", "prfpdfrom", "prfpdto", "poster", "genrenm")
+DETAIL_FIELDS = ("mt20id", "mt10id")
 FACILITY_FIELDS = ("mt10id", "fcltynm", "la", "lo")
 
 
@@ -44,6 +46,13 @@ class KopisClient:
         )
         response.raise_for_status()
         return _rows(response.text, LIST_FIELDS)
+
+    def performance_facility_id(self, mt20id: str) -> str:
+        """공연 상세에서 공연장 id를 얻는다. 없으면 빈 문자열."""
+        response = self._client.get(f"{KOPIS_BASE}/pblprfr/{mt20id}", params={"service": self._api_key})
+        response.raise_for_status()
+        rows = _rows(response.text, DETAIL_FIELDS)
+        return rows[0]["mt10id"] if rows else ""
 
     def facility(self, mt10id: str) -> dict:
         response = self._client.get(f"{KOPIS_BASE}/prfplc/{mt10id}", params={"service": self._api_key})

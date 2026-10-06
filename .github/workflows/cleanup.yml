@@ -27,3 +27,22 @@ jobs:
       - run: python -m scripts.cleanup_expired
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # 경기, 인천 공연의 공연장 좌표를 미리 캐시에 채운다. 정리 작업과 따로 돌아서 한쪽이 실패해도 다른 쪽은 끝난다.
+  warm-venues:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install .
+      - run: python -m scripts.warm_kopis_venues
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          KOPIS_API_KEY: ${{ secrets.KOPIS_API_KEY }}
