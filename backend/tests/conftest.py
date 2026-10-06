@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.ratelimit import reset_limiters
 from app.models import Base, Hub, Station, StationGroup, StationTime
 
 # id, 이름, 노선, 위도, 경도
@@ -42,6 +43,14 @@ FROZEN_NOW = datetime(2026, 9, 20, 12, 0, 0)
 @pytest.fixture(autouse=True)
 def frozen_room_clock(monkeypatch):
     monkeypatch.setattr("app.rooms.service.utcnow", lambda: FROZEN_NOW)
+
+
+@pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    # 호출 제한은 프로세스 메모리에 쌓인다. 테스트끼리 영향을 주지 않게 매번 비운다.
+    reset_limiters()
+    yield
+    reset_limiters()
 
 
 @pytest.fixture

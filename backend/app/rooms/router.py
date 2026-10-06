@@ -19,6 +19,7 @@ from app.options import Region, Theme
 from app.places.kakao_local import KakaoLocalClient
 from app.places.service import PlaceSort, get_places, place_cache_key
 from app.places.suggest import suggest_places
+from app.ratelimit import rate_limit
 from app.rooms import service
 from app.schemas import (
     ContentOut,
@@ -41,7 +42,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/rooms", response_model=RoomOut, status_code=201)
+@router.post("/rooms", response_model=RoomOut, status_code=201, dependencies=[Depends(rate_limit("create_room"))])
 def create_room(data: RoomCreate, db: Session = Depends(get_db)) -> RoomOut:
     return service.room_out(service.create_room(db, data))
 
@@ -51,7 +52,12 @@ def get_room(slug: str, db: Session = Depends(get_db)) -> RoomOut:
     return service.room_out(service.get_room(db, slug))
 
 
-@router.post("/rooms/{slug}/participants", response_model=ParticipantOut, status_code=201)
+@router.post(
+    "/rooms/{slug}/participants",
+    response_model=ParticipantOut,
+    status_code=201,
+    dependencies=[Depends(rate_limit("add_participant"))],
+)
 def add_participant(
     slug: str,
     data: ParticipantCreate,
@@ -97,7 +103,7 @@ MSG_HUB_NOT_FOUND = "거점을 찾을 수 없어요"
 ContentKind = Literal["food", "cafe", "play", "event"]
 
 
-@router.post("/places/search", response_model=PlaceSearchOut)
+@router.post("/places/search", response_model=PlaceSearchOut, dependencies=[Depends(rate_limit("place_search"))])
 def place_search(
     data: PlaceSearchIn,
     local_client: KakaoLocalClient = Depends(get_local_client),
@@ -113,7 +119,11 @@ def place_search(
     )
 
 
-@router.get("/rooms/{slug}/hubs/{hub_id}/content", response_model=ContentOut)
+@router.get(
+    "/rooms/{slug}/hubs/{hub_id}/content",
+    response_model=ContentOut,
+    dependencies=[Depends(rate_limit("hub_content"))],
+)
 def hub_content(
     slug: str,
     hub_id: int,
