@@ -36,3 +36,4 @@ export function msgConfirmRemove(nickname: string): string {
 export function msgSlowerThanBest(minutes: number): string {
   return `가장 빠른 곳보다 ${minutes}분 더`;
 }
+export const MSG_SORT_NOTE = "추천순은 카카오맵이 매긴 순서예요. 별점은 가게를 눌러 카카오맵에서 확인하세요.";

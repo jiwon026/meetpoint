@@ -151,3 +151,52 @@ test("거점을 불러온 뒤 재조회가 실패해도 제목과 탭이 남는�
     act(() => focusManager.setFocused(undefined));
   }
 });
+
+
+function serveContentUrls() {
+  const urls: URL[] = [];
+  server.use(
+    http.get(`${API}/rooms/abc123/hubs/1/content`, ({ request }) => {
+      const url = new URL(request.url);
+      urls.push(url);
+      const sort = url.searchParams.get("sort");
+      const name = sort === "distance" ? "역 앞 김밥집" : "소문난 한정식";
+      return HttpResponse.json({ kind: url.searchParams.get("kind"), items: [{ ...PLACE, name }], error: null });
+    }),
+  );
+  return urls;
+}
+
+test("맛집은 추천순으로 먼저 보여주고, 가까운 순으로 바꾸면 다시 불러온다", async () => {
+  serveResult();
+  const urls = serveContentUrls();
+  show();
+  expect(await screen.findByText("소문난 한정식")).toBeInTheDocument();
+  expect(urls[0].searchParams.get("sort")).toBe("recommended");
+  expect(screen.getByRole("button", { name: "추천순" })).toHaveAttribute("aria-pressed", "true");
+  await userEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+  expect(await screen.findByText("역 앞 김밥집")).toBeInTheDocument();
+  expect(urls.map((u) => u.searchParams.get("sort"))).toEqual(["recommended", "distance"]);
+  expect(screen.getByRole("button", { name: "가까운 순" })).toHaveAttribute("aria-pressed", "true");
+  // 이미 받은 정렬로 돌아가면 다시 부르지 않는다.
+  await userEvent.click(screen.getByRole("button", { name: "추천순" }));
+  expect(await screen.findByText("소문난 한정식")).toBeInTheDocument();
+  expect(urls).toHaveLength(2);
+});
+
+test("정렬은 맛집과 카페 탭에만 있고, 고른 정렬은 탭을 옮겨도 유지된다", async () => {
+  serveResult();
+  const urls = serveContentUrls();
+  show();
+  await screen.findByText("소문난 한정식");
+  await userEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+  await screen.findByText("역 앞 김밥집");
+  await userEvent.click(screen.getByRole("tab", { name: "놀거리" }));
+  await waitFor(() => expect(urls.at(-1)?.searchParams.get("kind")).toBe("play"));
+  expect(screen.queryByRole("button", { name: "추천순" })).toBeNull();
+  expect(urls.at(-1)?.searchParams.has("sort")).toBe(false);
+  await userEvent.click(screen.getByRole("tab", { name: "카페" }));
+  await waitFor(() => expect(urls.at(-1)?.searchParams.get("kind")).toBe("cafe"));
+  expect(urls.at(-1)?.searchParams.get("sort")).toBe("distance");
+  expect(screen.getByRole("button", { name: "가까운 순" })).toHaveAttribute("aria-pressed", "true");
+});

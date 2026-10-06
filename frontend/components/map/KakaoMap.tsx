@@ -33,14 +33,16 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
   const pinKey = [...pins, ...origins].map((pin) => `${pin.id}:${pin.lat}:${pin.lng}`).join("|");
 
   useEffect(() => {
-    // 중심을 주지 않았으면 모든 핀과 출발역이 보이게 범위를 맞춘다.
-    if (!map || center || pins.length === 0) return;
+    // 모든 핀과 출발역이 보이게 범위를 맞춘다. 중심을 줬으면 그 점도 범위에 넣는다
+    // (추천순 장소는 거점에서 수백 미터 떨어져 있어 고정 배율로는 화면 밖에 찍힌다).
+    if (!map || pins.length === 0) return;
     const bounds = new kakao.maps.LatLngBounds();
     for (const pin of [...pins, ...origins]) bounds.extend(new kakao.maps.LatLng(pin.lat, pin.lng));
+    if (center) bounds.extend(new kakao.maps.LatLng(center.lat, center.lng));
     map.setBounds(bounds);
     // pins 대신 pinKey로 비교한다 (위 주석 참고).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, center, pinKey]);
+  }, [map, center?.lat, center?.lng, pinKey]);
 
   if (error) return null;
   const start = center ?? pins[0];

@@ -12,12 +12,13 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_health_get"];
+        get: operations["health_health_head"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
-        head?: never;
+        /** Health */
+        head: operations["health_health_head"];
         patch?: never;
         trace?: never;
     };
@@ -354,7 +355,29 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_health_get: {
+    health_health_head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+        };
+    };
+    health_health_head: {
         parameters: {
             query?: never;
             header?: never;
@@ -613,6 +636,7 @@ export interface operations {
         parameters: {
             query: {
                 kind: "food" | "cafe" | "play" | "event";
+                sort?: "recommended" | "distance";
             };
             header?: never;
             path: {
