@@ -28,9 +28,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  # 경기, 인천 공연의 공연장 좌표를 미리 캐시에 채운다. 정리 작업과 따로 돌아서 한쪽이 실패해도 다른 쪽은 끝난다.
+  # 경기, 인천 공연의 공연장 좌표를 미리 캐시에 채운다.
+  # 정리 작업이 같은 캐시 행을 지우는 중에 겹치지 않게 그 뒤에 돌고, 정리가 실패해도 돈다.
   warm-venues:
+    needs: cleanup
+    if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
