@@ -175,6 +175,21 @@ def test_drink_searches_the_bar_keyword_inside_restaurants(seeded):
     assert route.call_count == 1
 
 
+# 가게 이름과 분류는 2026-10-06에 강남, 홍대입구, 종각에서 실제로 받은 응답이다.
+@respx.mock
+def test_drink_drops_places_named_club(seeded):
+    docs = [
+        {**_doc(1, "음식점 > 술집 > 호프,요리주점"), "place_name": "클럽도파"},
+        {**_doc(2, "음식점 > 술집 > 호프,요리주점"), "place_name": "왕스펍"},
+        {**_doc(3, "음식점 > 술집 > 와인바"), "place_name": "블루아워 Jazz Club"},
+        {**_doc(4, "음식점 > 술집 > 칵테일바"), "place_name": "서울소사이어티클럽"},
+        {**_doc(5, "음식점 > 술집 > 일본식주점"), "place_name": "이자카야신조"},
+    ]
+    respx.get(KEYWORD_URL).mock(return_value=httpx.Response(200, json={"documents": docs}))
+    places = get_places(seeded.get(Hub, 1), "drink", KakaoLocalClient("k"), ContentCacheRepo(seeded))
+    assert [p.name for p in places] == ["왕스펍", "이자카야신조"]
+
+
 @respx.mock
 def test_drink_can_be_sorted_and_caches_each_sort(seeded):
     docs = [_doc(i, "음식점 > 술집 > 호프,요리주점") for i in range(15)]

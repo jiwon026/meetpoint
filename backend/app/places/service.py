@@ -29,6 +29,9 @@ CAFE_EXCLUDED_CATEGORIES = frozenset({"음식점>카페>테마카페"})
 DRINK_KEYWORD = "술집"
 DRINK_GROUP_CODE = "FD6"
 DRINK_CATEGORY_PREFIX = "음식점>술집"
+# 카카오에는 클럽 분류가 없다. 클럽은 호프, 칵테일바 같은 일반 술집 분류에 섞여 온다(2026-10-06에 아홉 역에서 확인).
+# 분류로는 가를 수 없어서 이름으로 뺀다. 이름에 이 말이 없는 클럽은 남고, 재즈 클럽처럼 조용한 곳도 같이 빠진다.
+DRINK_EXCLUDED_NAME_WORDS = ("클럽", "club")
 # 정렬을 고를 수 있는 종류. 정렬마다 따로 캐시한다.
 SORTABLE_KINDS = frozenset({*CATEGORY_CODES, "drink"})
 PLAY_KEYWORDS = ("방탈출", "보드게임카페", "노래방", "볼링장", "만화카페")
@@ -71,6 +74,9 @@ def _is_cafe(doc: dict) -> bool:
 
 
 def _is_bar(doc: dict) -> bool:
+    name = doc.get("place_name", "").lower()
+    if any(word in name for word in DRINK_EXCLUDED_NAME_WORDS):
+        return False
     return _category(doc).startswith(DRINK_CATEGORY_PREFIX)
 
 
