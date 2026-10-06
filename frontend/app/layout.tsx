@@ -12,7 +12,13 @@ const pretendard = localFont({
   display: "swap",
 });
 
+// 미리보기 그림(app/opengraph-image.png)의 주소는 절대 주소여야 한다. Vercel이 빌드 때 운영 도메인을 넣어준다.
+const SITE_ORIGIN = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
   title: "우리지금만나",
   description: "각자 출발지를 넣으면 가장 공평한 만남 장소를 찾아줘요",
 };

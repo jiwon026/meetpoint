@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face {
+  font-family: "Pretendard";
+  src: url("../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2");
+  font-weight: 45 920;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Pretendard", sans-serif; word-break: keep-all; }
+.og { width: 1200px; height: 630px; position: relative; overflow: hidden; background: #fcf9f5; color: #1c1c1a; }
+.og svg.bg { position: absolute; inset: 0; }
+.text { position: absolute; left: 80px; top: 0; height: 630px; width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.eyebrow { font-size: 28px; font-weight: 700; color: #0f5238; background: #dfe8e0; padding: 10px 24px; border-radius: 999px; letter-spacing: -0.01em; }
+h1 { font-size: 108px; font-weight: 800; letter-spacing: -0.045em; line-height: 1.05; margin-top: 22px; color: #0f5238; }
+p { font-size: 40px; font-weight: 500; color: #404943; line-height: 1.4; margin-top: 28px; letter-spacing: -0.02em; }
+</style>
+</head>
+<body>
+
+<div class="og" id="a">
+  <svg class="bg" width="1200" height="630" viewBox="0 0 1200 630" fill="none" stroke-linecap="round">
+    <g id="lines" stroke-width="20">
+      <path d="M740 -20 C740 150 900 150 900 315" stroke="#0f5238" data-dot="0.27"/>
+      <path d="M1220 130 C1050 130 960 200 900 315" stroke="#e08a7e" data-dot="0.3"/>
+      <path d="M1220 540 C1060 540 960 440 900 315" stroke="#8fb3a0" data-dot="0.3"/>
+      <path d="M690 650 C690 480 860 470 900 315" stroke="#e3b85c" data-dot="0.27"/>
+    </g>
+    <g id="dots" fill="#fcf9f5" stroke-width="9"></g>
+    <circle cx="900" cy="315" r="100" fill="#dfe8e0"/>
+    <circle cx="900" cy="315" r="66" fill="#0f5238"/>
+    <circle cx="878" cy="303" r="8.5" fill="#fcf9f5"/>
+    <circle cx="922" cy="303" r="8.5" fill="#fcf9f5"/>
+    <path d="M876 331 Q900 355 924 331" stroke="#fcf9f5" stroke-width="8.5"/>
+  </svg>
+  <div class="text">
+    <div class="eyebrow">약속 장소 정하기</div>
+    <h1>우리지금만나</h1>
+    <p>중간역 찾고, 맛집 찾고<br>카페까지 한 번에 끝!</p>
+  </div>
+</div>
+
+<script>
+// 역 표시를 선 위의 점에서 계산해 선의 한가운데에 정확히 올린다.
+const NS = "http://www.w3.org/2000/svg";
+const dots = document.getElementById("dots");
+for (const path of document.querySelectorAll("#lines path")) {
+  const point = path.getPointAtLength(path.getTotalLength() * Number(path.dataset.dot));
+  const dot = document.createElementNS(NS, "circle");
+  dot.setAttribute("cx", point.x);
+  dot.setAttribute("cy", point.y);
+  dot.setAttribute("r", 17);
+  dot.setAttribute("stroke", path.getAttribute("stroke"));
+  dots.appendChild(dot);
+}
+</script>
+</body>
+</html>
