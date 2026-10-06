@@ -71,7 +71,7 @@ def _mock_kopis():
 
 
 def test_list_fixture_matches_the_real_api_shape():
-    # 2026-10-07에 실제 응답으로 확인했다. 목록에는 공연장 id(mt10id)가 없다.
+    # 2026-10-06에 실제 응답으로 확인했다. 목록에는 공연장 id(mt10id)가 없다.
     assert "<mt10id>" not in (FIXTURES / "kopis_list.xml").read_text(encoding="utf-8")
 
 

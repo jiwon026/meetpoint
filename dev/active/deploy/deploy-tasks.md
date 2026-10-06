@@ -23,9 +23,9 @@
 - [x] Task 8 Step 4: Render 서비스 (사용자)
 - [x] Task 8 Step 5: Vercel 프로젝트 (사용자)
 - [x] Task 8 Step 6: CORS와 카카오 도메인 연결
-- [x] Task 8 Step 7: 정리 작업 수동 실행(2026-10-06), UptimeRobot 등록과 Up 확인(2026-10-07)
-- [x] Task 8 Step 8: 운영 점검 (잠든 서버 안내 문구, UptimeRobot, 카카오톡 미리보기까지 2026-10-07 확인. Render 로그를 눈으로 보는 것만 남음)
-- [x] Task 8 Step 9: 기록과 마무리 (2026-10-07)
+- [x] Task 8 Step 7: 정리 작업 수동 실행, UptimeRobot 등록과 Up 확인 (2026-10-06)
+- [x] Task 8 Step 8: 운영 점검 (잠든 서버 안내 문구, UptimeRobot, 카카오톡 미리보기까지 2026-10-06 확인. Render 로그를 눈으로 보는 것만 남음)
+- [x] Task 8 Step 9: 기록과 마무리 (2026-10-06)
 
 ## 완료 기준
 
@@ -36,4 +36,4 @@
 - [ ] 운영 로그에 주소, 검색어, API 키가 없음
 - [x] `daily_stats`에 숫자가 쌓임 (2026-10-06)
 - [x] 정리 작업이 예약대로 돌고, UptimeRobot이 서버를 깨워둠 (수동 실행 성공, 모니터 Up)
-- [x] 문서(`docs/deploy-design.md`, `docs/design.md`, `backend/README.md`, `CLAUDE.md`)가 실제 구성과 일치 (2026-10-07)
+- [x] 문서(`docs/deploy-design.md`, `docs/design.md`, `backend/README.md`, `CLAUDE.md`)가 실제 구성과 일치 (2026-10-06)
