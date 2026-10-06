@@ -66,7 +66,7 @@ cp .env.example .env
 
 - 무료 플랜, 싱가포르. 15분 동안 요청이 없으면 잠들고 깨는 데 약 1분 걸린다. UptimeRobot이 5분마다 `/health`를 불러 깨워둔다.
 - 파이썬 버전은 `render.yaml`의 `PYTHON_VERSION`(3.12.8)이다. 저장소에 있는 `backend/.python-version`(3.12)은 로컬 도구용이고 Render는 읽지 않는다.
-- `main`에 올라간 커밋 중 CI(`.github/workflows/ci.yml`)가 통과한 것만 자동으로 배포된다.
+- `main`에 올라간 커밋 중 그 커밋의 검사가 모두 통과한 것만 자동으로 배포된다. CI(`.github/workflows/ci.yml`)뿐 아니라 그 커밋에서 수동 실행한 `cleanup` 워크플로의 작업도 검사로 잡히므로, 병합 뒤에는 배포를 확인한 다음에 수동 실행한다.
 - DB는 Supabase의 세션 모드 연결 문자열(`...pooler.supabase.com:5432`)을 쓴다. 직접 연결은 IPv6 전용이라 Render와 가정용 인터넷에서 닿지 않는다. 트랜잭션 모드(6543)는 쓰지 않는다.
 - 새 DB를 만드는 순서와 구조 변경 규칙은 `migrations/README.md`.
 - 역 데이터를 다시 적재한 뒤에는 서비스를 재시작한다. 시간표를 프로세스 메모리에 올리기 때문이다. 적재 후 기존 방의 참가자 출발역 id가 바뀔 수 있으니 적재는 사용량이 적을 때 한다.
