@@ -7,7 +7,7 @@ import respx
 from app.cache import ContentCacheRepo
 from app.events.kopis import KopisClient
 from app.events.service import MAX_CONSECUTIVE_LOOKUP_FAILURES, venue_cache_key
-from scripts.warm_kopis_venues import warm
+from scripts.warm_kopis_venues import WarmResult, exit_code, warm
 
 FIXTURES = Path(__file__).parent / "fixtures"
 KOPIS = "http://www.kopis.or.kr/openApi/restful"
@@ -79,3 +79,10 @@ def test_warm_stops_when_lookups_keep_failing(session):
     assert (result.looked_up, result.blocked) == (0, True)
     assert detail.call_count == MAX_CONSECUTIVE_LOOKUP_FAILURES
     assert listing.call_count == 1
+
+
+def test_exit_code_tolerates_a_few_failures_but_not_a_block_or_mostly_failing():
+    assert exit_code(WarmResult(looked_up=94, failures=4, blocked=False)) == 0
+    assert exit_code(WarmResult(looked_up=0, failures=0, blocked=False)) == 0
+    assert exit_code(WarmResult(looked_up=10, failures=3, blocked=True)) == 1
+    assert exit_code(WarmResult(looked_up=2, failures=5, blocked=False)) == 1

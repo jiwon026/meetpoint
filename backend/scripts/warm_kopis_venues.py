@@ -64,6 +64,15 @@ def warm(
     return WarmResult(looked_up, failures, blocked=False)
 
 
+def exit_code(result: WarmResult) -> int:
+    """KOPIS가 막았거나 실패가 성공보다 많을 때만 실행을 실패로 표시해 메일로 알게 한다.
+
+    공연장 몇 곳의 실패는 흔하고(첫 운영 실행에서 98곳 중 4곳) 다음 실행이 다시 찾는다.
+    찾은 만큼은 캐시에 남아 있다.
+    """
+    return 1 if result.blocked or result.failures > result.looked_up else 0
+
+
 if __name__ == "__main__":
     from app.cache import utcnow
     from app.clock import kst_date
@@ -73,5 +82,4 @@ if __name__ == "__main__":
     with SessionLocal() as s:
         result = warm(ContentCacheRepo(s), KopisClient(get_settings().kopis_api_key), kst_date(utcnow()))
     print(f"looked up {result.looked_up} venues, {result.failures} failed, blocked={result.blocked}")
-    # 실패가 있으면 실행을 실패로 표시해 메일로 알게 한다. 찾은 만큼은 캐시에 남아 있다.
-    sys.exit(1 if result.blocked or result.failures else 0)
+    sys.exit(exit_code(result))
