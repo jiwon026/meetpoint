@@ -19,6 +19,7 @@ import {
   MSG_NEED_TWO,
   MSG_NO_HUB_IN_REGION,
   MSG_NO_ROUTE,
+  MSG_SUBWAY_BASIS,
 } from "@/lib/messages";
 import { readMine } from "@/lib/myParticipants";
 import { isAllRegions, parseRegions } from "@/lib/regions";
@@ -110,6 +111,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
             activeId={open === null ? null : String(open)}
             origins={legOrigins(recs.find((rec) => rec.hub_id === open)?.legs ?? [])}
           />
+          <p className="text-balance break-keep text-center text-xs text-ink-mute">{MSG_SUBWAY_BASIS}</p>
           <ol className="space-y-3">
             {recs.map((rec, index) => (
               <li key={rec.hub_id}>

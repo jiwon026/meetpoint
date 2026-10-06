@@ -16,6 +16,7 @@ export const MSG_EMPTY_ROSTER = "아직 아무도 없어요. 첫 번째로 출�
 export const MSG_NO_SEARCH_RESULT = "찾지 못했어요. 다른 이름으로 검색해보세요.";
 export const MSG_ROOM_FULL = "참여 인원이 가득 찼어요 (최대 20명)";
 export const MSG_BUS = "버스 15분 포함";
+export const MSG_SUBWAY_BASIS = "지하철 이동 시간 기준이에요. 버스로 가는 더 빠른 길은 반영하지 않았어요.";
 export const MSG_NO_HUB_IN_REGION = "이 지역엔 추천할 곳이 없어요. 지역을 넓혀보세요.";
 export const MSG_NO_ROUTE = "경로를 계산하지 못했어요. 방을 새로 만들어 다시 시도해주세요.";
 export const MSG_LEGS_MISSING = "이동시간을 불러오지 못했어요";
