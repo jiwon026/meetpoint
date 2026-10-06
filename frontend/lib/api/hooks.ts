@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { POLL_MS } from "@/lib/constants";
 import { filterQuery, type ResultFilter } from "@/lib/filter";
+import { isSortable, type PlaceSort } from "@/lib/placeSort";
 import type { ContentKind } from "@/lib/themes";
 import { ApiError, request } from "./client";
 import type {
@@ -100,10 +101,12 @@ export function usePlaceSearch(q: string) {
   });
 }
 
-export function useHubContent(slug: string, hubId: number, kind: ContentKind) {
+export function useHubContent(slug: string, hubId: number, kind: ContentKind, sort: PlaceSort) {
+  // 정렬을 고를 수 없는 종류는 정렬을 보내지 않고, 캐시도 정렬과 무관하게 하나만 둔다.
+  const query = isSortable(kind) ? `kind=${kind}&sort=${sort}` : `kind=${kind}`;
   return useQuery<ContentOut, ApiError>({
-    queryKey: ["content", slug, hubId, kind],
-    queryFn: () => request<ContentOut>(`/rooms/${slug}/hubs/${hubId}/content?kind=${kind}`),
+    queryKey: ["content", slug, hubId, query],
+    queryFn: () => request<ContentOut>(`/rooms/${slug}/hubs/${hubId}/content?${query}`),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });

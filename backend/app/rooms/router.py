@@ -17,7 +17,7 @@ from app.geocoding.kakao import Geocoder
 from app.models import Hub
 from app.options import Region, Theme
 from app.places.kakao_local import KakaoLocalClient
-from app.places.service import get_places, place_cache_key
+from app.places.service import PlaceSort, get_places, place_cache_key
 from app.places.suggest import suggest_places
 from app.rooms import service
 from app.schemas import (
@@ -118,6 +118,7 @@ def hub_content(
     slug: str,
     hub_id: int,
     kind: ContentKind,
+    sort: PlaceSort = Query(default="recommended"),
     db: Session = Depends(get_db),
     local_client: KakaoLocalClient = Depends(get_local_client),
     seoul_client: SeoulEventClient = Depends(get_seoul_client),
@@ -132,10 +133,10 @@ def hub_content(
         if kind == "event":
             items = get_events(hub, room.meet_date, seoul_client, kopis_client, cache)
         else:
-            items = get_places(hub, kind, local_client, cache)
+            items = get_places(hub, kind, local_client, cache, sort)
         return ContentOut(kind=kind, items=[asdict(i) for i in items], error=None)
     except (httpx.HTTPError, UpstreamError) as exc:
         # 예외 클래스 이름만 남긴다. 요청 URL에는 API 키가 들어 있어 절대 기록하지 않는다.
         logger.warning("content fetch failed kind=%s hub=%s error=%s", kind, hub.id, type(exc).__name__)
-        stale = cache.get_stale(place_cache_key(hub.id, kind)) if kind != "event" else None
+        stale = cache.get_stale(place_cache_key(hub.id, kind, sort)) if kind != "event" else None
         return ContentOut(kind=kind, items=list(stale or []), error=MSG_CONTENT_UNAVAILABLE)

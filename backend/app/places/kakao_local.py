@@ -15,8 +15,16 @@ class KakaoLocalClient:
         return list(json_object(response, KAKAO_SOURCE).get("documents", []))
 
     def category_search(
-        self, code: str, lat: float, lng: float, radius: int = 600, size: int = 15
+        self,
+        code: str,
+        lat: float,
+        lng: float,
+        radius: int = 600,
+        size: int = 15,
+        sort: str = "distance",
+        page: int = 1,
     ) -> list[dict]:
+        """sort는 카카오의 "distance"(가까운 순) 또는 "accuracy"(카카오가 매긴 순서)."""
         return self._get(
             "category.json",
             {
@@ -25,7 +33,8 @@ class KakaoLocalClient:
                 "y": lat,
                 "radius": radius,
                 "size": size,
-                "sort": "distance",
+                "sort": sort,
+                "page": page,
             },
         )
 

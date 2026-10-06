@@ -142,3 +142,24 @@ def test_event_content_with_bad_seoul_key_returns_friendly_error(client):
     assert response.status_code == 200
     assert response.json()["items"] == []
     assert response.json()["error"] is not None
+
+
+@respx.mock
+def test_place_content_sort_query(client):
+    route = respx.get(CATEGORY_URL).mock(return_value=httpx.Response(200, json=_load("kakao_category_food.json")))
+    slug = _room_slug(client)
+    client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food"})
+    assert route.calls.last.request.url.params["sort"] == "accuracy"
+    client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food", "sort": "distance"})
+    assert route.calls.last.request.url.params["sort"] == "distance"
+    assert client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food", "sort": "rating"}).status_code == 422
+
+
+@respx.mock
+def test_stale_cache_is_served_for_the_requested_sort(client, seeded):
+    respx.get(CATEGORY_URL).mock(return_value=httpx.Response(500))
+    item = {"id": "1", "name": "가까운 옛날집", "category": "한식", "address": "", "distance_m": 10, "url": "", "lat": 0.0, "lng": 0.0}
+    ContentCacheRepo(seeded, now=lambda: datetime(2020, 1, 1)).set(place_cache_key(1, "food", "distance"), [item], kind="food", hub_id=1)
+    slug = _room_slug(client)
+    assert client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food", "sort": "distance"}).json()["items"][0]["name"] == "가까운 옛날집"
+    assert client.get(f"/rooms/{slug}/hubs/1/content", params={"kind": "food"}).json()["items"] == []
