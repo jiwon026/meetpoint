@@ -98,7 +98,7 @@ class StationOut(BaseModel):
 
 
 class ContentOut(BaseModel):
-    kind: Literal["food", "cafe", "play", "event"]
+    kind: Literal["food", "cafe", "drink", "play", "event"]
     items: list[dict]
     error: str | None
 

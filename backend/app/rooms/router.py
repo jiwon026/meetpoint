@@ -100,7 +100,7 @@ def stations(q: str = Query(default="", max_length=20), db: Session = Depends(ge
 
 MSG_CONTENT_UNAVAILABLE = "지금 불러올 수 없어요"
 MSG_HUB_NOT_FOUND = "거점을 찾을 수 없어요"
-ContentKind = Literal["food", "cafe", "play", "event"]
+ContentKind = Literal["food", "cafe", "drink", "play", "event"]
 
 
 @router.post("/places/search", response_model=PlaceSearchOut, dependencies=[Depends(rate_limit("place_search"))])

@@ -1,20 +1,21 @@
-export type ContentKind = "food" | "cafe" | "play" | "event";
+export type ContentKind = "food" | "cafe" | "drink" | "play" | "event";
 export type ThemeId = "food" | "cafe" | "drink" | "play";
 export const THEME_OFF = "any";
 
 type ThemeInfo = { id: ThemeId; label: string; hint: string; tab: ContentKind };
 
-// tab은 주변 화면에서 먼저 여는 탭. 술자리는 술집을 따로 모으지 않아 맛집 탭을 연다.
+// tab은 주변 화면에서 먼저 여는 탭.
 export const THEMES: readonly ThemeInfo[] = [
   { id: "food", label: "맛집", hint: "밥이 중요한 모임", tab: "food" },
   { id: "cafe", label: "카페", hint: "수다 떨기 좋은 곳", tab: "cafe" },
-  { id: "drink", label: "술자리", hint: "한잔하기 좋은 곳", tab: "food" },
+  { id: "drink", label: "술자리", hint: "한잔하기 좋은 곳", tab: "drink" },
   { id: "play", label: "놀거리", hint: "방탈출, 보드게임", tab: "play" },
 ];
 
 export const CONTENT_TABS: readonly { kind: ContentKind; label: string }[] = [
   { kind: "food", label: "맛집" },
   { kind: "cafe", label: "카페" },
+  { kind: "drink", label: "술집" },
   { kind: "play", label: "놀거리" },
   { kind: "event", label: "행사" },
 ];

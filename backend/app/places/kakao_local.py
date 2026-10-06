@@ -39,12 +39,21 @@ class KakaoLocalClient:
         )
 
     def keyword_search(
-        self, query: str, lat: float, lng: float, radius: int = 600, size: int = 15
+        self,
+        query: str,
+        lat: float,
+        lng: float,
+        radius: int = 600,
+        size: int = 15,
+        sort: str = "distance",
+        page: int = 1,
+        category_group_code: str | None = None,
     ) -> list[dict]:
-        return self._get(
-            "keyword.json",
-            {"query": query, "x": lng, "y": lat, "radius": radius, "size": size, "sort": "distance"},
-        )
+        """category_group_code를 주면 그 분류 안에서만 찾는다 (예: 음식점 FD6)."""
+        params = {"query": query, "x": lng, "y": lat, "radius": radius, "size": size, "sort": sort, "page": page}
+        if category_group_code:
+            params["category_group_code"] = category_group_code
+        return self._get("keyword.json", params)
 
     def suggest(self, query: str, rect: str, size: int = 5) -> list[dict]:
         """중심 좌표 없이 키워드로 찾는다. rect는 "왼쪽 경도,아래 위도,오른쪽 경도,위 위도"."""

@@ -12,5 +12,5 @@ export const DEFAULT_PLACE_SORT: PlaceSort = "recommended";
 
 // 놀거리는 검색어 여러 개를 합친 목록이고 행사는 날짜 기준이라 정렬을 고르지 않는다.
 export function isSortable(kind: ContentKind): boolean {
-  return kind === "food" || kind === "cafe";
+  return kind === "food" || kind === "cafe" || kind === "drink";
 }

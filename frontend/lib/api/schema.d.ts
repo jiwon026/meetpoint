@@ -12,13 +12,13 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_health_head"];
+        get: operations["health_health_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         /** Health */
-        head: operations["health_health_head"];
+        head: operations["health_health_get"];
         patch?: never;
         trace?: never;
     };
@@ -168,7 +168,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "food" | "cafe" | "play" | "event";
+            kind: "food" | "cafe" | "drink" | "play" | "event";
             /** Items */
             items: {
                 [key: string]: unknown;
@@ -355,7 +355,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_health_head: {
+    health_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -377,7 +377,7 @@ export interface operations {
             };
         };
     };
-    health_health_head: {
+    health_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -635,7 +635,7 @@ export interface operations {
     hub_content_rooms__slug__hubs__hub_id__content_get: {
         parameters: {
             query: {
-                kind: "food" | "cafe" | "play" | "event";
+                kind: "food" | "cafe" | "drink" | "play" | "event";
                 sort?: "recommended" | "distance";
             };
             header?: never;

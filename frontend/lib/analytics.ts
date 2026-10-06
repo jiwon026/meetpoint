@@ -15,9 +15,9 @@ export type AnalyticsEvents = {
   hub_card_opened: { rank: number };
   directions_clicked: { rank: number };
   hub_viewed: { hub_name: string; region: string; rank: number };
-  content_tab_selected: { kind: "food" | "cafe" | "play" | "event" };
-  place_sort_changed: { kind: "food" | "cafe"; sort: "recommended" | "distance" };
-  place_link_clicked: { kind: "food" | "cafe" | "play"; sort: "recommended" | "distance"; position: number };
+  content_tab_selected: { kind: "food" | "cafe" | "drink" | "play" | "event" };
+  place_sort_changed: { kind: "food" | "cafe" | "drink"; sort: "recommended" | "distance" };
+  place_link_clicked: { kind: "food" | "cafe" | "drink" | "play"; sort: "recommended" | "distance"; position: number };
 };
 
 let started = false;

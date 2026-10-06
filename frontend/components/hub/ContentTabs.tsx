@@ -49,8 +49,8 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
   };
 
   const reorder = (next: PlaceSort) => {
-    // 정렬 칩은 맛집과 카페 탭에만 보인다.
-    if (next !== sort && (kind === "food" || kind === "cafe")) track("place_sort_changed", { kind, sort: next });
+    // 정렬 칩은 맛집, 카페, 술집 탭에만 보인다.
+    if (next !== sort && (kind === "food" || kind === "cafe" || kind === "drink")) track("place_sort_changed", { kind, sort: next });
     setActiveId(null);
     setSort(next);
   };
@@ -63,7 +63,7 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
 
   return (
     <section className="space-y-3">
-      <div role="tablist" aria-label="주변 종류" className="grid grid-cols-4 gap-1 rounded-lg bg-track p-1">
+      <div role="tablist" aria-label="주변 종류" className="grid grid-cols-5 gap-1 rounded-lg bg-track p-1">
         {CONTENT_TABS.map((tab) => (
           <button
             key={tab.kind}

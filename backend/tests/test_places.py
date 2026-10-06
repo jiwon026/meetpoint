@@ -152,3 +152,51 @@ def test_play_ignores_sort_and_shares_one_cache_entry(seeded):
     get_places(hub, "play", KakaoLocalClient("k"), cache, sort="distance")
     assert route.call_count == len(PLAY_KEYWORDS)
     assert all(c.request.url.params["sort"] == "distance" for c in route.calls)
+
+
+# 분류 이름은 2026-10-06에 강남, 홍대입구, 정발산, 부평, 수원에서 실제로 받은 응답에서 가져왔다.
+@respx.mock
+def test_drink_searches_the_bar_keyword_inside_restaurants(seeded):
+    docs = [
+        _doc(1, "음식점 > 술집 > 호프,요리주점"),
+        _doc(2, "음식점 > 술집"),
+        _doc(3, "음식점 > 양식"),
+        _doc(4, "음식점 > 술집 > 일본식주점 > 생마차"),
+        _doc(5, "음식점 > 술집 > 칵테일바"),
+    ]
+    route = respx.get(KEYWORD_URL).mock(return_value=httpx.Response(200, json={"documents": docs}))
+    places = get_places(seeded.get(Hub, 1), "drink", KakaoLocalClient("k"), ContentCacheRepo(seeded))
+    params = route.calls.last.request.url.params
+    assert params["query"] == "술집"
+    assert params["category_group_code"] == "FD6"
+    assert params["sort"] == "accuracy"
+    # 검색어에 걸렸어도 술집으로 분류되지 않은 곳은 뺀다.
+    assert [p.id for p in places] == ["1", "2", "4", "5"]
+    assert route.call_count == 1
+
+
+@respx.mock
+def test_drink_can_be_sorted_and_caches_each_sort(seeded):
+    docs = [_doc(i, "음식점 > 술집 > 호프,요리주점") for i in range(15)]
+    route = respx.get(KEYWORD_URL).mock(return_value=httpx.Response(200, json={"documents": docs}))
+    hub = seeded.get(Hub, 1)
+    cache = ContentCacheRepo(seeded)
+    get_places(hub, "drink", KakaoLocalClient("k"), cache, sort="distance")
+    assert route.calls.last.request.url.params["sort"] == "distance"
+    get_places(hub, "drink", KakaoLocalClient("k"), cache)
+    get_places(hub, "drink", KakaoLocalClient("k"), cache, sort="distance")
+    assert route.call_count == 2
+    assert place_cache_key(1, "drink", "recommended") != place_cache_key(1, "drink", "distance")
+
+
+@respx.mock
+def test_drink_reads_more_pages_until_the_list_is_full(seeded):
+    def page(request):
+        n = int(request.url.params["page"])
+        docs = [_doc(n * 100 + i, "음식점 > 술집" if i < 10 else "음식점 > 한식") for i in range(15)]
+        return httpx.Response(200, json={"documents": docs})
+
+    route = respx.get(KEYWORD_URL).mock(side_effect=page)
+    places = get_places(seeded.get(Hub, 1), "drink", KakaoLocalClient("k"), ContentCacheRepo(seeded))
+    assert [r.request.url.params["page"] for r in route.calls] == ["1", "2"]
+    assert len(places) == PLACE_LIMIT
