@@ -65,7 +65,7 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Pro
           ) : (
             <>
               <FairnessStats legs={rec.legs} spread={rec.spread_minutes} />
-              <LegBars legs={rec.legs} mine={mine} />
+              <LegBars legs={rec.legs} mine={mine} destination={{ name: rec.name, lat: rec.lat, lng: rec.lng }} />
             </>
           )}
           <Link href={href} className={PRIMARY_BUTTON}>
