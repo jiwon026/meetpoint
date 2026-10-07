@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import { AppHeader } from "@/components/ui/AppHeader";
-import { SITE_ORIGIN } from "@/lib/site";
+import { SITE_ORIGIN, SITE_VERIFICATION } from "@/lib/site";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   title: "우리지금만나 | 약속 장소, 중간 지점 찾기",
   description:
     "친구들이 각자 출발지를 넣으면 모두에게 공평한 중간 지점 지하철역을 추천하고 그 동네 맛집, 카페, 술자리, 놀거리를 보여줘요. 가입 없이 링크만 공유하면 돼요. 수도권 지하철 기준.",
+  verification: {
+    google: SITE_VERIFICATION.google,
+    other: { "naver-site-verification": SITE_VERIFICATION.naver },
+  },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

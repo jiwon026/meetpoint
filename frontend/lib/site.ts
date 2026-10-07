@@ -5,6 +5,13 @@ export const SITE_ORIGIN = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : "http://localhost:3000";
 
+// 검색 도구에 사이트 주인임을 알리는 확인 코드. 페이지에 그대로 실리는 공개 값이라 비밀이 아니다.
+// 구글 서치 콘솔과 네이버 서치어드바이저에서 "HTML 태그" 방식으로 받은 값이다.
+export const SITE_VERIFICATION = {
+  google: "hgSWUTE03fDf84EanFvN1U-zBEPnJpKiN5TRYi0nd5k",
+  naver: "2d0546a72aad965f0845fb4dfc068a7ebe0f84a7",
+} as const;
+
 // 검색에 나와도 되는 페이지만 적는다. 방 주소(/r/...)는 아는 사람만 보는 링크라 넣지 않는다.
 export function sitemapEntries(): MetadataRoute.Sitemap {
   return [
