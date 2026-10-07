@@ -101,7 +101,9 @@ export function CreateRoomForm({ today, onCreated }: Props) {
           <RegionChips value={regions} onChange={setRegions} />
         </fieldset>
         <fieldset className="space-y-1.5">
-          <legend className="text-sm font-semibold">어떤 모임인가요 (선택)</legend>
+          <legend className="text-sm font-semibold">
+            어떤 모임인가요 <span className="font-normal text-ink-mute">고르지 않아도 돼요</span>
+          </legend>
           <ThemePicker value={theme} onChange={setTheme} />
         </fieldset>
         <p className="rounded-lg bg-track p-3 text-xs text-ink-sub">{MSG_PRIVACY}</p>
