@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import { AppHeader } from "@/components/ui/AppHeader";
+import { SITE_ORIGIN } from "@/lib/site";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -12,15 +13,13 @@ const pretendard = localFont({
   display: "swap",
 });
 
-// 미리보기 그림(app/opengraph-image.png)의 주소는 절대 주소여야 한다. Vercel이 빌드 때 운영 도메인을 넣어준다.
-const SITE_ORIGIN = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : "http://localhost:3000";
-
+// 제목과 설명에는 사람들이 검색할 만한 말(약속 장소, 중간 지점)을 넣는다. 없는 기능은 적지 않는다.
 export const metadata: Metadata = {
+  // 미리보기 그림(app/opengraph-image.png)의 주소는 절대 주소여야 한다.
   metadataBase: new URL(SITE_ORIGIN),
-  title: "우리지금만나",
-  description: "각자 출발지를 넣으면 가장 공평한 만남 장소를 찾아줘요",
+  title: "우리지금만나 | 약속 장소, 중간 지점 찾기",
+  description:
+    "친구들이 각자 출발지를 넣으면 모두에게 공평한 중간 지점 지하철역을 추천하고 그 동네 맛집, 카페, 술자리, 놀거리를 보여줘요. 가입 없이 링크만 공유하면 돼요. 수도권 지하철 기준.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
