@@ -29,7 +29,7 @@
 | 기술 스택 | FastAPI(Python) + Next.js + Supabase Postgres | 핵심 로직은 Python, 프론트는 얇게, 배포는 git push |
 | 운영 비용 | 거의 0원 | 무료 티어와 공공데이터만 사용 |
 | 만남 지역 | 방 만들 때 서울, 경기, 인천 복수 선택(화면에서는 처음에 아무것도 고르지 않은 상태, 1개 이상 골라야 만들 수 있음). 추천 화면 필터는 보는 사람 화면에서만 바뀜 | 멀리 가기 싫은 모임이 지역을 제한할 수 있게 |
-| 테마 | 맛집, 카페, 술자리, 놀거리 중 하나(선택). 가장 공평한 곳보다 5분 이내로 더 걸리는 거점 중 테마에 맞는 곳을 앞에 둠 | 공평함은 5분까지만 양보하고 모임 성격을 반영 |
+| 테마 | 맛집, 카페, 술자리, 놀거리 중 0개 이상(선택). 가장 공평한 곳보다 5분 이내로 더 걸리는 거점 중 고른 테마에 하나라도 맞는 곳을 앞에 둠 | 공평함은 5분까지만 양보하고 모임 성격을 반영 |
 | 참가자 빼기 | 링크를 가진 누구나 빼고 다시 넣을 수 있음. 삭제가 아니라 계산 제외 | 못 오는 사람이 생겨도 방을 새로 만들지 않게. 되돌릴 수 있어야 실수에 안전 |
 
 ## 3. 사용자 흐름
@@ -82,7 +82,7 @@
 
 | 테이블 | 핵심 컬럼 | 비고 |
 |---|---|---|
-| rooms | id, slug, title, meet_date, regions, theme, created_at, expires_at | expires_at = meet_date + 7일. regions는 서울, 경기, 인천 중 1개 이상. theme은 없을 수 있음 |
+| rooms | id, slug, title, meet_date, regions, theme, themes, created_at, expires_at | expires_at = meet_date + 7일. regions는 서울, 경기, 인천 중 1개 이상. themes는 고른 테마 목록(비어 있을 수 있음). theme은 테마를 하나만 고르던 때의 열로, 그때 만든 방은 themes가 null이고 이 값을 읽는다 |
 | participants | id, room_id, nickname, lat, lng, nearest_stations, active, created_at | lat/lng 반올림. nearest_stations는 역 id와 도보분 최대 3개 (JSON). active가 거짓이면 계산에서 제외 |
 | stations | id, name, line, lat, lng | 수도권 전체 791개 (노선별 노드, 물리적 역 그룹은 646개) |
 | hubs | station_id, name, lat, lng, region, tags, themes, vibe_summary | 큐레이션 100곳. region은 서울/경기/인천. themes는 food, cafe, drink, play |
@@ -96,7 +96,7 @@
    `time(p, h) = min over s in p.nearest_stations ( walk(p, s) + station_times[s][h] ) + 5분(거점역 하차 후 도보)`
 3. 거점 점수: `score(h) = max over p ( time(p, h) )`. 작을수록 좋음.
 4. 동점이면 `sum over p ( time(p, h) )`가 작은 쪽 우선.
-5. 테마가 있으면, 가장 작은 점수보다 5분 이내로 큰 거점 중 테마에 맞는 곳을 앞에 둔다. 그 뒤는 3, 4번 순서 그대로. 5분은 측정값이 아니라 고른 값이다 (`backend/data/SOURCES.md`).
+5. 테마가 있으면, 가장 작은 점수보다 5분 이내로 큰 거점 중 테마에 맞는 곳을 앞에 둔다. 테마를 여러 개 골랐으면 하나라도 맞는 곳이다(모두 맞아야 하는 방식은 맞는 거점이 너무 적어 고른 효과가 보이지 않는다. 2026-10-07 지인 테스트 요청으로 여러 개를 고를 수 있게 했다). 그 뒤는 3, 4번 순서 그대로. 5분은 측정값이 아니라 고른 값이다 (`backend/data/SOURCES.md`).
 6. 상위 5곳 반환.
 7. 화면 표시: "가장 오래 걸리는 사람 약 32분, 차이 9분" 형태로 공평도 함께 표시. 펼친 카드마다 최대 시간이 가장 빠른 거점보다 크면 "가장 빠른 곳보다 N분 더"를 붙인다. 테마 때문에 앞에 온 거점뿐 아니라 그 차이가 있는 모든 카드가 해당한다.
 

@@ -65,7 +65,10 @@ class Room(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     regions: Mapped[list[str]] = mapped_column(JSON, default=lambda: list(REGIONS))
+    # 테마를 하나만 고르던 때의 열. 그때 만든 방이 이 값을 쓰고, 새 방에도 첫 번째 테마를 적어 둔다.
     theme: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
+    # 고른 테마 목록. 열을 더하기 전에 만든 방은 null이다 (rooms/service.py의 room_themes).
+    themes: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
     # 추천이 처음 계산된 시각. 통계에서 방당 한 번만 세려고 둔다.
     first_result_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 

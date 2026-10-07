@@ -72,7 +72,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 - 콘텐츠는 `cache.py`의 `content_cache` 테이블에 24시간 캐시. 실패 시 만료 캐시라도 돌려주고 `error` 문구를 붙인다.
 - 맛집, 카페, 술집은 `sort` 쿼리(`recommended` 기본, `distance`)로 정렬을 고른다. 추천순은 카카오의 정확도순이고 별점이 아니다. 카페는 `places/service.py`에서 분류 이름으로 만화카페, 보드카페 등을 걸러낸다. 술집은 분류 코드가 없어 음식점 안에서 "술집"을 검색한 뒤 분류 이름으로 거른다. 이유와 근거는 `docs/design.md`의 콘텐츠 절.
 - KOPIS(경기, 인천 공연) 목록에는 공연장 좌표와 id가 없다. `events/service.py`의 `resolve_venues`가 공연 상세와 공연장 정보를 조회해 이름별로 30일 캐시한다. 요청 중 새 조회는 `MAX_NEW_VENUE_LOOKUPS`곳까지이고 `scripts/warm_kopis_venues.py`가 매일 미리 채운다. 조회 실패는 예외로 올리지 않고 그 공연장만 건너뛴다. 외부 API의 테스트 픽스처는 실제 응답 모양과 맞는지 확인하고 만든다(이 버그는 픽스처에 실제에 없는 필드를 넣어서 생겼다).
-- 방은 `regions`(서울, 경기, 인천 중 1개 이상)와 `theme`(없을 수 있음)을 가진다. 결과 API의 `region`, `theme` 쿼리가 방 기본값보다 우선한다. 지역 필터는 반드시 `rank_with_preference` 전에 건다.
+- 방은 `regions`(서울, 경기, 인천 중 1개 이상)와 `themes`(0개 이상)를 가진다. 결과 API의 `region`, `theme` 쿼리(둘 다 여러 번 줄 수 있다)가 방 기본값보다 우선한다. 고른 테마 중 하나라도 맞는 거점이 테마에 맞는 거점이다. `rooms.theme` 열과 응답의 `theme`은 테마를 하나만 고르던 때의 것으로, 그때 만든 방과 예전 화면을 위해 남아 있다(`rooms/service.py`의 `room_themes`). 지역 필터는 반드시 `rank_with_preference` 전에 건다.
 - 참가자는 지우지 않고 `active`를 끈다. 계산은 `active`만, 정원 20명은 전체 행 수.
 
 사용자에게 보이는 에러 문구는 `rooms/service.py`의 `MSG_*` 상수와 `docs/design.md` 8절이 원본이다. 바꾸면 둘 다.
