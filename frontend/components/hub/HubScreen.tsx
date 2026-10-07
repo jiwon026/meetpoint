@@ -55,7 +55,7 @@ export function HubScreen({ slug, hubId, filter, onGone }: Props) {
       <ContentTabs
         slug={slug}
         hubId={hubId}
-        initial={firstTab(result.data?.theme)}
+        initial={firstTab(result.data?.themes)}
         center={{ lat: rec.lat, lng: rec.lng }}
         onGone={gone}
       />

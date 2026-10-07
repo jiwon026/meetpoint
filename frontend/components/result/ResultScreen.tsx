@@ -49,7 +49,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
     track("result_viewed", {
       participant_count: data.recommendations[0]?.legs.length ?? 0,
       regions: parseRegions(data.regions).join(","),
-      theme: data.theme ?? "none",
+      theme: data.themes.length > 0 ? data.themes.join(",") : "none",
       recommendation_count: data.recommendations.length,
     });
   }, [data]);
@@ -93,7 +93,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
 
   return (
     <div className="space-y-4">
-      <FilterBar filter={filter} appliedRegions={data.regions} appliedTheme={data.theme} onChange={onFilterChange} />
+      <FilterBar filter={filter} appliedRegions={data.regions} appliedThemes={data.themes} onChange={onFilterChange} />
       {recs.length === 0 ? (
         <p className={`${CARD} text-center font-semibold`}>
           {isAllRegions(data.regions) ? MSG_NO_ROUTE : MSG_NO_HUB_IN_REGION}

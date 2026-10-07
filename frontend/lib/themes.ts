@@ -20,19 +20,23 @@ export const CONTENT_TABS: readonly { kind: ContentKind; label: string }[] = [
   { kind: "event", label: "행사" },
 ];
 
-export function isThemeId(value: string | null | undefined): value is ThemeId {
-  return THEMES.some((theme) => theme.id === value);
+// 모르는 값은 버리고 중복을 없앤 뒤 순서를 맛집, 카페, 술자리, 놀거리로 맞춘다.
+export function pickThemes(values: readonly string[] | null | undefined): ThemeId[] {
+  return THEMES.map((theme) => theme.id).filter((id) => values?.includes(id));
 }
 
-export function themeLabel(value: string | null | undefined): string | null {
-  return THEMES.find((theme) => theme.id === value)?.label ?? null;
+export function themeLabels(values: readonly string[] | null | undefined): string[] {
+  return THEMES.filter((theme) => values?.includes(theme.id)).map((theme) => theme.label);
 }
 
-export function parseTheme(value: string | null): ThemeId | typeof THEME_OFF | null {
-  if (value === THEME_OFF) return THEME_OFF;
-  return isThemeId(value) ? value : null;
+// 주소의 theme 값들. any가 있으면 "테마 없이", 아는 값이 하나도 없으면 null(방의 기본값을 따름).
+export function parseThemes(values: readonly string[]): ThemeId[] | typeof THEME_OFF | null {
+  if (values.includes(THEME_OFF)) return THEME_OFF;
+  const chosen = pickThemes(values);
+  return chosen.length > 0 ? chosen : null;
 }
 
-export function firstTab(theme: string | null | undefined): ContentKind {
-  return THEMES.find((t) => t.id === theme)?.tab ?? "food";
+// 테마를 여러 개 골랐으면 맛집, 카페, 술자리, 놀거리 순서에서 가장 앞선 것의 탭을 연다.
+export function firstTab(themes: readonly string[] | null | undefined): ContentKind {
+  return THEMES.find((theme) => themes?.includes(theme.id))?.tab ?? "food";
 }

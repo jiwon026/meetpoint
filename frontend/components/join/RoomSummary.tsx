@@ -2,11 +2,10 @@ import { TicketCard } from "@/components/ui/TicketCard";
 import type { RoomOut } from "@/lib/api/types";
 import { dday, formatMeetDate } from "@/lib/format";
 import { MSG_AUTO_DELETE } from "@/lib/messages";
-import { themeLabel } from "@/lib/themes";
+import { themeLabels } from "@/lib/themes";
 
 export function RoomSummary({ room, now = new Date() }: { room: RoomOut; now?: Date }) {
-  const theme = themeLabel(room.theme);
-  const scope = [...room.regions, ...(theme ? [theme] : [])].join(", ");
+  const scope = [...room.regions, ...themeLabels(room.themes)].join(", ");
   return (
     <TicketCard label="모임 정보">
       <h1 className="text-xl font-extrabold tracking-tight">{room.title}</h1>

@@ -14,6 +14,7 @@ export function room(over: Partial<RoomOut> = {}): RoomOut {
     expires_at: "2026-10-17T00:00:00",
     regions: ["서울", "경기", "인천"],
     theme: null,
+    themes: [],
     participants: [],
     ...over,
   };
@@ -48,6 +49,7 @@ export function result(over: Partial<ResultOut> = {}): ResultOut {
     best_max_minutes: 22,
     regions: ["서울", "경기", "인천"],
     theme: null,
+    themes: [],
     ...over,
   };
 }

@@ -36,7 +36,8 @@ const EVENT = {
 };
 
 function serveResult(theme: string | null = null) {
-  server.use(http.get(`${API}/rooms/abc123/result`, () => HttpResponse.json(result({ theme, recommendations: [rec()] }))));
+  const themes = theme ? [theme] : [];
+  server.use(http.get(`${API}/rooms/abc123/result`, () => HttpResponse.json(result({ themes, recommendations: [rec()] }))));
 }
 
 function serveContent(handler: (kind: string) => Response) {
