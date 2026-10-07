@@ -15,7 +15,7 @@ export const THEMES: readonly ThemeInfo[] = [
 export const CONTENT_TABS: readonly { kind: ContentKind; label: string }[] = [
   { kind: "food", label: "맛집" },
   { kind: "cafe", label: "카페" },
-  { kind: "drink", label: "술집" },
+  { kind: "drink", label: "술자리" },
   { kind: "play", label: "놀거리" },
   { kind: "event", label: "행사" },
 ];

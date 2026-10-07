@@ -49,7 +49,7 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
   };
 
   const reorder = (next: PlaceSort) => {
-    // 정렬 칩은 맛집, 카페, 술집 탭에만 보인다.
+    // 정렬 칩은 맛집, 카페, 술자리 탭에만 보인다.
     if (next !== sort && (kind === "food" || kind === "cafe" || kind === "drink")) track("place_sort_changed", { kind, sort: next });
     setActiveId(null);
     setSort(next);
