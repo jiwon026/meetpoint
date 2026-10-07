@@ -82,11 +82,12 @@ test("고른 지역과 테마를 보내고 만든 방을 넘긴다", async () =>
   renderWithClient(<CreateRoomForm today={TODAY} onCreated={onCreated} />);
   fill("  금요일 저녁 ", "2026-10-10");
   await userEvent.click(screen.getByRole("button", { name: "경기" }));
+  await userEvent.click(screen.getByRole("button", { name: /술자리/ }));
   await userEvent.click(screen.getByRole("button", { name: /카페/ }));
   await userEvent.click(screen.getByRole("button", { name: "방 만들고 링크 받기" }));
   await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
   expect(onCreated.mock.calls[0][0].slug).toBe("k3x9pq");
-  expect(body).toEqual({ title: "금요일 저녁", meet_date: "2026-10-10", regions: ["서울", "인천"], theme: "cafe" });
+  expect(body).toEqual({ title: "금요일 저녁", meet_date: "2026-10-10", regions: ["서울", "인천"], themes: ["cafe", "drink"] });
 });
 
 test("서버 문구를 그대로 보여준다", async () => {

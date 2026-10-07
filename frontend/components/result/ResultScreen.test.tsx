@@ -44,7 +44,7 @@ test("1위 카드가 펼쳐진 채로 시작하고 다른 카드를 누르면 �
 
 test("펼친 카드는 수치, 사람별 시간, 둘러보기 링크를 보여준다", async () => {
   serve(result({ recommendations: TWO_HUBS }));
-  show({ filter: { regions: ["서울"], theme: "cafe" } });
+  show({ filter: { regions: ["서울"], themes: ["cafe"] } });
   const card = (await screen.findAllByTestId("hub-card"))[0];
   expect(within(card).getByText("어디서든 오기 쉬운 교통 중심")).toBeInTheDocument();
   expect(within(card).getByText("평균")).toBeInTheDocument();
@@ -81,7 +81,7 @@ test("대기 상태면 초대 안내와 사람 추가", async () => {
 
 test("지역을 좁혀서 추천이 없으면 지역을 넓히라고 안내한다", async () => {
   serve(result({ recommendations: [], best_max_minutes: null, regions: ["인천"] }));
-  show({ filter: { regions: ["인천"], theme: null } });
+  show({ filter: { regions: ["인천"], themes: null } });
   expect(await screen.findByText("이 지역엔 추천할 곳이 없어요. 지역을 넓혀보세요.")).toBeInTheDocument();
   expect(screen.queryByText(/지하철 이동 시간 기준이에요/)).toBeNull();
   // 필터는 그대로 보여서 다시 넓힐 수 있어야 한다
@@ -116,7 +116,7 @@ test("필터 칩을 누르면 바뀐 필터를 넘긴다", async () => {
   show({ onFilterChange });
   await screen.findAllByTestId("hub-card");
   await userEvent.click(screen.getByRole("button", { name: "경기" }));
-  expect(onFilterChange).toHaveBeenLastCalledWith({ regions: ["서울", "인천"], theme: null });
+  expect(onFilterChange).toHaveBeenLastCalledWith({ regions: ["서울", "인천"], themes: null });
 });
 
 test("만료된 방이면 백엔드 문구와 새 방 만들기", async () => {
@@ -131,30 +131,30 @@ test("만료된 방이면 백엔드 문구와 새 방 만들기", async () => {
 test("결과 링크 복사는 필터가 붙은 주소를 복사한다", async () => {
   serve(result({ recommendations: TWO_HUBS }));
   const user = userEvent.setup();
-  show({ filter: { regions: null, theme: "cafe" } });
+  show({ filter: { regions: null, themes: ["cafe", "drink"] } });
   await screen.findAllByTestId("hub-card");
   await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("링크를 복사했어요"));
-  expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/result?theme=cafe`);
+  expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/result?theme=cafe&theme=drink`);
 });
 
 test("준비된 결과를 처음 보여줄 때 한 번만 통계를 남기고, 다시 불러와도 반복하지 않는다", async () => {
-  serve(result({ recommendations: TWO_HUBS, theme: "cafe", regions: ["서울", "경기"] }));
+  serve(result({ recommendations: TWO_HUBS, themes: ["cafe", "drink"], regions: ["서울", "경기"] }));
   const { rerender } = show();
   await screen.findAllByTestId("hub-card");
   expect(track).toHaveBeenCalledExactlyOnceWith("result_viewed", {
     participant_count: 2,
     regions: "서울,경기",
-    theme: "cafe",
+    theme: "cafe,drink",
     recommendation_count: 2,
   });
 
   // 필터를 바꿔 다른 결과가 와도 같은 화면이므로 다시 남기지 않는다.
-  serve(result({ recommendations: [TWO_HUBS[1]], theme: null, regions: ["서울"] }));
+  serve(result({ recommendations: [TWO_HUBS[1]], themes: [], regions: ["서울"] }));
   rerender(
     <ResultScreen
       slug="abc123"
-      filter={{ regions: ["서울"], theme: null }}
+      filter={{ regions: ["서울"], themes: null }}
       onFilterChange={vi.fn()}
       onAddPeople={vi.fn()}
     />,
@@ -171,7 +171,7 @@ test("대기 상태에서는 결과 통계를 남기지 않는다", async () => 
 });
 
 test("테마가 없는 결과는 theme을 none으로 남긴다", async () => {
-  serve(result({ recommendations: [rec()], theme: null }));
+  serve(result({ recommendations: [rec()], themes: [] }));
   show();
   await screen.findAllByTestId("hub-card");
   expect(track).toHaveBeenCalledWith("result_viewed", expect.objectContaining({ theme: "none", recommendation_count: 1 }));

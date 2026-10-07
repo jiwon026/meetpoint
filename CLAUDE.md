@@ -87,7 +87,7 @@ Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Quer
 
 화면 로직은 `components/{join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
 
-지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다.
+지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다. 테마는 `?theme=food&theme=drink`처럼 여러 번 적고, 모두 끄면 `theme=any`를 적는다(비워 두면 방의 기본 테마로 돌아간다).
 
 익명 통계는 `lib/analytics.ts`가 맡는다. 이벤트 이름마다 속성 타입이 정해져 있어서 정해 두지 않은 값을 얹으면 컴파일 에러가 나고, `NEXT_PUBLIC_AMPLITUDE_API_KEY`가 없으면 초기화도 전송도 하지 않는다. 닉네임, 참가자의 출발역, 주소, 검색어, 좌표, 슬러그는 보내지 않는다 (거점 이름은 공개 장소라 된다). 방 주소에 슬러그가 있으니 페이지뷰, 요소 클릭, 이벤트에 붙는 페이지 주소 같은 자동 수집은 끄고, 새 이벤트도 같은 파일에 타입과 함께 더한다. 개인정보 안내 글(`app/privacy/page.tsx`)은 보내는 값이 바뀌면 같이 고친다.
 

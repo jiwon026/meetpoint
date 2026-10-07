@@ -12,13 +12,13 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_health_get"];
+        get: operations["health_health_head"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         /** Health */
-        head: operations["health_health_get"];
+        head: operations["health_health_head"];
         patch?: never;
         trace?: never;
     };
@@ -286,6 +286,8 @@ export interface components {
             regions: string[];
             /** Theme */
             theme: string | null;
+            /** Themes */
+            themes: string[];
         };
         /** RoomCreate */
         RoomCreate: {
@@ -300,6 +302,8 @@ export interface components {
             regions?: ("서울" | "경기" | "인천")[];
             /** Theme */
             theme?: ("food" | "cafe" | "drink" | "play") | null;
+            /** Themes */
+            themes?: ("food" | "cafe" | "drink" | "play")[] | null;
         };
         /** RoomOut */
         RoomOut: {
@@ -321,6 +325,8 @@ export interface components {
             regions: string[];
             /** Theme */
             theme: string | null;
+            /** Themes */
+            themes: string[];
             /** Participants */
             participants: components["schemas"]["ParticipantOut"][];
         };
@@ -355,7 +361,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_health_get: {
+    health_health_head: {
         parameters: {
             query?: never;
             header?: never;
@@ -377,7 +383,7 @@ export interface operations {
             };
         };
     };
-    health_health_get: {
+    health_health_head: {
         parameters: {
             query?: never;
             header?: never;
@@ -538,7 +544,7 @@ export interface operations {
         parameters: {
             query?: {
                 region?: ("서울" | "경기" | "인천")[] | null;
-                theme?: ("food" | "cafe" | "drink" | "play") | "any" | null;
+                theme?: (("food" | "cafe" | "drink" | "play") | "any")[] | null;
             };
             header?: never;
             path: {

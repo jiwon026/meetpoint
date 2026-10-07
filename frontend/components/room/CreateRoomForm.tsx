@@ -27,7 +27,7 @@ export function CreateRoomForm({ today, onCreated }: Props) {
   const [title, setTitle] = useState("");
   const [meetDate, setMeetDate] = useState("");
   const [regions, setRegions] = useState<Region[]>([]);
-  const [theme, setTheme] = useState<ThemeId | null>(null);
+  const [themes, setThemes] = useState<ThemeId[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateRoom();
   // 성공 뒤 다른 화면으로 넘어갈 때까지도 다시 누를 수 없게 막는다.
@@ -56,13 +56,13 @@ export function CreateRoomForm({ today, onCreated }: Props) {
     }
     setProblem(null);
     create.mutate(
-      { title: name, meet_date: meetDate, regions, theme },
+      { title: name, meet_date: meetDate, regions, themes },
       {
         onSuccess: (room) => {
           track("room_created", {
             regions: regions.join(","),
             region_count: regions.length,
-            theme: theme ?? "none",
+            theme: themes.length > 0 ? themes.join(",") : "none",
             days_until_meet: daysBetween(today, room.meet_date),
           });
           onCreated(room);
@@ -102,9 +102,9 @@ export function CreateRoomForm({ today, onCreated }: Props) {
         </fieldset>
         <fieldset className="space-y-1.5">
           <legend className="text-sm font-semibold">
-            어떤 모임인가요 <span className="font-normal text-ink-mute">고르지 않아도 돼요</span>
+            어떤 모임인가요 <span className="font-normal text-ink-mute">여러 개 골라도, 안 골라도 돼요</span>
           </legend>
-          <ThemePicker value={theme} onChange={setTheme} />
+          <ThemePicker value={themes} onChange={setThemes} />
         </fieldset>
         <p className="rounded-lg bg-track p-3 text-xs text-ink-sub">{MSG_PRIVACY}</p>
         {problem !== null && (

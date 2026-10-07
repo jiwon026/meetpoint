@@ -17,9 +17,9 @@ import {
 } from "./hooks";
 
 test("resultPath는 필터를 쿼리로 붙인다", () => {
-  expect(resultPath("abc123", { regions: null, theme: null })).toBe("/rooms/abc123/result");
-  expect(resultPath("abc123", { regions: ["서울"], theme: "cafe" })).toBe(
-    "/rooms/abc123/result?region=%EC%84%9C%EC%9A%B8&theme=cafe",
+  expect(resultPath("abc123", { regions: null, themes: null })).toBe("/rooms/abc123/result");
+  expect(resultPath("abc123", { regions: ["서울"], themes: ["cafe", "play"] })).toBe(
+    "/rooms/abc123/result?region=%EC%84%9C%EC%9A%B8&theme=cafe&theme=play",
   );
 });
 
@@ -43,7 +43,7 @@ test("useResult는 필터를 쿼리로 보낸다", async () => {
       return HttpResponse.json(result({ regions: ["경기"] }));
     }),
   );
-  const { result: hook } = renderHook(() => useResult("abc123", { regions: ["경기"], theme: "any" }), {
+  const { result: hook } = renderHook(() => useResult("abc123", { regions: ["경기"], themes: "any" }), {
     wrapper: clientWrapper(),
   });
   await waitFor(() => expect(hook.current.data?.regions).toEqual(["경기"]));
