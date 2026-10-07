@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.cache import utcnow
 from app.clock import kst_date
 from app.errors import UpstreamError
-from app.options import REGIONS, THEME_OFF
+from app.options import REGIONS, THEME_OFF, THEMES
 from app.geo import is_in_metro, round_coord
 from app.geocoding.kakao import Geocoder
 from app.geocoding.nearest import StationWalk, nearest_stations
@@ -74,6 +74,7 @@ def create_room(session: Session, data: RoomCreate) -> Room:
     now = utcnow()
     _check_meet_date(data.meet_date, now)
     expires = datetime.combine(data.meet_date, datetime.min.time()) + timedelta(days=ROOM_KEEP_DAYS)
+    themes = data.chosen_themes()
     room = Room(
         slug=_unique_slug(session),
         title=data.title.strip(),
@@ -81,7 +82,8 @@ def create_room(session: Session, data: RoomCreate) -> Room:
         created_at=now,
         expires_at=expires,
         regions=list(data.regions),
-        theme=data.theme,
+        theme=themes[0] if themes else None,
+        themes=themes,
     )
     session.add(room)
     session.commit()
@@ -161,21 +163,38 @@ def participant_out(p: Participant) -> ParticipantOut:
     )
 
 
+def room_themes(room: Room) -> list[str]:
+    """방이 고른 테마. themes 열을 더하기 전에 만든 방은 theme 하나를 읽는다."""
+    if room.themes is not None:
+        return [t for t in THEMES if t in room.themes]
+    return [room.theme] if room.theme else []
+
+
+def _first(themes: Sequence[str]) -> str | None:
+    return themes[0] if themes else None
+
+
 def room_out(room: Room) -> RoomOut:
+    themes = room_themes(room)
     return RoomOut(
         slug=room.slug,
         title=room.title,
         meet_date=room.meet_date,
         expires_at=room.expires_at,
         regions=list(room.regions),
-        theme=room.theme,
+        theme=_first(themes),
+        themes=themes,
         participants=[participant_out(p) for p in room.participants],
     )
 
 
-def _applied_theme(room: Room, theme: str | None) -> str | None:
-    chosen = theme if theme is not None else room.theme
-    return None if chosen in (None, THEME_OFF) else chosen
+def _applied_themes(room: Room, themes: Sequence[str] | None) -> list[str]:
+    """쿼리가 방의 기본값보다 우선한다. 쿼리에 any가 있으면 테마를 쓰지 않는다."""
+    if themes is None:
+        return room_themes(room)
+    if THEME_OFF in themes:
+        return []
+    return [t for t in THEMES if t in themes]
 
 
 def _recommendation(
@@ -236,15 +255,15 @@ def compute_result(
     room: Room,
     matrix: StationTimeMatrix,
     regions: Sequence[str] | None = None,
-    theme: str | None = None,
+    themes: Sequence[str] | None = None,
 ) -> ResultOut:
     applied_regions = [r for r in REGIONS if r in (regions or room.regions)]
-    applied_theme = _applied_theme(room, theme)
+    applied_themes = _applied_themes(room, themes)
     present = [p for p in room.participants if p.active]
     if len(present) < 2:
         return ResultOut(
             status="waiting", recommendations=[], best_max_minutes=None,
-            regions=applied_regions, theme=applied_theme,
+            regions=applied_regions, theme=_first(applied_themes), themes=applied_themes,
         )
     inputs = [
         ParticipantInput(p.id, p.nickname, tuple(StationWalk(**d) for d in p.nearest_stations))
@@ -255,9 +274,10 @@ def compute_result(
     hub_by_id = {h.id: h for h in hubs}
     # 상위 5곳을 자르기 전에 지역으로 거른다. 자른 뒤 거르면 결과가 비어 보인다.
     in_region = [c for c in candidates if hub_by_id[c.hub_id].region in applied_regions]
+    # 고른 테마 중 하나라도 맞으면 테마에 맞는 거점이다.
     matching = frozenset(
         c.hub_id for c in in_region
-        if applied_theme is not None and applied_theme in hub_by_id[c.hub_id].themes
+        if any(t in hub_by_id[c.hub_id].themes for t in applied_themes)
     )
     ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
     lines = hub_lines(hubs, stations)
@@ -270,7 +290,8 @@ def compute_result(
         ],
         best_max_minutes=ranking.best_max_minutes,
         regions=applied_regions,
-        theme=applied_theme,
+        theme=_first(applied_themes),
+        themes=applied_themes,
     )
     # 응답을 다 만든 뒤에 표시한다. 통계 기록이 실패해도 응답은 그대로 나간다.
     _mark_first_result(session, room)

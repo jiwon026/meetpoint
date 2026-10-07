@@ -85,12 +85,12 @@ def update_participant(
 def get_result(
     slug: str,
     region: list[Region] | None = Query(default=None),
-    theme: Theme | Literal["any"] | None = Query(default=None),
+    theme: list[Theme | Literal["any"]] | None = Query(default=None),
     db: Session = Depends(get_db),
     matrix: StationTimeMatrix = Depends(get_matrix),
 ) -> ResultOut:
     room = service.get_room(db, slug)
-    return service.compute_result(db, room, matrix, regions=region, theme=theme)
+    return service.compute_result(db, room, matrix, regions=region, themes=theme)
 
 
 @router.get("/stations", response_model=list[StationOut])
