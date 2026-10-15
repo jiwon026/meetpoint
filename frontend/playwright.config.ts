@@ -3,7 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   timeout: 90_000,
-  use: { baseURL: "http://localhost:3100", ...devices["Pixel 7"] },
+  // CI에서 test.only가 남아 있으면 실패시킨다. 실패한 테스트는 화면 기록을 남긴다(CI가 올려 준다).
+  forbidOnly: !!process.env.CI,
+  use: { baseURL: "http://localhost:3100", ...devices["Pixel 7"], trace: "retain-on-failure" },
   webServer: [
     {
       command: "node e2e/start-backend.mjs",
