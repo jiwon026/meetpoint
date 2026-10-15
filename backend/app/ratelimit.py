@@ -31,6 +31,8 @@ class Limit:
 LIMITS: dict[str, Limit] = {
     # 방 만들기: 한 사람이 10분에 서른 개를 만들 일은 없다.
     "create_room": Limit(limit=30, window_seconds=600),
+    # 약속 날짜 바꾸기: 방 만들기와 같은 정도. 날짜를 하루씩 몇 번 옮겨도 한 번에 저장한다.
+    "update_room": Limit(limit=30, window_seconds=600),
     # 출발지 등록: 한 브라우저에서 여러 명을 대신 넣을 수 있고 방 정원이 20명이다.
     "add_participant": Limit(limit=60, window_seconds=600),
     # 주소 검색: 글자를 칠 때마다 부른다(0.3초 디바운스). 카카오 할당량을 쓰는 익명 프록시다.

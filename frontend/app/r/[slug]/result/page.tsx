@@ -3,7 +3,7 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ResultScreen } from "@/components/result/ResultScreen";
-import { StepIndicator } from "@/components/ui/StepIndicator";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { filterFromSearch, filterQuery } from "@/lib/filter";
 
 function ResultPage() {
@@ -13,7 +13,7 @@ function ResultPage() {
 
   return (
     <main>
-      <StepIndicator current={3} slug={slug} />
+      <ProgressBar current={2} slug={slug} />
       <ResultScreen
         slug={slug}
         filter={filter}

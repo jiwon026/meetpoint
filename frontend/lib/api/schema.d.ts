@@ -12,13 +12,13 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_health_head"];
+        get: operations["health_health_get"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         /** Health */
-        head: operations["health_health_head"];
+        head: operations["health_health_get"];
         patch?: never;
         trace?: never;
     };
@@ -53,7 +53,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Room */
+        patch: operations["update_room_rooms__slug__patch"];
         trace?: never;
     };
     "/rooms/{slug}/participants": {
@@ -330,12 +331,24 @@ export interface components {
             /** Participants */
             participants: components["schemas"]["ParticipantOut"][];
         };
+        /** RoomUpdate */
+        RoomUpdate: {
+            /**
+             * Meet Date
+             * Format: date
+             */
+            meet_date: string;
+            /** Title */
+            title?: string | null;
+        };
         /** StationOut */
         StationOut: {
             /** Id */
             id: number;
             /** Name */
             name: string;
+            /** Lines */
+            lines: string[];
             /** Line */
             line: string;
         };
@@ -361,7 +374,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_health_head: {
+    health_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -383,7 +396,7 @@ export interface operations {
             };
         };
     };
-    health_health_head: {
+    health_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -448,6 +461,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_room_rooms__slug__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoomUpdate"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

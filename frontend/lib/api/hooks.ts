@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { POLL_MS } from "@/lib/constants";
 import { filterQuery, type ResultFilter } from "@/lib/filter";
+import { MSG_NETWORK } from "@/lib/messages";
 import { isSortable, type PlaceSort } from "@/lib/placeSort";
 import type { ContentKind } from "@/lib/themes";
 import { ApiError, request } from "./client";
@@ -14,6 +15,7 @@ import type {
   ResultOut,
   RoomCreate,
   RoomOut,
+  RoomUpdate,
   StationOut,
 } from "./types";
 
@@ -53,9 +55,44 @@ export function useResult(slug: string, filter: ResultFilter, options: { poll?: 
   });
 }
 
-export function useCreateRoom() {
-  return useMutation<RoomOut, ApiError, RoomCreate>({
-    mutationFn: (body) => request<RoomOut>("/rooms", { method: "POST", body: JSON.stringify(body) }),
+export type StartMeetingInput = { room: RoomCreate; people: ParticipantCreate[] };
+// index는 people의 순번. skipped는 요청을 멈춰서 보내지 못한 사람 수.
+export type StartMeetingResult = {
+  room: RoomOut;
+  added: { index: number; participant: ParticipantOut }[];
+  failed: { index: number; message: string }[];
+  skipped: number;
+};
+
+// 주소를 못 찾았거나 수도권 밖이거나 역이 없는 것은 그 사람만의 문제라 다음 사람은 계속 보낸다.
+// 그 밖의 실패(요청 제한, 연결 불량, 서버 오류)는 다음 사람도 같을 테니 멈춘다.
+function onlyThisPerson(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 422 || error.status === 404);
+}
+
+// 첫 화면에서 쓴다: 방을 만들고 사람들을 한 명씩 차례로 등록한다.
+// 한꺼번에 보내지 않는 것은 서버의 정원 검사가 읽고 쓰는 사이에 잠기지 않고, 등록 순서가 화면 순서와 같아야 해서다.
+// 방을 만든 뒤의 실패는 던지지 않고 돌려준다. 방은 이미 있으니 화면이 그 방으로 보내 이어서 넣게 한다.
+export function useStartMeeting() {
+  return useMutation<StartMeetingResult, ApiError, StartMeetingInput>({
+    mutationFn: async ({ room: roomBody, people }) => {
+      const room = await request<RoomOut>("/rooms", { method: "POST", body: JSON.stringify(roomBody) });
+      const added: StartMeetingResult["added"] = [];
+      const failed: StartMeetingResult["failed"] = [];
+      for (const [index, body] of people.entries()) {
+        try {
+          const participant = await request<ParticipantOut>(`/rooms/${room.slug}/participants`, {
+            method: "POST",
+            body: JSON.stringify(body),
+          });
+          added.push({ index, participant });
+        } catch (error) {
+          failed.push({ index, message: error instanceof ApiError ? error.message : MSG_NETWORK });
+          if (!onlyThisPerson(error)) return { room, added, failed, skipped: people.length - index - 1 };
+        }
+      }
+      return { room, added, failed, skipped: 0 };
+    },
   });
 }
 
@@ -64,6 +101,14 @@ export function useAddParticipant(slug: string) {
   return useMutation<ParticipantOut, ApiError, ParticipantCreate>({
     mutationFn: (body) =>
       request<ParticipantOut>(`/rooms/${slug}/participants`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => invalidateRoom(client, slug),
+  });
+}
+
+export function useChangeMeetDate(slug: string) {
+  const client = useQueryClient();
+  return useMutation<RoomOut, ApiError, RoomUpdate>({
+    mutationFn: (body) => request<RoomOut>(`/rooms/${slug}`, { method: "PATCH", body: JSON.stringify(body) }),
     onSuccess: () => invalidateRoom(client, slug),
   });
 }

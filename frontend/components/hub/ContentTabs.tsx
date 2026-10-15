@@ -63,7 +63,7 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
 
   return (
     <section className="space-y-3">
-      <div role="tablist" aria-label="주변 종류" className="grid grid-cols-5 gap-1 rounded-lg bg-track p-1">
+      <div role="tablist" aria-label="주변 종류" data-tour="tabs" className="grid grid-cols-5 gap-1 rounded-lg bg-track p-1">
         {CONTENT_TABS.map((tab) => (
           <button
             key={tab.kind}
@@ -105,6 +105,7 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
           <li key={place.id}>
             <PlaceCard
               place={place}
+              kind={kind === "event" ? "food" : kind}
               index={index}
               active={place.id === activeId}
               onSelect={() => setActiveId(place.id)}

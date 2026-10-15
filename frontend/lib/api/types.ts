@@ -4,6 +4,7 @@ type Schemas = components["schemas"];
 
 export type RoomOut = Schemas["RoomOut"];
 export type RoomCreate = Schemas["RoomCreate"];
+export type RoomUpdate = Schemas["RoomUpdate"];
 export type ParticipantOut = Schemas["ParticipantOut"];
 export type ParticipantCreate = Schemas["ParticipantCreate"];
 export type ResultOut = Schemas["ResultOut"];

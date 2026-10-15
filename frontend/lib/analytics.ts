@@ -6,6 +6,10 @@
 import * as amplitude from "@amplitude/analytics-browser";
 
 export type AnalyticsEvents = {
+  // 온보딩을 닫았을 때. step은 닫을 때 보던 단계(1부터), completed는 마지막까지 봤는지.
+  tour_closed: { screen: "home" | "join"; step: number; completed: boolean };
+  // 첫 화면에서 출발지를 하나 골랐을 때. count는 그 시점에 채워진 칸의 수. 방은 아직 없다.
+  origin_drafted: { count: number };
   room_created: { regions: string; region_count: number; theme: string; days_until_meet: number };
   join_viewed: { participant_count: number };
   participant_added: { method: "station" | "address"; participant_count: number };
@@ -21,6 +25,12 @@ export type AnalyticsEvents = {
 };
 
 let started = false;
+// 온보딩이 예시 방을 보여주는 동안 켠다. 예시 화면에서 생긴 이벤트가 실제 이용으로 잡히지 않게 한다.
+let paused = false;
+
+export function setTrackingPaused(value: boolean): void {
+  paused = value;
+}
 
 // 키가 없으면(로컬 개발, 단위 테스트, e2e 빌드) 아무것도 초기화하지 않고 아무것도 보내지 않는다.
 // 방 주소(/r/<슬러그>)는 비공개 링크라서 URL이 새 나가는 기능은 모두 끈다:
@@ -59,7 +69,7 @@ export function initAnalytics(): void {
 
 // 초기화 전에는 아무 일도 하지 않는다. SDK 오류는 화면으로 올리지 않는다.
 export function track<E extends keyof AnalyticsEvents>(event: E, props: AnalyticsEvents[E]): void {
-  if (!started) return;
+  if (!started || paused) return;
   try {
     amplitude.track(event, props);
   } catch (error) {

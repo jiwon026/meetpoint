@@ -6,7 +6,7 @@ import { track } from "./lib/analytics";
 import { server } from "./lib/test/server";
 
 // 통계 모듈은 테스트에서 언제나 가짜다. 실제 SDK는 어디서도 불리지 않고, 화면 테스트는 track 호출을 검사한다.
-vi.mock("@/lib/analytics", () => ({ initAnalytics: vi.fn(), track: vi.fn() }));
+vi.mock("@/lib/analytics", () => ({ initAnalytics: vi.fn(), track: vi.fn(), setTrackingPaused: vi.fn() }));
 
 // 라우터 없이도 링크의 href를 검사할 수 있게 next/link를 평범한 a 태그로 바꾼다.
 vi.mock("next/link", () => ({

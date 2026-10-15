@@ -70,10 +70,14 @@ def _check_meet_date(meet_date: date, now: datetime) -> None:
         raise HTTPException(status_code=422, detail=MSG_DATE_TOO_FAR)
 
 
+def _expiry(meet_date: date) -> datetime:
+    return datetime.combine(meet_date, datetime.min.time()) + timedelta(days=ROOM_KEEP_DAYS)
+
+
 def create_room(session: Session, data: RoomCreate) -> Room:
     now = utcnow()
     _check_meet_date(data.meet_date, now)
-    expires = datetime.combine(data.meet_date, datetime.min.time()) + timedelta(days=ROOM_KEEP_DAYS)
+    expires = _expiry(data.meet_date)
     themes = data.chosen_themes()
     room = Room(
         slug=_unique_slug(session),
@@ -92,6 +96,18 @@ def create_room(session: Session, data: RoomCreate) -> Room:
     return room
 
 
+def change_meet_date(session: Session, room: Room, meet_date: date, title: str | None = None) -> Room:
+    """약속 날짜를 바꾼다. 링크를 가진 누구나 바꿀 수 있다 (참가자 빼기와 같은 기준). 지울 날도 따라 옮긴다."""
+    _check_meet_date(meet_date, utcnow())
+    room.meet_date = meet_date
+    room.expires_at = _expiry(meet_date)
+    if title is not None:
+        room.title = title
+    session.commit()
+    session.refresh(room)
+    return room
+
+
 def get_room(session: Session, slug: str) -> Room:
     room = session.scalar(select(Room).where(Room.slug == slug))
     if room is None:
@@ -101,12 +117,16 @@ def get_room(session: Session, slug: str) -> Room:
     return room
 
 
-def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder) -> tuple[float, float]:
-    if data.station_id is not None:
-        station = session.get(Station, data.station_id)
-        if station is None:
-            raise HTTPException(status_code=404, detail=MSG_STATION_NOT_FOUND)
-        return station.lat, station.lng
+def _picked_station(session: Session, data: ParticipantCreate) -> Station | None:
+    if data.station_id is None:
+        return None
+    station = session.get(Station, data.station_id)
+    if station is None:
+        raise HTTPException(status_code=404, detail=MSG_STATION_NOT_FOUND)
+    return station
+
+
+def _resolve_address(data: ParticipantCreate, geocoder: Geocoder) -> tuple[float, float]:
     try:
         point = geocoder.geocode(data.address or "")
     except (httpx.HTTPError, UpstreamError) as exc:
@@ -117,16 +137,35 @@ def _resolve_point(session: Session, data: ParticipantCreate, geocoder: Geocoder
     return point.lat, point.lng
 
 
+def _station_candidates(picked: Station, stations: list[Station]) -> list[StationWalk]:
+    """역을 직접 골랐을 때의 출발 후보. 고른 노드가 맨 앞이고, 같은 역의 다른 노선도 걷지 않고 탄다고 본다.
+
+    걸어갈 수 있는 이웃 역은 주소로 넣었을 때와 같이 뒤에 남긴다.
+    """
+    siblings = sorted(
+        (s for s in stations if s.group_id == picked.group_id),
+        key=lambda s: (s.id != picked.id, s.id),
+    )
+    same_station = [StationWalk(s.id, s.name, 0, "walk") for s in siblings]
+    # 같은 역의 노드를 먼저 빼고 찾아야 노선이 많은 역도 이웃 역 자리를 잃지 않는다.
+    # 걸어갈 역이 없을 때 nearest_stations가 주는 버스 후보는 쓰지 않는다 (이미 역에 있다).
+    others = [s for s in stations if s.group_id != picked.group_id]
+    nearby = [n for n in nearest_stations(picked.lat, picked.lng, others) if n.via == "walk"]
+    return same_station + nearby
+
+
 def add_participant(
     session: Session, room: Room, data: ParticipantCreate, geocoder: Geocoder
 ) -> Participant:
     # 지오코딩 전에 막는다. 정원은 빠진 사람을 포함한 전체 행 수로 센다 (빼기를 반복해 행이 늘지 않게).
     if len(room.participants) >= MAX_PARTICIPANTS:
         raise HTTPException(status_code=422, detail=MSG_ROOM_FULL)
-    lat, lng = _resolve_point(session, data, geocoder)
+    picked = _picked_station(session, data)
+    lat, lng = (picked.lat, picked.lng) if picked else _resolve_address(data, geocoder)
     if not is_in_metro(lat, lng):
         raise HTTPException(status_code=422, detail=MSG_OUTSIDE_METRO)
-    nearest = nearest_stations(lat, lng, all_stations(session))
+    stations = all_stations(session)
+    nearest = _station_candidates(picked, stations) if picked else nearest_stations(lat, lng, stations)
     participant = Participant(
         room_id=room.id,
         nickname=data.nickname.strip(),

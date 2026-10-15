@@ -7,10 +7,8 @@ import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
 import { JoinForm } from "./JoinForm";
 
-const STATIONS = [
-  { id: 222, name: "강남", line: "2호선" },
-  { id: 901, name: "강남", line: "신분당선" },
-];
+// 환승역은 노선이 여럿이어도 한 줄로 온다.
+const STATIONS = [{ id: 222, name: "강남", lines: ["2호선", "신분당선"], line: "2호선" }];
 
 function stationHandler() {
   return http.get(`${API}/stations`, () => HttpResponse.json(STATIONS));
@@ -31,14 +29,28 @@ test("역을 골라 등록하면 station_id를 보내고 폼을 비운다", asyn
 
   await user.type(screen.getByLabelText("닉네임"), " 민수 ");
   await user.type(screen.getByLabelText("출발지 검색"), "강남");
-  await user.click(await screen.findByRole("button", { name: /강남.*신분당선/ }));
-  expect(screen.getByText("출발지: 강남 (신분당선)")).toBeInTheDocument();
+  expect(await screen.findAllByRole("button", { name: /^강남/ })).toHaveLength(1);
+  // 결과 줄은 이름과 배지만 보이고, 읽어 주는 이름에는 노선이 들어간다.
+  expect(screen.queryByText("2호선, 신분당선")).toBeNull();
+  await user.click(screen.getByRole("button", { name: /강남.*\(2호선, 신분당선\)/ }));
+  expect(screen.getByText("출발지:")).toBeInTheDocument();
+  expect(screen.getByTitle("신분당선")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "출발지 등록" }));
 
   await waitFor(() => expect(onJoined).toHaveBeenCalledOnce());
-  expect(body).toEqual({ nickname: "민수", station_id: 901 });
+  expect(body).toEqual({ nickname: "민수", station_id: 222 });
   expect(screen.getByLabelText("닉네임")).toHaveValue("");
   expect(screen.getByLabelText("출발지 검색")).toHaveValue("");
+});
+
+test("노선 목록이 없는 예전 서버 응답도 노선 하나로 보여준다", async () => {
+  server.use(http.get(`${API}/stations`, () => HttpResponse.json([{ id: 901, name: "강남", line: "신분당선" }])));
+  const user = userEvent.setup();
+  renderWithClient(<JoinForm slug="abc123" onJoined={vi.fn()} />);
+  await user.type(screen.getByLabelText("출발지 검색"), "강남");
+  await user.click(await screen.findByRole("button", { name: /강남.*신분당선/ }));
+  expect(screen.getByText("출발지:")).toBeInTheDocument();
+  expect(screen.getByTitle("신분당선")).toBeInTheDocument();
 });
 
 test("닉네임과 출발지가 없으면 요청하지 않는다", async () => {

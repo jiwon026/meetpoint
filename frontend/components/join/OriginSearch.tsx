@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { LineBadge } from "@/components/ui/LineBadge";
+import { StationName } from "@/components/ui/StationName";
 import { INPUT } from "@/components/ui/styles";
 import { usePlaceSearch, useStationSearch } from "@/lib/api/hooks";
 import { MSG_NO_SEARCH_RESULT } from "@/lib/messages";
 import { useDebounced } from "@/lib/useDebounced";
 
 export type Origin =
-  | { kind: "station"; stationId: number; label: string }
+  | { kind: "station"; stationId: number; label: string; lines: string[] }
   | { kind: "address"; address: string; label: string };
 export type OriginMode = "station" | "address";
 
@@ -17,6 +17,8 @@ type Props = {
   onModeChange: (mode: OriginMode) => void;
   value: Origin | null;
   onChange: (origin: Origin | null) => void;
+  // 검색 칸이 그려질 때 초점을 준다 (첫 화면에서 다음 줄로 넘어갈 때).
+  autoFocus?: boolean;
 };
 
 const MODES: readonly { id: OriginMode; label: string; placeholder: string }[] = [
@@ -25,7 +27,16 @@ const MODES: readonly { id: OriginMode; label: string; placeholder: string }[] =
 ];
 const RESULT_BUTTON = "flex w-full items-center gap-2 rounded-lg border border-line bg-card p-3 text-left";
 
-export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
+// 고른 출발지를 보여준다. 역이면 이름과 노선 배지, 주소면 장소 이름.
+export function OriginLabel({ origin }: { origin: Origin }) {
+  return origin.kind === "station" ? (
+    <StationName name={origin.label} lines={origin.lines} />
+  ) : (
+    <span className="font-semibold">{origin.label}</span>
+  );
+}
+
+export function OriginSearch({ mode, onModeChange, value, onChange, autoFocus = false }: Props) {
   const [text, setText] = useState("");
   const term = useDebounced(text);
   const stations = useStationSearch(mode === "station" ? term : "");
@@ -34,7 +45,10 @@ export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
   if (value) {
     return (
       <div className="flex items-center justify-between gap-2 rounded-lg bg-primary-tint p-3">
-        <span className="font-semibold text-primary">출발지: {value.label}</span>
+        <span className="flex min-w-0 items-center gap-1.5 text-primary">
+          <span className="shrink-0 font-semibold">출발지:</span>
+          <OriginLabel origin={value} />
+        </span>
         <button type="button" onClick={() => onChange(null)} className="shrink-0 text-sm font-semibold text-primary underline">
           다시 고르기
         </button>
@@ -68,6 +82,7 @@ export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
       </div>
       <input
         aria-label="출발지 검색"
+        autoFocus={autoFocus}
         value={text}
         onChange={(event) => setText(event.target.value)}
         placeholder={MODES.find((m) => m.id === mode)?.placeholder}
@@ -80,19 +95,21 @@ export function OriginSearch({ mode, onModeChange, value, onChange }: Props) {
       )}
       <ul className="space-y-1.5">
         {mode === "station" &&
-          stationItems.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                onClick={() => onChange({ kind: "station", stationId: s.id, label: `${s.name} (${s.line})` })}
-                className={RESULT_BUTTON}
-              >
-                <span className="font-semibold">{s.name}</span>
-                <LineBadge line={s.line} />
-                <span className="text-sm text-ink-mute">{s.line}</span>
-              </button>
-            </li>
-          ))}
+          stationItems.map((s) => {
+            // 환승역은 한 줄에 노선을 모두 보여준다. lines가 없는 응답(배포가 엇갈린 동안의 예전 서버)은 line으로 읽는다.
+            const lines = s.lines?.length ? s.lines : [s.line];
+            return (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => onChange({ kind: "station", stationId: s.id, label: s.name, lines })}
+                  className={RESULT_BUTTON}
+                >
+                  <StationName name={s.name} lines={lines} />
+                </button>
+              </li>
+            );
+          })}
         {mode === "address" &&
           placeItems.map((p) => (
             <li key={`${p.name}:${p.address}`}>

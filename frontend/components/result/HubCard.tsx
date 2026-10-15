@@ -64,7 +64,7 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Pro
           {rec.legs.length === 0 ? (
             <p className="text-sm text-ink-mute">{MSG_LEGS_MISSING}</p>
           ) : (
-            <>
+            <div data-tour={rank === 1 ? "legs" : undefined} className="space-y-4">
               <FairnessStats legs={rec.legs} spread={rec.spread_minutes} />
               <LegBars
                 legs={rec.legs}
@@ -72,9 +72,9 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Pro
                 destination={{ name: rec.name, lat: rec.lat, lng: rec.lng }}
                 onDirections={() => track("directions_clicked", { rank })}
               />
-            </>
+            </div>
           )}
-          <Link href={href} className={PRIMARY_BUTTON}>
+          <Link href={href} data-tour={rank === 1 ? "explore" : undefined} className={PRIMARY_BUTTON}>
             이 동네 둘러보기
           </Link>
         </div>

@@ -1,30 +1,20 @@
-import { RegionChips } from "@/components/room/RegionChips";
 import { Chip } from "@/components/ui/Chip";
 import { track } from "@/lib/analytics";
 import type { ResultFilter } from "@/lib/filter";
-import { parseRegions } from "@/lib/regions";
 import { pickThemes, THEME_OFF, THEMES } from "@/lib/themes";
 
 type Props = {
   filter: ResultFilter;
-  appliedRegions: readonly string[];
   appliedThemes: readonly string[];
   onChange: (next: ResultFilter) => void;
 };
 
-export function FilterBar({ filter, appliedRegions, appliedThemes, onChange }: Props) {
+// 지역은 고르지 않는다. 방을 서울로 만들기로 했다 (2026-10-14). 예전 방의 지역은 그 방에 정해진 대로 둔다.
+export function FilterBar({ filter, appliedThemes, onChange }: Props) {
   // URL에 적힌 값이 있으면 그것이 기준이다. 응답이 오기 전에 연달아 눌러도 어긋나지 않는다.
-  const regions = filter.regions ?? parseRegions(appliedRegions);
   const themes = filter.themes === THEME_OFF ? [] : (filter.themes ?? pickThemes(appliedThemes));
   return (
-    <section aria-label="추천 조건" className="space-y-2">
-      <RegionChips
-        value={regions}
-        onChange={(next) => {
-          track("result_filter_changed", { kind: "region", value: next.join(",") });
-          onChange({ ...filter, regions: next });
-        }}
-      />
+    <section aria-label="추천 조건" data-tour="themes" className="space-y-2">
       <div role="group" aria-label="테마" className="flex flex-wrap gap-2">
         {THEMES.map((item) => {
           const selected = themes.includes(item.id);

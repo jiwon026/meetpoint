@@ -79,19 +79,12 @@ test("대기 상태면 초대 안내와 사람 추가", async () => {
   expect(onAddPeople).toHaveBeenCalledOnce();
 });
 
-test("지역을 좁혀서 추천이 없으면 지역을 넓히라고 안내한다", async () => {
-  serve(result({ recommendations: [], best_max_minutes: null, regions: ["인천"] }));
-  show({ filter: { regions: ["인천"], themes: null } });
-  expect(await screen.findByText("이 지역엔 추천할 곳이 없어요. 지역을 넓혀보세요.")).toBeInTheDocument();
-  expect(screen.queryByText(/지하철 이동 시간 기준이에요/)).toBeNull();
-  // 필터는 그대로 보여서 다시 넓힐 수 있어야 한다
-  expect(screen.getByRole("button", { name: "서울" })).toBeInTheDocument();
-});
-
-test("전체 지역인데 추천이 없으면 계산 실패 안내", async () => {
+test("추천이 없으면 계산 실패 안내 (지역 칩은 없다)", async () => {
   serve(result({ recommendations: [], best_max_minutes: null }));
   show();
   expect(await screen.findByText("경로를 계산하지 못했어요. 방을 새로 만들어 다시 시도해주세요.")).toBeInTheDocument();
+  expect(screen.queryByText(/지하철 이동 시간 기준이에요/)).toBeNull();
+  expect(screen.queryByRole("button", { name: "경기" })).toBeNull();
 });
 
 test("이동시간이 빠진 카드는 안내 문구로 대신한다", async () => {
@@ -115,8 +108,8 @@ test("필터 칩을 누르면 바뀐 필터를 넘긴다", async () => {
   const onFilterChange = vi.fn();
   show({ onFilterChange });
   await screen.findAllByTestId("hub-card");
-  await userEvent.click(screen.getByRole("button", { name: "경기" }));
-  expect(onFilterChange).toHaveBeenLastCalledWith({ regions: ["서울", "인천"], themes: null });
+  await userEvent.click(screen.getByRole("button", { name: "카페" }));
+  expect(onFilterChange).toHaveBeenLastCalledWith({ regions: null, themes: ["cafe"] });
 });
 
 test("만료된 방이면 백엔드 문구와 새 방 만들기", async () => {
@@ -215,3 +208,4 @@ test("결과 링크를 복사하면 result로 남기고, 대기 화면의 초대
   await user.click(await screen.findByRole("button", { name: "초대 링크 복사" }));
   await waitFor(() => expect(track).toHaveBeenCalledWith("link_copied", { place: "result" }));
 });
+
