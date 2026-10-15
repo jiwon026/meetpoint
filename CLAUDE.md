@@ -63,11 +63,12 @@ npm run gen:og              # 링크 미리보기 그림 다시 찍기 (scripts/
 
 FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외부 HTTP 호출은 클라이언트 클래스 안에서만 하고(`geocoding/kakao.py`, `places/kakao_local.py`, `events/seoul.py`, `events/kopis.py`) 서비스와 라우터는 `deps.py`에서 주입받는다. `deps.py`는 프로세스 공용 `httpx.Client` 하나와 역간 시간표 캐시(`get_matrix`)를 들고 있다.
 
-요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (`geocoding/nearest.py`로 가까운 역 최대 3개) -> `ranking/rank.py`의 `rank_with_preference`(`rank_hubs`는 이것을 감싼 얇은 함수로 테스트에서만 쓴다) -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
+요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (주소는 `geocoding/nearest.py`로 가까운 역 최대 3개, 역을 직접 고르면 `_station_candidates`가 같은 `group_id`의 모든 노선 노드를 도보 0분으로 앞에 넣는다) -> `ranking/rank.py`의 `rank_with_preference`(`rank_hubs`는 이것을 감싼 얇은 함수로 테스트에서만 쓴다) -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
 
 핵심 데이터 개념:
 - `Station`은 노선별 노드(환승역은 노선 수만큼). `StationGroup`은 물리적으로 같은 역. `Hub`는 거점이고 `group_id`로 노드들과 이어진다 (`app/hubs.py`). 이름으로 묶지 않는다: 신촌(2호선)과 신촌(경의중앙선)은 다른 그룹.
 - `station_times`는 모든 노드에서 거점 노드까지의 분만 들어 있다. 없는 쌍은 `None`이고 그 거점은 순위에서 빠진다.
+- 역 검색(`app/stations.py`의 `search_stations`)은 그룹과 이름이 모두 같은 노드를 한 줄로 묶어 노선 목록과 함께 준다. 환승역이 노선 수만큼 뜨지 않게 하려는 것이고, 이름만으로 묶지 않는 이유는 위와 같다.
 - 참가자는 원문 주소를 저장하지 않는다. 좌표는 소수점 3자리, `nearest_stations`는 역 id 목록(JSON). 역 id는 원본 데이터 갱신 시 바뀔 수 있다(알려진 한계).
 - 콘텐츠는 `cache.py`의 `content_cache` 테이블에 24시간 캐시. 실패 시 만료 캐시라도 돌려주고 `error` 문구를 붙인다.
 - 맛집, 카페, 술집은 `sort` 쿼리(`recommended` 기본, `distance`)로 정렬을 고른다. 추천순은 카카오의 정확도순이고 별점이 아니다. 카페는 `places/service.py`에서 분류 이름으로 만화카페, 보드카페 등을 걸러낸다. 술집은 분류 코드가 없어 음식점 안에서 "술집"을 검색한 뒤 분류 이름으로 거른다. 이유와 근거는 `docs/design.md`의 콘텐츠 절.
@@ -85,9 +86,9 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 Next.js App Router. 브라우저가 FastAPI를 직접 호출하고 TanStack Query로 10초 폴링한다. 서버 쪽 코드는 `app/r/[slug]/layout.tsx`의 링크 미리보기 제목뿐이다.
 
-화면 로직은 `components/{join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
+화면 로직은 `components/{home,join,result,hub}/*Screen.tsx`에 있고 `app/` 페이지는 URL(슬러그, `?region=`, `?theme=`, `?add=1`)을 읽어 넘기기만 한다. 첫 화면(`HomeScreen`)에서 출발지를 여러 개 넣고 "추천 보기"를 누르면 그때 방을 만들고(지역은 늘 서울) 사람들을 차례로 등록한다(`useStartMeeting`). `/r/[slug]`의 참여 화면은 링크를 받은 사람과 사람 추가에 쓴다. 처음 온 브라우저에는 온보딩(`components/ui/TourProvider.tsx`, 단계는 `tourSteps.ts`)이 예시 방(`lib/demo.ts`, 슬러그 `demo`)의 추천과 둘러보기 화면을 실제로 오가며 사용법을 보여준다. `lib/api/client.ts`의 `request`는 `/rooms/demo`를 서버 대신 `lib/demo-data.json`으로 답한다. 화면에 새 단계를 더하려면 그 요소에 `data-tour`를 단다. 그래서 컴포넌트 테스트에 라우터 모킹이 필요 없다. 테스트는 MSW로 백엔드를 흉내 낸다 (`lib/test/`).
 
-지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다. 테마는 `?theme=food&theme=drink`처럼 여러 번 적고, 모두 끄면 `theme=any`를 적는다(비워 두면 방의 기본 테마로 돌아간다).
+지켜야 할 것: 타입은 `npm run gen:api`로 생성하고 손으로 맞추지 않는다. 상태, 에러, 안내 문구는 `lib/messages.ts`에 두고(백엔드의 `detail`은 그대로 보여준다), 고정 라벨, 제목, 플레이스홀더, 설명 문구는 컴포넌트에 직접 쓴다. 색은 `app/globals.css` 토큰만 쓴다. `localStorage`에는 내가 등록한 participant id와 온보딩을 본 표시(`lib/tour.ts`, 2026-10-14 사용자 허락)만 저장한다 (`hub_id`, `station_id`는 재적재 때 바뀐다). 지역과 테마 필터는 URL 쿼리이고 방 설정을 바꾸지 않는다. 테마는 `?theme=food&theme=drink`처럼 여러 번 적고, 모두 끄면 `theme=any`를 적는다(비워 두면 방의 기본 테마로 돌아간다).
 
 익명 통계는 `lib/analytics.ts`가 맡는다. 이벤트 이름마다 속성 타입이 정해져 있어서 정해 두지 않은 값을 얹으면 컴파일 에러가 나고, `NEXT_PUBLIC_AMPLITUDE_API_KEY`가 없으면 초기화도 전송도 하지 않는다. 닉네임, 참가자의 출발역, 주소, 검색어, 좌표, 슬러그는 보내지 않는다 (거점 이름은 공개 장소라 된다). 방 주소에 슬러그가 있으니 페이지뷰, 요소 클릭, 이벤트에 붙는 페이지 주소 같은 자동 수집은 끄고, 새 이벤트도 같은 파일에 타입과 함께 더한다. 개인정보 안내 글(`app/privacy/page.tsx`)은 보내는 값이 바뀌면 같이 고친다.
 

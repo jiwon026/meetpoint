@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
+import { TourProvider } from "@/components/ui/TourProvider";
 import { initAnalytics } from "@/lib/analytics";
 import { shouldRetry } from "@/lib/api/hooks";
 
@@ -16,7 +17,10 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   return (
     <QueryClientProvider client={client}>
-      <ToastProvider>{children}</ToastProvider>
+      <ToastProvider>
+        {/* 온보딩은 화면 사이를 오가므로 화면보다 위에 둔다 */}
+        <TourProvider>{children}</TourProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

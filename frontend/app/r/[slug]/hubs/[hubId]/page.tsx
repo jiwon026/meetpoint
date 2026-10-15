@@ -3,7 +3,7 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { HubScreen } from "@/components/hub/HubScreen";
-import { StepIndicator } from "@/components/ui/StepIndicator";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useToast } from "@/components/ui/Toast";
 import { filterFromSearch, filterQuery } from "@/lib/filter";
 import { MSG_HUB_GONE } from "@/lib/messages";
@@ -22,7 +22,7 @@ function HubPage() {
 
   return (
     <main>
-      <StepIndicator current={4} slug={slug} query={query} />
+      <ProgressBar current={3} slug={slug} query={query} />
       {/* 숫자가 아닌 hubId는 NaN이 되어 추천 목록에서 못 찾고 onGone으로 간다 */}
       <HubScreen slug={slug} hubId={Number(hubId)} filter={filter} onGone={onGone} />
     </main>

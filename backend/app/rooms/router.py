@@ -32,6 +32,7 @@ from app.schemas import (
     ResultOut,
     RoomCreate,
     RoomOut,
+    RoomUpdate,
     StationOut,
 )
 from app.stations import search_stations
@@ -45,6 +46,12 @@ router = APIRouter()
 @router.post("/rooms", response_model=RoomOut, status_code=201, dependencies=[Depends(rate_limit("create_room"))])
 def create_room(data: RoomCreate, db: Session = Depends(get_db)) -> RoomOut:
     return service.room_out(service.create_room(db, data))
+
+
+@router.patch("/rooms/{slug}", response_model=RoomOut, dependencies=[Depends(rate_limit("update_room"))])
+def update_room(slug: str, data: RoomUpdate, db: Session = Depends(get_db)) -> RoomOut:
+    room = service.get_room(db, slug)
+    return service.room_out(service.change_meet_date(db, room, data.meet_date, data.title))
 
 
 @router.get("/rooms/{slug}", response_model=RoomOut)
@@ -95,7 +102,7 @@ def get_result(
 
 @router.get("/stations", response_model=list[StationOut])
 def stations(q: str = Query(default="", max_length=20), db: Session = Depends(get_db)) -> list[StationOut]:
-    return [StationOut(id=s.id, name=s.name, line=s.line) for s in search_stations(db, q)]
+    return [StationOut(id=s.id, name=s.name, lines=s.lines, line=s.lines[0]) for s in search_stations(db, q)]
 
 
 MSG_CONTENT_UNAVAILABLE = "지금 불러올 수 없어요"

@@ -298,3 +298,12 @@ test("정렬이 없는 놀거리 탭의 링크는 기본 정렬로 남긴다", a
   await userEvent.click(await screen.findByRole("link", { name: "카카오맵에서 별점, 리뷰 보기" }));
   expect(track).toHaveBeenLastCalledWith("place_link_clicked", { kind: "play", sort: "recommended", position: 1 });
 });
+
+
+test("가게 카드에 분류에 맞는 아이콘을 붙인다", async () => {
+  serveResult("cafe");
+  serveContent((kind) => HttpResponse.json({ kind, items: [{ ...PLACE, category: "디저트카페" }], error: null }));
+  show();
+  expect(await screen.findByText("양재 국밥집")).toBeInTheDocument();
+  expect(document.querySelector('[data-icon="dessert"]')).not.toBeNull();
+});

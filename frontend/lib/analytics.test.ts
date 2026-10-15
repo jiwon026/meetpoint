@@ -100,3 +100,15 @@ test("초기화가 실패하면 예외를 삼키고 이후 track은 보내지 �
   track("hub_card_opened", { rank: 1 });
   expect(sdk.track).not.toHaveBeenCalled();
 });
+
+test("온보딩이 예시 방을 보여주는 동안에는 보내지 않는다", async () => {
+  vi.stubEnv("NEXT_PUBLIC_AMPLITUDE_API_KEY", "test-key");
+  const { initAnalytics, setTrackingPaused, track } = await load();
+  initAnalytics();
+  setTrackingPaused(true);
+  track("link_copied", { place: "result" });
+  expect(sdk.track).not.toHaveBeenCalled();
+  setTrackingPaused(false);
+  track("link_copied", { place: "result" });
+  expect(sdk.track).toHaveBeenCalledOnce();
+});

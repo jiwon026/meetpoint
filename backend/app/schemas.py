@@ -34,6 +34,14 @@ class RoomCreate(BaseModel):
         return [self.theme] if self.theme else []
 
 
+class RoomUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    meet_date: date
+    # 이름을 날짜로 지어 둔 방("10월 21일 (수) 모임")은 날짜를 바꿀 때 이름도 함께 바꾼다. 안 보내면 그대로 둔다.
+    title: str | None = Field(default=None, min_length=1, max_length=40)
+
+
 class ParticipantCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -111,6 +119,8 @@ class ResultOut(BaseModel):
 class StationOut(BaseModel):
     id: int
     name: str
+    lines: list[str]
+    # 첫 번째 노선. 노선을 하나만 읽는 예전 화면을 위해 남겨 둔다.
     line: str
 
 

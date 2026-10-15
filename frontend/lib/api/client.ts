@@ -1,4 +1,5 @@
-import { MSG_INVALID_INPUT, MSG_NETWORK } from "@/lib/messages";
+import { demoResponse, isDemoPath } from "@/lib/demo";
+import { MSG_DEMO_READ_ONLY, MSG_INVALID_INPUT, MSG_NETWORK } from "@/lib/messages";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
@@ -26,6 +27,12 @@ async function errorMessage(response: Response): Promise<string> {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // 온보딩의 예시 방은 미리 담아 둔 응답으로 그린다 (lib/demo.ts). 읽기만 된다.
+  if (isDemoPath(path)) {
+    const demo = (init?.method ?? "GET") === "GET" ? await demoResponse(path) : null;
+    if (demo === null) throw new ApiError(400, MSG_DEMO_READ_ONLY);
+    return demo as T;
+  }
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {

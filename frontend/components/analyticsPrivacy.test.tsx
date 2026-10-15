@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { JoinScreen } from "@/components/join/JoinScreen";
 import { HubScreen } from "@/components/hub/HubScreen";
 import { ResultScreen } from "@/components/result/ResultScreen";
@@ -10,6 +10,11 @@ import { NO_FILTER } from "@/lib/filter";
 import { API, leg, participant, rec, result, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
+import { markTourSeen } from "@/lib/tour";
+
+beforeEach(() => {
+  markTourSeen("join");
+});
 
 // 이 테스트에서만 쓰는 값. 통계에 하나라도 섞이면 실패해야 한다.
 const SLUG = "zq7x4kmp";
@@ -34,7 +39,7 @@ test("방 입장부터 결과와 주변 화면까지 어떤 통계에도 닉네�
     leg({ participant_id: 9, nickname: NICKNAME, origin_station_name: ORIGIN_STATION, minutes: 30 }),
   ];
   server.use(
-    http.get(`${API}/stations`, () => HttpResponse.json([{ id: 222, name: ORIGIN_STATION, line: "2호선" }])),
+    http.get(`${API}/stations`, () => HttpResponse.json([{ id: 222, name: ORIGIN_STATION, lines: ["2호선"], line: "2호선" }])),
     http.post(`${API}/places/search`, () =>
       HttpResponse.json({ items: [{ name: "우리집", address: ADDRESS }], error: null }),
     ),
@@ -79,7 +84,6 @@ test("방 입장부터 결과와 주변 화면까지 어떤 통계에도 닉네�
     <ResultScreen slug={SLUG} filter={NO_FILTER} onFilterChange={onFilterChange} onAddPeople={vi.fn()} />,
   );
   const cards = await screen.findAllByTestId("hub-card");
-  await user.click(screen.getByRole("button", { name: "경기" }));
   await user.click(screen.getByRole("button", { name: "카페" }));
   await user.click(within(cards[0]).getByRole("link", { name: `${NICKNAME} 길찾기` }));
   await user.click(within(cards[1]).getByRole("button", { expanded: false }));

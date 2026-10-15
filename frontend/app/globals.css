@@ -12,6 +12,8 @@
   --color-ink-sub: #404943;
   --color-ink-mute: #707973;
   --color-track: #f0edea;
+  /* 온보딩에서 밝힌 곳 바깥을 덮는 어두운 막 */
+  --color-scrim: rgb(0 0 0 / 0.62);
   --radius-card: 16px;
   --font-sans: var(--font-pretendard), system-ui, sans-serif;
 }

@@ -209,7 +209,82 @@ def test_geocoder_bad_response_returns_503_with_guidance(seeded):
 def test_station_search_endpoint(client):
     body = client.get("/stations", params={"q": "입구"}).json()
     assert [s["name"] for s in body] == ["건대입구", "홍대입구"]
-    assert set(body[0]) == {"id", "name", "line"}
+    assert set(body[0]) == {"id", "name", "line", "lines"}
+    assert body[0]["lines"] == ["2호선"]
+
+
+def _add_jamsil_line_8(seeded, minutes_to_gangnam: int) -> None:
+    """잠실(그룹 3)에 8호선 노드를 더한다. 2호선 잠실에서 강남까지는 15분이다."""
+    from app.models import Station, StationTime
+
+    seeded.add(Station(id=7, name="잠실", line="8호선", lat=37.5148, lng=127.1041, group_id=3))
+    seeded.add(StationTime(from_station_id=7, to_station_id=2, minutes=minutes_to_gangnam))
+    seeded.commit()
+
+
+def test_join_by_transfer_station_keeps_every_line_as_a_starting_point(client, seeded):
+    _add_jamsil_line_8(seeded, minutes_to_gangnam=9)
+    slug = _create_room(client)["slug"]
+    response = client.post(f"/rooms/{slug}/participants", json={"nickname": "민준", "station_id": 3})
+    assert response.status_code == 201
+    assert response.json()["nearest_station_name"] == "잠실"
+    stored = _room_row(seeded, slug).participants[0].nearest_stations
+    # 고른 노드가 맨 앞이고, 같은 역의 다른 노선도 걷는 시간 없이 출발 후보가 된다.
+    assert [(n["station_id"], n["walk_minutes"]) for n in stored[:2]] == [(3, 0), (7, 0)]
+    assert len({n["station_id"] for n in stored}) == len(stored)
+
+
+def test_join_by_station_keeps_walkable_neighbours_but_never_a_bus_fallback(client, seeded):
+    slug = _create_room(client)["slug"]
+    # 홍대입구에서 신촌은 걸어갈 수 있다. 수원 근처에는 다른 역이 없다.
+    client.post(f"/rooms/{slug}/participants", json={"nickname": "홍대", "station_id": 1})
+    client.post(f"/rooms/{slug}/participants", json={"nickname": "수원", "station_id": 6})
+    hongdae, suwon = _room_row(seeded, slug).participants
+    assert [n["station_name"] for n in hongdae.nearest_stations] == ["홍대입구", "신촌"]
+    assert hongdae.nearest_stations[1]["walk_minutes"] > 0
+    assert [(n["station_id"], n["via"]) for n in suwon.nearest_stations] == [(6, "walk")]
+
+
+def test_result_uses_the_faster_line_of_a_picked_transfer_station(client, seeded):
+    _add_jamsil_line_8(seeded, minutes_to_gangnam=9)
+    slug = _create_room(client)["slug"]
+    client.post(f"/rooms/{slug}/participants", json={"nickname": "잠실", "station_id": 3})
+    client.post(f"/rooms/{slug}/participants", json={"nickname": "홍대", "station_id": 1})
+    body = client.get(f"/rooms/{slug}/result").json()
+    gangnam = next(r for r in body["recommendations"] if r["name"] == "강남")
+    leg = next(l for l in gangnam["legs"] if l["nickname"] == "잠실")
+    # 8호선으로 9분 + 거점에서 나오는 5분. 2호선(15분)으로 계산하면 20분이 된다.
+    assert leg["minutes"] == 14
+
+
+def test_room_date_can_be_changed_and_moves_the_expiry(client, seeded):
+    slug = _create_room(client, meet_date="2026-09-26")["slug"]
+    response = client.patch(f"/rooms/{slug}", json={"meet_date": "2026-10-03"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["meet_date"] == "2026-10-03"
+    assert body["expires_at"].startswith("2026-10-10")
+    assert client.get(f"/rooms/{slug}").json()["meet_date"] == "2026-10-03"
+
+
+def test_room_date_change_can_rename_the_room_too(client):
+    slug = _create_room(client, title="9월 26일 (토) 모임")["slug"]
+    body = client.patch(f"/rooms/{slug}", json={"meet_date": "2026-10-03", "title": " 10월 3일 (토) 모임 "}).json()
+    assert body["title"] == "10월 3일 (토) 모임"
+    kept = client.patch(f"/rooms/{slug}", json={"meet_date": "2026-10-04"}).json()
+    assert kept["title"] == "10월 3일 (토) 모임"
+    assert client.patch(f"/rooms/{slug}", json={"meet_date": "2026-10-04", "title": "  "}).status_code == 422
+
+
+def test_room_date_change_follows_the_same_date_rules(client):
+    slug = _create_room(client)["slug"]
+    past = client.patch(f"/rooms/{slug}", json={"meet_date": "2026-09-19"})
+    assert past.status_code == 422
+    assert past.json()["detail"] == "오늘 이후 날짜를 골라주세요"
+    far = client.patch(f"/rooms/{slug}", json={"meet_date": "2027-09-21"})
+    assert far.status_code == 422
+    assert far.json()["detail"] == "약속 날짜는 1년 안으로 골라주세요"
+    assert client.patch("/rooms/nope1234", json={"meet_date": "2026-10-03"}).status_code == 404
 
 
 def test_create_room_rejects_past_date(client):

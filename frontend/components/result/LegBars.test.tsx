@@ -24,6 +24,16 @@ test("내가 넣은 사람과 버스 구간을 표시한다", () => {
   expect(screen.getByText("신림, 버스 15분 포함")).toBeInTheDocument();
 });
 
+test("여러 명을 내가 넣었으면 누구에게도 나 표시를 붙이지 않는다", () => {
+  render(<LegBars legs={LEGS} mine={[1, 2]} />);
+  expect(screen.queryByText("나")).toBeNull();
+});
+
+test("뺐다가 다시 넣어 예전 id가 남아 있어도 지금 있는 한 명에게 나 표시를 붙인다", () => {
+  render(<LegBars legs={LEGS} mine={[99, 1]} />);
+  expect(screen.getByText("나")).toBeInTheDocument();
+});
+
 const DESTINATION = { name: "양재", lat: 37.4841, lng: 127.0346 };
 
 test("목적지를 주면 사람마다 카카오맵 대중교통 길찾기 링크를 단다", () => {

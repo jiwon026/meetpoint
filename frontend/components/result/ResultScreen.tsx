@@ -17,12 +17,11 @@ import {
   MSG_LINK_COPIED,
   MSG_LINK_COPY_FAILED,
   MSG_NEED_TWO,
-  MSG_NO_HUB_IN_REGION,
   MSG_NO_ROUTE,
   MSG_SUBWAY_BASIS,
 } from "@/lib/messages";
 import { readMine } from "@/lib/myParticipants";
-import { isAllRegions, parseRegions } from "@/lib/regions";
+import { parseRegions } from "@/lib/regions";
 import { copyText } from "@/lib/share";
 import { FilterBar } from "./FilterBar";
 import { HubCard } from "./HubCard";
@@ -93,10 +92,10 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
 
   return (
     <div className="space-y-4">
-      <FilterBar filter={filter} appliedRegions={data.regions} appliedThemes={data.themes} onChange={onFilterChange} />
+      <FilterBar filter={filter} appliedThemes={data.themes} onChange={onFilterChange} />
       {recs.length === 0 ? (
         <p className={`${CARD} text-center font-semibold`}>
-          {isAllRegions(data.regions) ? MSG_NO_ROUTE : MSG_NO_HUB_IN_REGION}
+          {MSG_NO_ROUTE}
         </p>
       ) : (
         <>
@@ -134,7 +133,7 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
         </>
       )}
       <StickyAction>
-        <div className="grid grid-cols-2 gap-2">
+        <div data-tour="result-actions" className="grid grid-cols-2 gap-2">
           <button type="button" onClick={onAddPeople} className={SECONDARY_BUTTON}>
             사람 추가
           </button>

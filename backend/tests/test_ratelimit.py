@@ -143,6 +143,7 @@ def test_real_limits_are_generous_enough_for_shared_ips():
     # 통신사와 학교는 여러 사람이 IP 하나를 쓴다. 한도를 조일 때는 이 숫자들의 근거를 다시 본다.
     assert LIMITS["create_room"] == Limit(limit=30, window_seconds=600)
     assert LIMITS["add_participant"] == Limit(limit=60, window_seconds=600)
+    assert LIMITS["update_room"] == Limit(limit=30, window_seconds=600)
     assert LIMITS["place_search"] == Limit(limit=120, window_seconds=60)
     assert LIMITS["hub_content"] == Limit(limit=120, window_seconds=60)
 
