@@ -135,7 +135,7 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 ### 4.1 저장소에 넣을 파일
 
 - `render.yaml`: 웹 서비스 하나. `runtime: python`, `plan: free`, `region: singapore`, `rootDir: backend`, `buildCommand: pip install .`, `startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT`, `healthCheckPath: /health`, `autoDeployTrigger: checksPass`, 비밀 값은 `sync: false`.
-- `.github/workflows/ci.yml`: push와 PR에서 백엔드 `pytest`(Python 3.12), 프론트 `npm test`, `npm run lint`, `npx tsc --noEmit`. 흐름 테스트(Playwright)는 시간이 길어 CI에 넣지 않고 로컬에서 돌린다.
+- `.github/workflows/ci.yml`: push와 PR에서 백엔드 `pytest`(Python 3.12), 프론트 `npm test`, `npm run lint`, `npx tsc --noEmit`, 흐름 테스트(`e2e` 작업, Playwright). 흐름 테스트는 처음에 시간이 길어 빼 두었다가 2026-10-15에 넣었다. 이 작업도 Render 자동 배포의 검사에 들어가므로 실패하면 백엔드가 배포되지 않는다. 실패하면 실행 화면의 `e2e-results`를 받아 `npx playwright show-trace`로 본다.
 - `.github/workflows/cleanup.yml`: 매일 한국 시간 새벽에 `python -m scripts.cleanup_expired`. 같은 워크플로의 `warm-venues` 작업이 `python -m scripts.warm_kopis_venues`로 KOPIS 공연장 좌표를 미리 채운다(secret `KOPIS_API_KEY` 필요). 수동 실행도 가능하게 한다. 실패하면 GitHub가 메일로 알린다. 이 실행이 Supabase의 일주일 무활동 정지도 막는다.
 - Vercel은 설정 파일 없이 화면에서 루트 디렉터리를 `frontend`로 지정한다.
 
