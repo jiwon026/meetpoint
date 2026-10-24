@@ -30,8 +30,7 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
 
   // 모임 이름과 날짜는 기본값 그대로 둔다. 출발지 둘이면 추천을 볼 수 있다.
   await page.goto("/");
-  // 처음 온 브라우저라 온보딩이 뜬다. 건너뛰면 다시 뜨지 않는다.
-  await page.getByRole("button", { name: "건너뛰기" }).click();
+  // 처음 온 브라우저여도 사용법은 저절로 뜨지 않는다.
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "출발지를 두 곳 넣어주세요" })).toBeDisabled();
   await pickOrigin(page, "홍대입구");
@@ -46,7 +45,7 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
   // 뒤로 가면 빈 첫 화면이 아니라 이 방의 사람 추가 화면이고, 넣은 두 사람이 보인다. 앞으로 가면 결과로 돌아온다.
   await page.goBack();
   await expect(page).toHaveURL(/\/r\/[A-Za-z0-9]{6,8}\?add=1$/);
-  // 첫 화면에서 사용법을 본 브라우저라 참여 화면에서는 다시 뜨지 않는다.
+  // 참여 화면에서도 사용법은 저절로 뜨지 않는다.
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "출발지 등록" })).toBeVisible();
   await expect(page.getByText("친구 1", { exact: true })).toBeVisible();
@@ -76,9 +75,10 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
   await expect(page.getByText("도보 약 4분")).toBeVisible();
 });
 
-test("처음 온 사람은 예시 방의 추천과 둘러보기 화면을 오가며 사용법을 보고 첫 화면으로 돌아온다", async ({ page }) => {
+test("사용법 보기를 누르면 예시 방의 추천과 둘러보기 화면을 오가며 사용법을 보고 첫 화면으로 돌아온다", async ({ page }) => {
   await page.goto("/");
   const dialog = page.getByRole("dialog");
+  await page.getByRole("button", { name: "사용법 보기" }).click();
   await expect(dialog).toContainText("1. 출발지를 넣어요");
   const expected: [RegExp, string][] = [
     [/\/$/, "2. 공평한 역이 나와요"],
@@ -98,7 +98,7 @@ test("처음 온 사람은 예시 방의 추천과 둘러보기 화면을 오가
   await page.getByRole("button", { name: "시작하기" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(dialog).toHaveCount(0);
-  // 다시 들어와도 뜨지 않는다.
+  // 다시 들어와도 저절로 뜨지 않는다.
   await page.reload();
   await expect(page.getByRole("button", { name: "출발지를 두 곳 넣어주세요" })).toBeVisible();
   await expect(dialog).toHaveCount(0);

@@ -1,19 +1,17 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { beforeEach, afterEach, expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { track } from "@/lib/analytics";
 import { API, participant, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
 import { JoinScreen } from "./JoinScreen";
-import { markTourSeen } from "@/lib/tour";
 import { TourProvider } from "@/components/ui/TourProvider";
 // 온보딩 제어기(TourProvider)가 쓰는 라우터를 흉내 낸다. 이 파일에서는 주소가 바뀌지 않는다.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/r/abc123" }));
 
 
-beforeEach(() => markTourSeen("join"));
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -194,22 +192,8 @@ test("초대 링크를 복사하면 join으로 남기고, 복사에 실패하면
   expect(track).not.toHaveBeenCalled();
 });
 
-test("링크로 처음 들어온 브라우저에는 시작 전에 사용법을 띄운다", async () => {
-  window.localStorage.clear();
+test("링크로 들어와도 사용법은 저절로 뜨지 않고 사용법 보기를 눌렀을 때만 연다", async () => {
   const user = userEvent.setup();
-  renderWithClient(
-    <TourProvider>
-      <JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />
-    </TourProvider>,
-  );
-  expect(await screen.findByRole("dialog", { name: "1. 내 출발지를 넣어요" })).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "다음" }));
-  expect(screen.getByRole("dialog", { name: "2. 공평한 역이 나와요" })).toBeInTheDocument();
-});
-
-test("첫 화면에서 사용법을 본 브라우저에는 참여 화면 사용법을 다시 띄우지 않는다", async () => {
-  window.localStorage.clear();
-  markTourSeen("home");
   renderWithClient(
     <TourProvider>
       <JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />
@@ -217,4 +201,7 @@ test("첫 화면에서 사용법을 본 브라우저에는 참여 화면 사용�
   );
   expect(await screen.findByText("출발지 등록", { selector: "h2" })).toBeInTheDocument();
   expect(screen.queryByRole("dialog")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "사용법 보기" }));
+  expect(screen.getByRole("dialog", { name: "1. 내 출발지를 넣어요" })).toBeInTheDocument();
 });

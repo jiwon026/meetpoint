@@ -3,8 +3,9 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setTrackingPaused, track } from "@/lib/analytics";
-import { markTourSeen, type TourName } from "@/lib/tour";
 import { Tour, type TourStep } from "./Tour";
+
+export type TourName = "home" | "join";
 
 type Running = { name: TourName; steps: readonly TourStep[]; index: number; returnTo: string };
 
@@ -39,6 +40,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const step = running ? running.steps[running.index] : null;
   const here = step !== null && pathOnly(step.path) === pathname;
 
+  // 단계가 바뀔 때마다 남긴다. 온보딩 중에는 다른 통계를 멈추지만 이 이벤트는 보낸다.
+  const runningName = running?.name;
+  const runningIndex = running?.index;
+  useEffect(() => {
+    if (runningName !== undefined && runningIndex !== undefined) {
+      track("tour_step", { screen: runningName, step: runningIndex + 1 });
+    }
+  }, [runningName, runningIndex]);
+
   // 이 단계의 화면이 아니면 그리로 옮긴다.
   useEffect(() => {
     if (step && !here) router.push(step.path);
@@ -47,7 +57,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const finish = useCallback(
     (completed: boolean) => {
       if (!running) return;
-      markTourSeen(running.name);
       setRunning(null);
       setTrackingPaused(false);
       track("tour_closed", { screen: running.name, step: running.index + 1, completed });

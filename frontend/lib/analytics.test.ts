@@ -112,3 +112,12 @@ test("온보딩이 예시 방을 보여주는 동안에는 보내지 않는다",
   track("link_copied", { place: "result" });
   expect(sdk.track).toHaveBeenCalledOnce();
 });
+
+test("온보딩 자체의 이벤트는 멈춘 동안에도 보낸다 (몇 단계에서 나가는지 재려고)", async () => {
+  vi.stubEnv("NEXT_PUBLIC_AMPLITUDE_API_KEY", "test-key");
+  const { initAnalytics, setTrackingPaused, track } = await load();
+  initAnalytics();
+  setTrackingPaused(true);
+  track("tour_step", { screen: "home", step: 3 });
+  expect(sdk.track).toHaveBeenCalledWith("tour_step", { screen: "home", step: 3 });
+});

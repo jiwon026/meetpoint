@@ -69,7 +69,7 @@ export function HomeScreen({ today, onStarted }: Props) {
   // 친구 출발역을 몰라 내 것만 넣고 링크로 부르는 길을 골랐는지.
   const [inviting, setInviting] = useState(false);
   const start = useStartMeeting();
-  // 처음 온 사람에게 시작 전에 전체 사용법을 보여준다. 예시 방의 화면까지 넘어갔다가 이 화면으로 돌아온다.
+  // 사용법 보기를 누르면 예시 방의 화면까지 넘어가며 사용법을 보여주고 이 화면으로 돌아온다.
   const tour = useTour("home", HOME_TOUR, "/");
   // 성공 뒤 다른 화면으로 넘어갈 때까지도 다시 누를 수 없게 막는다 (방이 두 개 생기지 않게).
   const busy = start.isPending || start.isSuccess;
@@ -170,6 +170,9 @@ export function HomeScreen({ today, onStarted }: Props) {
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight">모두에게 공평한 만남 장소</h1>
         <p className="mt-1 text-sm text-ink-sub">출발역만 넣으면 모두에게 공평한 역을 골라드려요.</p>
+        <button type="button" onClick={tour.open} className="mt-1 text-sm font-semibold text-primary underline">
+          사용법 보기
+        </button>
       </div>
       <section aria-label="출발지" data-tour="origins" className="space-y-2">
         <ul className="space-y-2">
@@ -222,9 +225,6 @@ export function HomeScreen({ today, onStarted }: Props) {
         </details>
       </section>
       <p className="rounded-lg bg-track p-3 text-xs text-ink-sub">{MSG_PRIVACY}</p>
-      <button type="button" onClick={tour.replay} className="mx-auto block text-sm text-ink-sub underline">
-        사용법 다시 보기
-      </button>
       <StickyAction>
         <div data-tour="start" className="space-y-2">
           {problem !== null && (
