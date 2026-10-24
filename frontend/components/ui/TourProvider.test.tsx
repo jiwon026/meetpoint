@@ -2,7 +2,6 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import { setTrackingPaused, track } from "@/lib/analytics";
-import { hasSeenTour } from "@/lib/tour";
 import type { TourStep } from "./Tour";
 import { TourProvider, useTourController } from "./TourProvider";
 
@@ -57,21 +56,22 @@ function show(props: Parameters<typeof Starter>[0] = {}) {
   );
 }
 
-test("단계마다 그 화면으로 옮겨 가 보여주고, 끝나면 시작한 화면으로 돌아와 본 것으로 남긴다", async () => {
+test("단계마다 그 화면으로 옮겨 가 보여주고, 끝나면 시작한 화면으로 돌아온다", async () => {
   const user = userEvent.setup();
   show();
   await user.click(screen.getByRole("button", { name: "시작" }));
   expect(setTrackingPaused).toHaveBeenLastCalledWith(true);
   expect(screen.getByRole("dialog", { name: "1. 여기" })).toBeInTheDocument();
+  expect(track).toHaveBeenLastCalledWith("tour_step", { screen: "home", step: 1 });
 
   await user.click(screen.getByRole("button", { name: "다음" }));
   expect(nav.push).toHaveBeenLastCalledWith("/r/demo/result");
   expect(screen.getByRole("dialog", { name: "2. 예시" })).toBeInTheDocument();
+  expect(track).toHaveBeenLastCalledWith("tour_step", { screen: "home", step: 2 });
 
   await user.click(screen.getByRole("button", { name: "시작하기" }));
   expect(nav.push).toHaveBeenLastCalledWith("/");
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(hasSeenTour("home")).toBe(true);
   expect(setTrackingPaused).toHaveBeenLastCalledWith(false);
   expect(track).toHaveBeenLastCalledWith("tour_closed", { screen: "home", step: 2, completed: true });
 });

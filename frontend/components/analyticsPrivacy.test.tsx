@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { beforeEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { JoinScreen } from "@/components/join/JoinScreen";
 import { HubScreen } from "@/components/hub/HubScreen";
 import { ResultScreen } from "@/components/result/ResultScreen";
@@ -10,11 +10,6 @@ import { NO_FILTER } from "@/lib/filter";
 import { API, leg, participant, rec, result, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
-import { markTourSeen } from "@/lib/tour";
-
-beforeEach(() => {
-  markTourSeen("join");
-});
 
 // 이 테스트에서만 쓰는 값. 통계에 하나라도 섞이면 실패해야 한다.
 const SLUG = "zq7x4kmp";

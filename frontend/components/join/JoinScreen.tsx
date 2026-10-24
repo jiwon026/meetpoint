@@ -23,7 +23,7 @@ export function JoinScreen({ slug, room, onShowResult }: Props) {
   const [mine, setMine] = useState(() => readMine(slug));
   const [problem, setProblem] = useState<string | null>(null);
   const setActive = useSetParticipantActive(slug);
-  // 링크로 처음 들어온 사람에게 시작 전에 전체 사용법을 보여준다. 끝나면 이 방의 참여 화면으로 돌아온다.
+  // 사용법 보기를 누르면 전체 사용법을 보여주고 이 방의 참여 화면으로 돌아온다.
   // add=1을 붙여 둬야 돌아왔을 때 "이미 등록한 브라우저는 추천으로" 규칙에 걸리지 않는다.
   const joinPath = `/r/${slug}?add=1`;
   const tour = useTour("join", joinTour(joinPath), joinPath);
@@ -76,8 +76,8 @@ export function JoinScreen({ slug, room, onShowResult }: Props) {
         busyId={setActive.isPending ? (setActive.variables?.id ?? null) : null}
         onSetActive={onSetActive}
       />
-      <button type="button" onClick={tour.replay} className="mx-auto block text-sm text-ink-sub underline">
-        사용법 다시 보기
+      <button type="button" onClick={tour.open} className="mx-auto block text-sm text-ink-sub underline">
+        사용법 보기
       </button>
       <StickyAction>
         <div data-tour="show-result">

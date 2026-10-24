@@ -1,10 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
-import { beforeEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { track } from "@/lib/analytics";
 import { readMine } from "@/lib/myParticipants";
-import { hasSeenTour, markTourSeen } from "@/lib/tour";
 import { API, participant, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
@@ -16,7 +15,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePat
 
 const TODAY = "2026-10-14";
 
-beforeEach(() => markTourSeen("home"));
 const STATIONS: Record<string, { id: number; name: string; lines: string[]; line: string }> = {
   강남: { id: 222, name: "강남", lines: ["2호선", "신분당선"], line: "2호선" },
   수원: { id: 77, name: "수원", lines: ["1호선", "수인분당선"], line: "1호선" },
@@ -299,23 +297,20 @@ test("통계에는 개수와 방식만 남기고 이름과 역은 넣지 않는�
   for (const secret of ["별빛토끼", "강남", "수원", "new123"]) expect(sent).not.toContain(secret);
 });
 
-test("처음 온 브라우저에는 시작 전에 사용법을 띄우고, 사용법 다시 보기로 다시 연다", async () => {
-  window.localStorage.clear();
+test("사용법은 저절로 뜨지 않고 사용법 보기를 눌렀을 때만 연다", async () => {
   const user = userEvent.setup();
   renderWithClient(
     <TourProvider>
       <HomeScreen today={TODAY} onStarted={vi.fn()} />
     </TourProvider>,
   );
-  expect(await screen.findByRole("dialog", { name: "1. 출발지를 넣어요" })).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "다음" }));
-  expect(screen.getByRole("dialog", { name: "2. 공평한 역이 나와요" })).toBeInTheDocument();
+  expect(await screen.findByLabelText("나 이름")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "사용법 보기" }));
+  expect(screen.getByRole("dialog", { name: "1. 출발지를 넣어요" })).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "건너뛰기" }));
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(hasSeenTour("home")).toBe(true);
-
-  await user.click(screen.getByRole("button", { name: "사용법 다시 보기" }));
-  expect(screen.getByRole("dialog", { name: "1. 출발지를 넣어요" })).toBeInTheDocument();
 });
 
 test("내 출발지만 넣으면 링크로 친구를 부르는 길이 나오고, 누르면 방을 만들어 참여 화면으로 보낸다", async () => {

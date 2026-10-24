@@ -6,6 +6,8 @@
 import * as amplitude from "@amplitude/analytics-browser";
 
 export type AnalyticsEvents = {
+  // 사용법 보기를 눌러 연 온보딩의 단계가 보일 때마다. step은 1부터. 마지막으로 본 단계로 어디서 나갔는지 잰다.
+  tour_step: { screen: "home" | "join"; step: number };
   // 온보딩을 닫았을 때. step은 닫을 때 보던 단계(1부터), completed는 마지막까지 봤는지.
   tour_closed: { screen: "home" | "join"; step: number; completed: boolean };
   // 첫 화면에서 출발지를 하나 골랐을 때. count는 그 시점에 채워진 칸의 수. 방은 아직 없다.
@@ -27,6 +29,8 @@ export type AnalyticsEvents = {
 let started = false;
 // 온보딩이 예시 방을 보여주는 동안 켠다. 예시 화면에서 생긴 이벤트가 실제 이용으로 잡히지 않게 한다.
 let paused = false;
+// 온보딩 자체의 이벤트는 멈춘 동안에도 보낸다.
+const SENT_WHILE_PAUSED: ReadonlySet<keyof AnalyticsEvents> = new Set(["tour_step", "tour_closed"]);
 
 export function setTrackingPaused(value: boolean): void {
   paused = value;
@@ -69,7 +73,7 @@ export function initAnalytics(): void {
 
 // 초기화 전에는 아무 일도 하지 않는다. SDK 오류는 화면으로 올리지 않는다.
 export function track<E extends keyof AnalyticsEvents>(event: E, props: AnalyticsEvents[E]): void {
-  if (!started || paused) return;
+  if (!started || (paused && !SENT_WHILE_PAUSED.has(event))) return;
   try {
     amplitude.track(event, props);
   } catch (error) {
