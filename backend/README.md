@@ -42,9 +42,9 @@ cp .env.example .env
 
 운영 DB(Supabase)를 새로 만드는 순서는 `migrations/README.md`를 따른다. RLS 단계가 들어 있다.
 
-`scripts.init_db`는 기존 테이블에 컬럼을 추가하지 않는다. 가장 최근 스키마 변경(2026-10)은 `rooms.regions`, `rooms.theme`, `rooms.first_result_at`, `participants.active`, `hubs.themes`, 그리고 새 표 `daily_stats`다. 그래서 이 변경 이전에 만든 로컬 `dev.db`는 파일을 지우고 `init_db`를 다시 실행한 뒤 `pipeline.load`로 적재해야 한다. 로컬의 방과 참여자 데이터는 함께 사라지지만 괜찮다.
+`scripts.init_db`는 없는 표만 만들고 기존 표에 열을 더하지 않는다. 모델(`app/models.py`)이 바뀐 뒤에 로컬 `dev.db`가 맞지 않으면 파일을 지우고 `init_db`부터 다시 한 다음 `pipeline.load`로 적재한다. 로컬의 방과 참여자 데이터는 함께 사라지지만 괜찮다.
 
-운영 DB(Supabase)는 표를 지우지 않는다. 구조를 바꿀 때는 `migrations/`의 번호 붙은 SQL을 `migrations/README.md`의 규칙대로 적용한다. 아직 운영 DB가 없으므로 위 변경에 대한 열 추가 SQL은 필요 없다. 첫 운영 DB는 현재 모델로 `init_db`가 만든다.
+운영 DB(Supabase)는 표를 지우지 않는다. 구조를 바꿀 때는 모델을 바꾸는 커밋에 `migrations/`의 번호 붙은 SQL을 함께 넣고, `migrations/README.md`의 규칙대로 운영에 적용한 뒤 그 파일의 적용 기록에 날짜를 적는다.
 
 원본을 갱신했으면 다시 계산한다.
 
