@@ -8,7 +8,7 @@ import { legOrigins } from "@/lib/origins";
 import { Loading } from "@/components/ui/Loading";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
-import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
+import { CARD, PRIMARY_BUTTON } from "@/components/ui/styles";
 import { track } from "@/lib/analytics";
 import { useResult } from "@/lib/api/hooks";
 import { SERVICE_NAME } from "@/lib/constants";
@@ -22,9 +22,10 @@ import {
 } from "@/lib/messages";
 import { readMine } from "@/lib/myParticipants";
 import { parseRegions } from "@/lib/regions";
-import { copyText } from "@/lib/share";
+import { copyText, shareLink } from "@/lib/share";
 import { FilterBar } from "./FilterBar";
 import { HubCard } from "./HubCard";
+import { ResultActions } from "./ResultActions";
 
 type Props = {
   slug: string;
@@ -83,8 +84,13 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
   const query = filterQuery(filter);
   // 고른 카드가 목록에서 사라졌으면(필터 변경, 폴링) 1위 카드를 펼친다.
   const open = recs.some((rec) => rec.hub_id === openId) ? openId : (recs[0]?.hub_id ?? null);
-  const copyLink = async () => {
+  const openRec = recs.find((rec) => rec.hub_id === open);
+  // 휴대폰은 공유창으로 보내고, 공유창이 없는 브라우저는 링크를 복사한다.
+  const shareResult = async () => {
     const url = `${window.location.origin}/r/${slug}/result${query}`;
+    const outcome = await shareLink({ title: SERVICE_NAME, url });
+    if (outcome === "shared") track("link_shared", { place: "result" });
+    if (outcome !== "unsupported") return;
     const copied = await copyText(url);
     toast(copied ? MSG_LINK_COPIED : MSG_LINK_COPY_FAILED);
     if (copied) track("link_copied", { place: "result" });
@@ -92,6 +98,9 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
 
   return (
     <div className="space-y-4">
+      {recs.length > 0 && (
+        <ResultActions people={recs[0].legs.length} onAddPeople={onAddPeople} onShare={shareResult} />
+      )}
       <FilterBar filter={filter} appliedThemes={data.themes} onChange={onFilterChange} />
       {recs.length === 0 ? (
         <p className={`${CARD} text-center font-semibold`}>
@@ -125,23 +134,20 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
                   }}
                   best={data.best_max_minutes}
                   mine={mine}
-                  href={`/r/${slug}/hubs/${rec.hub_id}${query}`}
                 />
               </li>
             ))}
           </ol>
         </>
       )}
-      <StickyAction>
-        <div data-tour="result-actions" className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onAddPeople} className={SECONDARY_BUTTON}>
-            사람 추가
-          </button>
-          <button type="button" onClick={copyLink} className={SECONDARY_BUTTON}>
-            결과 링크 복사
-          </button>
-        </div>
-      </StickyAction>
+      {openRec && (
+        <StickyAction>
+          {/* 펼친 카드의 동네로 간다. 휴대폰 화면에서 카드 안 버튼이 고정 줄에 가려 아무도 누르지 않아 여기로 옮겼다(2026-10-26). */}
+          <Link href={`/r/${slug}/hubs/${openRec.hub_id}${query}`} data-tour="explore" className={PRIMARY_BUTTON}>
+            {openRec.name} 둘러보기
+          </Link>
+        </StickyAction>
+      )}
     </div>
   );
 }

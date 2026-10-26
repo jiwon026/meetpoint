@@ -69,7 +69,7 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
   await expect(page).toHaveURL(/theme=cafe/);
   await expect(cards).toHaveCount(5);
 
-  await page.getByRole("link", { name: "이 동네 둘러보기" }).click();
+  await page.getByRole("link", { name: / 둘러보기$/ }).click();
   await expect(page).toHaveURL(/\/hubs\/\d+\?theme=cafe/);
   await expect(page.getByText("테스트 국밥집")).toBeVisible();
   await expect(page.getByText("도보 약 4분")).toBeVisible();

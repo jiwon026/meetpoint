@@ -16,6 +16,8 @@ export type AnalyticsEvents = {
   join_viewed: { participant_count: number };
   participant_added: { method: "station" | "address"; participant_count: number };
   link_copied: { place: "join" | "result" };
+  // 휴대폰 공유창에서 보낼 곳을 골랐을 때. 창을 열었다 닫은 것은 남기지 않는다.
+  link_shared: { place: "join" | "result" };
   result_viewed: { participant_count: number; regions: string; theme: string; recommendation_count: number };
   result_filter_changed: { kind: "region" | "theme"; value: string };
   hub_card_opened: { rank: number };

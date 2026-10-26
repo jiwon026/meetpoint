@@ -103,6 +103,20 @@ test("등록하면 이 브라우저가 넣은 사람으로 기억한다", async 
   await waitFor(() => expect(window.localStorage.getItem("wjm:room:abc123:mine")).toBe("[9]"));
 });
 
+test("공유창으로 초대 링크를 보내면 join으로 남긴다", async () => {
+  const share = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "share", { value: share, configurable: true });
+  try {
+    renderWithClient(<JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />);
+    vi.mocked(track).mockClear();
+    await userEvent.click(await screen.findByRole("button", { name: "공유하기" }));
+    expect(share).toHaveBeenCalledWith({ title: room().title, url: `${window.location.origin}/r/abc123` });
+    await waitFor(() => expect(track).toHaveBeenCalledWith("link_shared", { place: "join" }));
+  } finally {
+    Reflect.deleteProperty(navigator, "share");
+  }
+});
+
 test("한 명 이하면 초대 안내와 함께 링크 복사 버튼을 보여준다", async () => {
   const user = userEvent.setup();
   renderWithClient(<JoinScreen slug="abc123" room={room({ participants: [TWO[0]] })} onShowResult={vi.fn()} />);

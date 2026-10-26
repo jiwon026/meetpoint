@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import type { ResultOut } from "@/lib/api/types";
 import { track } from "@/lib/analytics";
 import { NO_FILTER } from "@/lib/filter";
@@ -18,6 +18,16 @@ function show(props: Partial<Parameters<typeof ResultScreen>[0]> = {}) {
   return renderWithClient(
     <ResultScreen slug="abc123" filter={NO_FILTER} onFilterChange={vi.fn()} onAddPeople={vi.fn()} {...props} />,
   );
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(navigator, "share");
+});
+
+function withShareSheet() {
+  const share = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "share", { value: share, configurable: true });
+  return share;
 }
 
 const TWO_HUBS = [
@@ -42,17 +52,59 @@ test("1위 카드가 펼쳐진 채로 시작하고 다른 카드를 누르면 �
   expect(within(cards[0]).getByRole("button", { expanded: false })).toBeInTheDocument();
 });
 
-test("펼친 카드는 수치, 사람별 시간, 둘러보기 링크를 보여준다", async () => {
+test("펼친 카드는 수치와 사람별 시간을 보여주고, 둘러보기는 카드가 아니라 아래 버튼에 있다", async () => {
   serve(result({ recommendations: TWO_HUBS }));
   show({ filter: { regions: ["서울"], themes: ["cafe"] } });
   const card = (await screen.findAllByTestId("hub-card"))[0];
   expect(within(card).getByText("어디서든 오기 쉬운 교통 중심")).toBeInTheDocument();
   expect(within(card).getByText("평균")).toBeInTheDocument();
   expect(within(card).getByText("약 17분")).toBeInTheDocument();
-  expect(within(card).getByRole("link", { name: "이 동네 둘러보기" })).toHaveAttribute(
+  expect(within(card).queryByRole("link", { name: /둘러보기/ })).toBeNull();
+});
+
+test("아래 둘러보기 버튼은 펼친 카드의 동네 이름과 주소를 따라간다 (필터 유지)", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  const user = userEvent.setup();
+  show({ filter: { regions: ["서울"], themes: ["cafe"] } });
+  const cards = await screen.findAllByTestId("hub-card");
+  expect(screen.getByRole("link", { name: "양재 둘러보기" })).toHaveAttribute(
     "href",
     "/r/abc123/hubs/1?region=%EC%84%9C%EC%9A%B8&theme=cafe",
   );
+  await user.click(within(cards[1]).getByRole("button", { expanded: false }));
+  expect(screen.queryByRole("link", { name: "양재 둘러보기" })).toBeNull();
+  expect(screen.getByRole("link", { name: "교대 둘러보기" })).toHaveAttribute(
+    "href",
+    "/r/abc123/hubs/2?region=%EC%84%9C%EC%9A%B8&theme=cafe",
+  );
+});
+
+test("맨 위 줄은 넣은 인원을 보여주고 사람 추가를 누르면 넘긴다", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  const onAddPeople = vi.fn();
+  show({ onAddPeople });
+  await screen.findAllByTestId("hub-card");
+  expect(screen.getByText("2명이 넣었어요")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "사람 추가" }));
+  expect(onAddPeople).toHaveBeenCalledOnce();
+});
+
+test("공유창이 있으면 필터가 붙은 결과 주소로 공유하고, 보낸 경우만 통계를 남긴다", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  const share = withShareSheet();
+  const user = userEvent.setup();
+  show({ filter: { regions: null, themes: ["cafe"] } });
+  await screen.findAllByTestId("hub-card");
+  vi.mocked(track).mockClear();
+  await user.click(screen.getByRole("button", { name: "공유하기" }));
+  expect(share).toHaveBeenCalledWith({ title: "우리지금만나", url: `${window.location.origin}/r/abc123/result?theme=cafe` });
+  await waitFor(() => expect(track).toHaveBeenCalledWith("link_shared", { place: "result" }));
+
+  vi.mocked(track).mockClear();
+  share.mockRejectedValueOnce(new DOMException("cancel", "AbortError"));
+  await user.click(screen.getByRole("button", { name: "공유하기" }));
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(2));
+  expect(track).not.toHaveBeenCalled();
 });
 
 test("테마 도장과 가장 빠른 곳보다 얼마나 더 걸리는지 보여준다", async () => {
@@ -121,12 +173,12 @@ test("만료된 방이면 백엔드 문구와 새 방 만들기", async () => {
   expect(screen.getByRole("link", { name: "새 방 만들기" })).toHaveAttribute("href", "/");
 });
 
-test("결과 링크 복사는 필터가 붙은 주소를 복사한다", async () => {
+test("공유창이 없는 브라우저에서 공유하기는 필터가 붙은 주소를 복사한다", async () => {
   serve(result({ recommendations: TWO_HUBS }));
   const user = userEvent.setup();
   show({ filter: { regions: null, themes: ["cafe", "drink"] } });
   await screen.findAllByTestId("hub-card");
-  await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
+  await user.click(screen.getByRole("button", { name: "공유하기" }));
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("링크를 복사했어요"));
   expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/result?theme=cafe&theme=drink`);
 });
@@ -193,12 +245,12 @@ test("길찾기 링크를 누르면 그 카드의 순위를 남긴다", async ()
   expect(track).toHaveBeenLastCalledWith("directions_clicked", { rank: 2 });
 });
 
-test("결과 링크를 복사하면 result로 남기고, 대기 화면의 초대 링크 복사도 result", async () => {
+test("공유창이 없어 결과 링크를 복사하면 result로 남기고, 대기 화면의 초대 링크 복사도 result", async () => {
   serve(result({ recommendations: TWO_HUBS }));
   const user = userEvent.setup();
   const { unmount } = show();
   await screen.findAllByTestId("hub-card");
-  await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
+  await user.click(screen.getByRole("button", { name: "공유하기" }));
   await waitFor(() => expect(track).toHaveBeenCalledWith("link_copied", { place: "result" }));
   unmount();
 
