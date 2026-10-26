@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { LineBadge } from "@/components/ui/LineBadge";
 import { Stamp } from "@/components/ui/Stamp";
-import { CARD, PRIMARY_BUTTON } from "@/components/ui/styles";
+import { CARD } from "@/components/ui/styles";
 import { track } from "@/lib/analytics";
 import type { RecommendationOut } from "@/lib/api/types";
 import { aboutMinutes } from "@/lib/format";
@@ -16,10 +15,10 @@ type Props = {
   onToggle: () => void;
   best: number | null;
   mine: readonly number[];
-  href: string;
 };
 
-export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Props) {
+// 둘러보기 버튼은 카드가 아니라 추천 화면 아래 고정 줄에 있다. 펼친 카드의 동네로 간다(ResultScreen).
+export function HubCard({ rec, rank, expanded, onToggle, best, mine }: Props) {
   const extra = best === null ? 0 : rec.max_minutes - best;
   return (
     <article data-testid="hub-card" className={`${CARD} ${expanded ? "border-primary" : ""}`}>
@@ -74,9 +73,6 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine, href }: Pro
               />
             </div>
           )}
-          <Link href={href} data-tour={rank === 1 ? "explore" : undefined} className={PRIMARY_BUTTON}>
-            이 동네 둘러보기
-          </Link>
         </div>
       )}
     </article>

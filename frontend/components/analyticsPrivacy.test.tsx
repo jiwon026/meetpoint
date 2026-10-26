@@ -82,7 +82,7 @@ test("방 입장부터 결과와 주변 화면까지 어떤 통계에도 닉네�
   await user.click(screen.getByRole("button", { name: "카페" }));
   await user.click(within(cards[0]).getByRole("link", { name: `${NICKNAME} 길찾기` }));
   await user.click(within(cards[1]).getByRole("button", { expanded: false }));
-  await user.click(screen.getByRole("button", { name: "결과 링크 복사" }));
+  await user.click(screen.getByRole("button", { name: "공유하기" }));
   await waitFor(() => expect(track).toHaveBeenCalledWith("link_copied", { place: "result" }));
   resultView.unmount();
 

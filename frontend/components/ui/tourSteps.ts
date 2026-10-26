@@ -23,7 +23,7 @@ export const DEMO_STEPS: readonly TourStep[] = [
     target: "explore",
     demo: true,
     title: "그 동네에서 뭐 할지 봐요",
-    body: "누르면 근처 가게와 행사가 나와요.",
+    body: "펼친 동네의 근처 가게와 행사가 나와요. 다른 카드를 펼치면 그 동네로 바뀌어요.",
   },
   {
     path: DEMO_HUB_PATH,
@@ -54,7 +54,7 @@ export const HOME_TOUR: readonly TourStep[] = [
     target: "result-actions",
     demo: true,
     title: "친구 출발지는 친구가 넣어요",
-    body: "결과 링크를 보내면 친구도 같은 추천을 보고 자기 출발지를 넣어요. 빠진 사람은 사람 추가로 넣어요.",
+    body: "공유하기로 결과를 보내면 친구도 같은 추천을 보고 자기 출발지를 넣어요. 빠진 사람은 사람 추가로 넣어요.",
   },
 ];
 

@@ -3,7 +3,8 @@
 import { Link2, Share2 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { SECONDARY_BUTTON } from "@/components/ui/styles";
-import { roomUrl } from "@/lib/share";
+import { track } from "@/lib/analytics";
+import { roomUrl, shareLink } from "@/lib/share";
 import { useCopyInviteLink } from "./useCopyInviteLink";
 
 const noSubscribe = () => () => {};
@@ -17,9 +18,9 @@ export function ShareButtons({ slug, title, place }: { slug: string; title: stri
     () => false,
   );
 
-  const share = () => {
-    // 사용자가 공유창을 닫으면 거절된다. 따로 할 일이 없다.
-    navigator.share({ title, url: roomUrl(slug) }).catch(() => {});
+  const share = async () => {
+    // 사용자가 공유창을 닫으면 따로 할 일이 없다. 보낸 경우만 통계를 남긴다.
+    if ((await shareLink({ title, url: roomUrl(slug) })) === "shared") track("link_shared", { place });
   };
 
   return (
