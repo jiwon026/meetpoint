@@ -6,6 +6,7 @@ import { useTour } from "@/components/ui/useTour";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { CARD, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
 import { track } from "@/lib/analytics";
+import type { JoinSource } from "@/lib/joinSource";
 import { useSetParticipantActive } from "@/lib/api/hooks";
 import type { ParticipantOut, RoomOut } from "@/lib/api/types";
 import { MAX_PARTICIPANTS } from "@/lib/constants";
@@ -17,15 +18,15 @@ import { Roster } from "./Roster";
 import { ShareButtons } from "./ShareButtons";
 import { useCopyInviteLink } from "./useCopyInviteLink";
 
-type Props = { slug: string; room: RoomOut; onShowResult: () => void };
+type Props = { slug: string; room: RoomOut; source: JoinSource; onShowResult: () => void };
 
-export function JoinScreen({ slug, room, onShowResult }: Props) {
+export function JoinScreen({ slug, room, source, onShowResult }: Props) {
   const [mine, setMine] = useState(() => readMine(slug));
   const [problem, setProblem] = useState<string | null>(null);
   const setActive = useSetParticipantActive(slug);
   // 사용법 보기를 누르면 전체 사용법을 보여주고 이 방의 참여 화면으로 돌아온다.
   // add=1을 붙여 둬야 돌아왔을 때 "이미 등록한 브라우저는 추천으로" 규칙에 걸리지 않는다.
-  const joinPath = `/r/${slug}?add=1`;
+  const joinPath = `/r/${slug}?add=1&from=tour`;
   const tour = useTour("join", joinTour(joinPath), joinPath);
   const copyInviteLink = useCopyInviteLink(slug, "join");
   const presentCount = room.participants.filter((p) => p.active).length;
@@ -34,8 +35,8 @@ export function JoinScreen({ slug, room, onShowResult }: Props) {
   useEffect(() => {
     if (viewed.current) return;
     viewed.current = true;
-    track("join_viewed", { participant_count: presentCount });
-  }, [presentCount]);
+    track("join_viewed", { participant_count: presentCount, source });
+  }, [presentCount, source]);
   // 정원은 빠진 사람을 포함한 전체 인원으로 센다 (백엔드와 같은 기준).
   const full = room.participants.length >= MAX_PARTICIPANTS;
 

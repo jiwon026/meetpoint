@@ -19,7 +19,7 @@ function ResultPage() {
         filter={filter}
         // 필터는 보는 사람 화면에서만 바뀐다. 방 설정은 건드리지 않고 URL만 바꾼다.
         onFilterChange={(next) => router.replace(`/r/${slug}/result${filterQuery(next)}`, { scroll: false })}
-        onAddPeople={() => router.push(`/r/${slug}?add=1`)}
+        onAddPeople={() => router.push(`/r/${slug}?add=1&from=add`)}
       />
     </main>
   );

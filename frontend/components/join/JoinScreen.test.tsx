@@ -19,21 +19,21 @@ const TWO = [participant({ id: 1, nickname: "민수" }), participant({ id: 2, ni
 
 test("두 명 이상이면 추천 보기 버튼", async () => {
   const onShowResult = vi.fn();
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={onShowResult} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={onShowResult} />);
   await userEvent.click(screen.getByRole("button", { name: "추천 보기 (2명)" }));
   expect(onShowResult).toHaveBeenCalledOnce();
 });
 
 test("빠진 사람은 인원에서 빼고, 한 명 이하면 초대 안내", () => {
   const people = [TWO[0], { ...TWO[1], active: false }];
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: people })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: people })} onShowResult={vi.fn()} />);
   expect(screen.queryByRole("button", { name: /추천 보기/ })).toBeNull();
   expect(screen.getByText("친구를 초대하세요. 두 명부터 추천이 나와요.")).toBeInTheDocument();
 });
 
 test("스무 명이면 폼 대신 가득 찼다는 안내", () => {
   const twenty = Array.from({ length: 20 }, (_, i) => participant({ id: i + 1, nickname: `참여자${i}` }));
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: twenty })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: twenty })} onShowResult={vi.fn()} />);
   expect(screen.getByText("참여 인원이 가득 찼어요 (최대 20명)")).toBeInTheDocument();
   expect(screen.queryByLabelText("닉네임")).toBeNull();
 });
@@ -47,7 +47,7 @@ test("빼기는 확인을 받은 뒤 PATCH를 보낸다", async () => {
     }),
   );
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
   await userEvent.click(screen.getByRole("button", { name: "민수 빼기" }));
   expect(confirm).toHaveBeenCalledWith("민수님을 계산에서 뺄까요? 다시 넣을 수 있어요");
   await waitFor(() => expect(body).toEqual({ active: false }));
@@ -62,7 +62,7 @@ test("확인을 취소하면 요청하지 않는다", async () => {
     }),
   );
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
   await userEvent.click(screen.getByRole("button", { name: "민수 빼기" }));
   expect(confirm).toHaveBeenCalledOnce();
   expect(confirm).toHaveBeenCalledWith("민수님을 계산에서 뺄까요? 다시 넣을 수 있어요");
@@ -81,7 +81,7 @@ test("다시 넣기는 확인 없이 보낸다", async () => {
   );
   const confirm = vi.spyOn(window, "confirm");
   const people = [TWO[0], { ...TWO[1], active: false }];
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: people })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: people })} onShowResult={vi.fn()} />);
   await userEvent.click(screen.getByRole("button", { name: "수진 다시 넣기" }));
   await waitFor(() => expect(body).toEqual({ active: true }));
   expect(confirm).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ test("등록하면 이 브라우저가 넣은 사람으로 기억한다", async 
     ),
   );
   const user = userEvent.setup();
-  renderWithClient(<JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room()} onShowResult={vi.fn()} />);
   await user.type(screen.getByLabelText("닉네임"), "지은");
   await user.type(screen.getByLabelText("출발지 검색"), "강남");
   await user.click(await screen.findByRole("button", { name: /강남/ }));
@@ -107,7 +107,7 @@ test("공유창으로 초대 링크를 보내면 join으로 남긴다", async ()
   const share = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "share", { value: share, configurable: true });
   try {
-    renderWithClient(<JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />);
+    renderWithClient(<JoinScreen source="link" slug="abc123" room={room()} onShowResult={vi.fn()} />);
     vi.mocked(track).mockClear();
     await userEvent.click(await screen.findByRole("button", { name: "공유하기" }));
     expect(share).toHaveBeenCalledWith({ title: room().title, url: `${window.location.origin}/r/abc123` });
@@ -119,7 +119,7 @@ test("공유창으로 초대 링크를 보내면 join으로 남긴다", async ()
 
 test("한 명 이하면 초대 안내와 함께 링크 복사 버튼을 보여준다", async () => {
   const user = userEvent.setup();
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: [TWO[0]] })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: [TWO[0]] })} onShowResult={vi.fn()} />);
   const hint = screen.getByText("친구를 초대하세요. 두 명부터 추천이 나와요.");
   await user.click(within(hint.parentElement as HTMLElement).getByRole("button", { name: "초대 링크 복사" }));
   expect(await screen.findByText("링크를 복사했어요")).toBeInTheDocument();
@@ -127,12 +127,12 @@ test("한 명 이하면 초대 안내와 함께 링크 복사 버튼을 보여�
 
 test("화면이 처음 열릴 때 한 번만 통계를 남기고, 다시 그려져도 반복하지 않는다", () => {
   const { rerender } = renderWithClient(
-    <JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />,
+    <JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />,
   );
-  expect(track).toHaveBeenCalledExactlyOnceWith("join_viewed", { participant_count: 2 });
+  expect(track).toHaveBeenCalledExactlyOnceWith("join_viewed", { participant_count: 2, source: "link" });
   // 폴링으로 방이 새로 와도 다시 남기지 않는다.
   rerender(
-    <JoinScreen
+    <JoinScreen source="link"
       slug="abc123"
       room={room({ participants: [...TWO, participant({ id: 3, nickname: "지은", active: false })] })}
       onShowResult={vi.fn()}
@@ -149,7 +149,7 @@ test("역으로 등록하면 방법과 등록 뒤 인원을 통계로 남긴다"
     ),
   );
   const user = userEvent.setup();
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
   await user.type(screen.getByLabelText("닉네임"), "지은");
   await user.type(screen.getByLabelText("출발지 검색"), "강남");
   await user.click(await screen.findByRole("button", { name: /강남/ }));
@@ -169,7 +169,7 @@ test("주소로 등록하면 address로 남기고, 등록이 실패하면 남기
     ),
   );
   const user = userEvent.setup();
-  renderWithClient(<JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room()} onShowResult={vi.fn()} />);
   await user.type(screen.getByLabelText("닉네임"), "지은");
   await user.click(screen.getByRole("tab", { name: "주소, 건물명 검색" }));
   await user.type(screen.getByLabelText("출발지 검색"), "우리집");
@@ -194,7 +194,7 @@ test("주소로 등록하면 address로 남기고, 등록이 실패하면 남기
 
 test("초대 링크를 복사하면 join으로 남기고, 복사에 실패하면 남기지 않는다", async () => {
   const user = userEvent.setup();
-  renderWithClient(<JoinScreen slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
+  renderWithClient(<JoinScreen source="link" slug="abc123" room={room({ participants: TWO })} onShowResult={vi.fn()} />);
   await user.click(screen.getByRole("button", { name: "초대 링크 복사" }));
   await screen.findByText("링크를 복사했어요");
   expect(track).toHaveBeenCalledWith("link_copied", { place: "join" });
@@ -210,7 +210,7 @@ test("링크로 들어와도 사용법은 저절로 뜨지 않고 사용법 보�
   const user = userEvent.setup();
   renderWithClient(
     <TourProvider>
-      <JoinScreen slug="abc123" room={room()} onShowResult={vi.fn()} />
+      <JoinScreen source="link" slug="abc123" room={room()} onShowResult={vi.fn()} />
     </TourProvider>,
   );
   expect(await screen.findByText("출발지 등록", { selector: "h2" })).toBeInTheDocument();

@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { JoinScreen } from "@/components/join/JoinScreen";
 import { RoomGate } from "@/components/join/RoomGate";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { joinSource } from "@/lib/joinSource";
 import { readMine } from "@/lib/myParticipants";
 
 function JoinPage() {
@@ -16,6 +17,8 @@ function JoinPage() {
   // 처음 그려질 때의 주소로만 판단한다. 아래에서 주소를 바꾸면 useSearchParams가 따라 바뀌는데,
   // 그때 참여 화면이 잠깐 그려지면 초대받아 들어온 것처럼 통계(join_viewed)가 찍힌다.
   const [forwarding] = useState(() => search.get("next") === "result");
+  // 통계용. 처음 그려질 때의 주소로만 정한다(위와 같은 이유).
+  const [source] = useState(() => joinSource(search));
   const forwarded = useRef(false);
 
   const showResult = useCallback(() => {
@@ -42,7 +45,7 @@ function JoinPage() {
     <main>
       <ProgressBar current={1} fill={0.6} />
       <RoomGate slug={slug}>
-        {(room) => <JoinScreen slug={slug} room={room} onShowResult={showResult} />}
+        {(room) => <JoinScreen slug={slug} room={room} source={source} onShowResult={showResult} />}
       </RoomGate>
     </main>
   );

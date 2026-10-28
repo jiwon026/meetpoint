@@ -15,7 +15,7 @@ export default function HomePage() {
   const onStarted = (slug: string, complete: boolean) => {
     // 추천에서 뒤로 가면 빈 첫 화면이 아니라 이 방의 사람 추가 화면으로 가게, 첫 화면의 기록을 그 화면으로 바꾼다.
     // next=result가 붙으면 사람 추가 화면이 곧바로 추천으로 넘긴다 (app/r/[slug]/page.tsx).
-    router.replace(complete ? `/r/${slug}?add=1&next=result` : `/r/${slug}?add=1`);
+    router.replace(complete ? `/r/${slug}?add=1&next=result` : `/r/${slug}?add=1&from=home`);
   };
 
   return (

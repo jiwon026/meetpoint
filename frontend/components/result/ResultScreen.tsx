@@ -51,8 +51,9 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
       regions: parseRegions(data.regions).join(","),
       theme: data.themes.length > 0 ? data.themes.join(",") : "none",
       recommendation_count: data.recommendations.length,
+      viewer: mine.length > 0 ? "member" : "guest",
     });
-  }, [data]);
+  }, [data, mine]);
 
   if (!data) {
     if (result.error) {
