@@ -56,7 +56,7 @@ test("방 입장부터 결과와 주변 화면까지 어떤 통계에도 닉네�
 
   // 1. 입장하고 역으로, 다음엔 주소로 등록하고 링크를 복사한다.
   const join = renderWithClient(
-    <JoinScreen slug={SLUG} room={room({ slug: SLUG, participants: [participant()] })} onShowResult={vi.fn()} />,
+    <JoinScreen source="link" slug={SLUG} room={room({ slug: SLUG, participants: [participant()] })} onShowResult={vi.fn()} />,
   );
   await user.type(screen.getByLabelText("닉네임"), NICKNAME);
   await user.type(screen.getByLabelText("출발지 검색"), ORIGIN_STATION);

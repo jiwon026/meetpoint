@@ -13,12 +13,20 @@ export type AnalyticsEvents = {
   // 첫 화면에서 출발지를 하나 골랐을 때. count는 그 시점에 채워진 칸의 수. 방은 아직 없다.
   origin_drafted: { count: number };
   room_created: { regions: string; region_count: number; theme: string; days_until_meet: number };
-  join_viewed: { participant_count: number };
+  // source는 참여 화면에 어떻게 왔는지(lib/joinSource.ts).
+  join_viewed: { participant_count: number; source: "link" | "add_people" | "home" | "tour" | "back" };
   participant_added: { method: "station" | "address"; participant_count: number };
   link_copied: { place: "join" | "result" };
   // 휴대폰 공유창에서 보낼 곳을 골랐을 때. 창을 열었다 닫은 것은 남기지 않는다.
   link_shared: { place: "join" | "result" };
-  result_viewed: { participant_count: number; regions: string; theme: string; recommendation_count: number };
+  // viewer는 이 브라우저에서 넣은 사람이 있으면 member, 없으면 guest(남이 보낸 결과 링크로 들어왔다).
+  result_viewed: {
+    participant_count: number;
+    regions: string;
+    theme: string;
+    recommendation_count: number;
+    viewer: "member" | "guest";
+  };
   result_filter_changed: { kind: "region" | "theme"; value: string };
   hub_card_opened: { rank: number };
   directions_clicked: { rank: number };

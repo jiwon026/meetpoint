@@ -8,6 +8,7 @@ import { NO_FILTER } from "@/lib/filter";
 import { API, leg, rec, result } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
+import { addMine } from "@/lib/myParticipants";
 import { ResultScreen } from "./ResultScreen";
 
 function serve(body: ResultOut) {
@@ -192,6 +193,7 @@ test("준비된 결과를 처음 보여줄 때 한 번만 통계를 남기고, �
     regions: "서울,경기",
     theme: "cafe,drink",
     recommendation_count: 2,
+    viewer: "guest",
   });
 
   // 필터를 바꿔 다른 결과가 와도 같은 화면이므로 다시 남기지 않는다.
@@ -213,6 +215,14 @@ test("대기 상태에서는 결과 통계를 남기지 않는다", async () => 
   show();
   await screen.findByText("친구를 초대하세요. 두 명부터 추천이 나와요.");
   expect(track).not.toHaveBeenCalled();
+});
+
+test("이 브라우저에서 넣은 사람이 있으면 member, 없으면(남이 보낸 링크) guest로 남긴다", async () => {
+  serve(result({ recommendations: TWO_HUBS }));
+  addMine("abc123", 99);
+  show();
+  await screen.findAllByTestId("hub-card");
+  expect(track).toHaveBeenCalledWith("result_viewed", expect.objectContaining({ viewer: "member" }));
 });
 
 test("테마가 없는 결과는 theme을 none으로 남긴다", async () => {
