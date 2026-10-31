@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { CARD } from "@/components/ui/styles";
+import { PRIVACY_METADATA } from "@/lib/site";
 
-export const metadata: Metadata = { title: "개인정보 안내 | 우리지금만나" };
+export const metadata: Metadata = PRIVACY_METADATA;
 
 const CONTACT_EMAIL = "kwonjiwon6886@gmail.com";
 

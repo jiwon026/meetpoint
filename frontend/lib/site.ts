@@ -1,4 +1,4 @@
-import type { MetadataRoute } from "next";
+import type { Metadata, MetadataRoute } from "next";
 
 // 운영 주소. 미리보기 그림, 사이트맵, robots.txt에는 절대 주소가 필요하다. Vercel이 빌드 때 운영 도메인을 넣어준다.
 export const SITE_ORIGIN = process.env.VERCEL_PROJECT_PRODUCTION_URL
@@ -25,4 +25,25 @@ export function sitemapEntries(): MetadataRoute.Sitemap {
 // 검색에서 빼는 일은 방 페이지의 noindex, nofollow(lib/roomMeta.ts)가 맡는다.
 export function robotsRules(): MetadataRoute.Robots {
   return { rules: { userAgent: "*", allow: "/" }, sitemap: `${SITE_ORIGIN}/sitemap.xml` };
+}
+
+// 대표 주소(canonical). /?utm_source=instagram 처럼 붙여 들어온 주소를 검색 엔진이 한 페이지로 모으게 한다.
+// 상대 주소는 layout.tsx의 metadataBase(SITE_ORIGIN)를 앞에 붙여 절대 주소가 된다.
+export const HOME_METADATA: Metadata = { alternates: { canonical: "/" } };
+
+export const PRIVACY_METADATA: Metadata = {
+  title: "개인정보 안내 | 우리지금만나",
+  description:
+    "우리지금만나가 저장하고 보내는 값을 사실대로 적었어요. 입력한 주소 원문은 저장하지 않고 위치는 약 100m 단위로만 남겨요.",
+  alternates: { canonical: "/privacy" },
+};
+
+// 검색 결과에 도메인 대신 서비스 이름이 뜨게 하는 구조화 데이터. 구글 안내대로 첫 화면에만 넣는다.
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "우리지금만나",
+    url: `${SITE_ORIGIN}/`,
+  };
 }
