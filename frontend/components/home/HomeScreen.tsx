@@ -168,7 +168,7 @@ export function HomeScreen({ today, onStarted }: Props) {
     <div className="space-y-5">
       <ProgressBar current={1} fill={0.2 + 0.4 * Math.min(filledCount, MIN_PEOPLE)} />
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">모두에게 공평한 만남 장소</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">지하철로 공평한 약속장소 찾기</h1>
         <p className="mt-1 text-sm text-ink-sub">출발역만 넣으면 모두에게 공평한 역을 골라드려요.</p>
         <button type="button" onClick={tour.open} className="mt-1 text-sm font-semibold text-primary underline">
           사용법 보기

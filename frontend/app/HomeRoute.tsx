@@ -19,9 +19,5 @@ export function HomeRoute() {
     router.replace(complete ? `/r/${slug}?add=1&next=result` : `/r/${slug}?add=1&from=home`);
   };
 
-  return (
-    <main>
-      <HomeScreen today={today} onStarted={onStarted} />
-    </main>
-  );
+  return <HomeScreen today={today} onStarted={onStarted} />;
 }
