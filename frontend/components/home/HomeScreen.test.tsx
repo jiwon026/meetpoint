@@ -58,6 +58,11 @@ async function pickStation(user: UserEvent, name: string) {
   await user.click(await screen.findByRole("button", { name: new RegExp(`^${name}`) }));
 }
 
+test("큰 제목은 검색어와 같은 말로 쓴다", () => {
+  renderWithClient(<HomeScreen today={TODAY} onStarted={vi.fn()} />);
+  expect(screen.getByRole("heading", { level: 1, name: "지하철로 공평한 약속장소 찾기" })).toBeInTheDocument();
+});
+
 test("처음에는 두 칸이 비어 있고 날짜는 일주일 뒤이며 버튼은 꺼져 있다", () => {
   renderWithClient(<HomeScreen today={TODAY} onStarted={vi.fn()} />);
   expect(within(screen.getByRole("region", { name: "출발지" })).getAllByRole("listitem")).toHaveLength(2);

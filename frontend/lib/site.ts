@@ -27,6 +27,12 @@ export function robotsRules(): MetadataRoute.Robots {
   return { rules: { userAgent: "*", allow: "/" }, sitemap: `${SITE_ORIGIN}/sitemap.xml` };
 }
 
+// 첫 화면의 검색 제목과 설명. 서치어드바이저에서 노출이 가장 많은 "약속장소 중간지점"을 맨 앞에,
+// 클릭률이 높은 "지하철"을 그 뒤에 둔다(2026-10-31, dev/active/seo/seo-context.md). 없는 기능은 적지 않는다.
+export const SITE_TITLE = "약속장소 중간지점 찾기 - 지하철로 모두 공평한 역 추천 | 우리지금만나";
+export const SITE_DESCRIPTION =
+  "출발역만 넣으면 지하철로 각자 몇 분 걸리는지 계산해서, 가장 오래 걸리는 사람도 덜 걸리는 중간역을 골라 줘요. 그 동네 맛집, 카페, 술집, 행사까지 한 번에. 가입 없이 링크로 친구와 함께, 수도권 지하철 기준.";
+
 // 대표 주소(canonical). /?utm_source=instagram 처럼 붙여 들어온 주소를 검색 엔진이 한 페이지로 모으게 한다.
 // 상대 주소는 layout.tsx의 metadataBase(SITE_ORIGIN)를 앞에 붙여 절대 주소가 된다.
 export const HOME_METADATA: Metadata = { alternates: { canonical: "/" } };
