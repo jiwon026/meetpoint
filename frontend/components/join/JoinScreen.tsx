@@ -48,7 +48,7 @@ export function JoinScreen({ slug, room, source, onShowResult }: Props) {
 
   return (
     <div className="space-y-4">
-      <RoomSummary room={room} slug={slug} />
+      <RoomSummary room={room} />
       <div data-tour="invite">
         <ShareButtons slug={slug} title={room.title} place="join" />
       </div>

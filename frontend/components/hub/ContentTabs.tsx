@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { KakaoMap } from "@/components/map/KakaoMap";
 import { Chip } from "@/components/ui/Chip";
 import { track } from "@/lib/analytics";
-import { useHubContent } from "@/lib/api/hooks";
+import { useHubContent, useRoom } from "@/lib/api/hooks";
 import type { EventItem, Place } from "@/lib/api/types";
 import { MSG_LOADING, MSG_NOTHING_NEARBY, MSG_SORT_NOTE } from "@/lib/messages";
 import { DEFAULT_PLACE_SORT, isSortable, PLACE_SORTS, type PlaceSort } from "@/lib/placeSort";
 import { CONTENT_TABS, type ContentKind } from "@/lib/themes";
 import { EventCard } from "./EventCard";
+import { MeetDatePicker } from "./MeetDatePicker";
 import { PlaceCard } from "./PlaceCard";
 
 type Props = {
@@ -25,6 +26,8 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sort, setSort] = useState<PlaceSort>(DEFAULT_PLACE_SORT);
   const content = useHubContent(slug, hubId, kind, sort);
+  // 약속 날짜는 행사 탭에서만 쓰고 고른다.
+  const room = useRoom(slug);
   const gone = content.error?.status === 404;
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export function ContentTabs({ slug, hubId, initial, center, onGone }: Props) {
           </button>
         ))}
       </div>
+      {kind === "event" && room.data && <MeetDatePicker room={room.data} slug={slug} />}
       {isSortable(kind) && (
         <div className="space-y-1.5">
           <div role="group" aria-label="정렬" className="flex gap-2">
