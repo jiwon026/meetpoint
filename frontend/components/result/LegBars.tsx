@@ -1,7 +1,7 @@
 import type { LegOut } from "@/lib/api/types";
 import { transitDirectionsUrl, type MapPoint } from "@/lib/directions";
 import { aboutMinutes } from "@/lib/format";
-import { MSG_BUS } from "@/lib/messages";
+import { MSG_BUS, msgBoardElsewhere } from "@/lib/messages";
 
 const MIN_BAR_PERCENT = 8;
 
@@ -26,7 +26,12 @@ export function LegBars({ legs, mine, destination, onDirections }: Props) {
       {legs.map((leg) => {
         const slowest = leg.minutes === longest;
         const width = Math.max(MIN_BAR_PERCENT, Math.round((leg.minutes / longest) * 100));
-        const origin = `${leg.origin_station_name}${leg.via === "bus" ? `, ${MSG_BUS}` : ""}`;
+        // 참여 목록과 같은 역을 먼저 쓴다. 이 거점까지는 걸어갈 수 있는 다른 역에서 타는 게 빠르면 그 역을 덧붙인다.
+        const station =
+          leg.entered_station_name && leg.entered_station_name !== leg.origin_station_name
+            ? msgBoardElsewhere(leg.entered_station_name, leg.origin_station_name)
+            : leg.origin_station_name;
+        const origin = `${station}${leg.via === "bus" ? `, ${MSG_BUS}` : ""}`;
         const directions =
           destination && leg.origin_lat !== null && leg.origin_lng !== null
             ? transitDirectionsUrl({ name: leg.origin_station_name, lat: leg.origin_lat, lng: leg.origin_lng }, destination)

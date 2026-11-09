@@ -194,8 +194,12 @@ def set_participant_active(session: Session, room: Room, participant_id: int, ac
     return participant
 
 
+def _first_station(p: Participant) -> dict:
+    return p.nearest_stations[0] if p.nearest_stations else {"station_name": "", "via": "walk"}
+
+
 def participant_out(p: Participant) -> ParticipantOut:
-    first = p.nearest_stations[0] if p.nearest_stations else {"station_name": "", "via": "walk"}
+    first = _first_station(p)
     return ParticipantOut(
         id=p.id, nickname=p.nickname, nearest_station_name=first["station_name"],
         via=first["via"], active=p.active,
@@ -237,7 +241,12 @@ def _applied_themes(room: Room, themes: Sequence[str] | None) -> list[str]:
 
 
 def _recommendation(
-    score: HubScore, hub: Hub, lines: list[str], theme_match: bool, station_by_id: dict[int, Station]
+    score: HubScore,
+    hub: Hub,
+    lines: list[str],
+    theme_match: bool,
+    station_by_id: dict[int, Station],
+    entered_by_participant: dict[int, str],
 ) -> RecommendationOut:
     return RecommendationOut(
         hub_id=score.hub_id,
@@ -257,6 +266,7 @@ def _recommendation(
                 nickname=l.nickname,
                 minutes=l.leg.total_minutes,
                 origin_station_name=l.leg.origin_station_name,
+                entered_station_name=entered_by_participant.get(l.participant_id, l.leg.origin_station_name),
                 origin_lat=getattr(station_by_id.get(l.leg.origin_station_id), "lat", None),
                 origin_lng=getattr(station_by_id.get(l.leg.origin_station_id), "lng", None),
                 via=l.leg.via,
@@ -321,10 +331,11 @@ def compute_result(
     ranking = rank_with_preference(inputs, in_region, matrix, preferred_hub_ids=matching)
     lines = hub_lines(hubs, stations)
     station_by_id = {s.id: s for s in stations}
+    entered = {p.id: _first_station(p)["station_name"] for p in present}
     result = ResultOut(
         status="ready",
         recommendations=[
-            _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching, station_by_id)
+            _recommendation(s, hub_by_id[s.hub_id], lines[s.hub_id], s.hub_id in matching, station_by_id, entered)
             for s in ranking.scores
         ],
         best_max_minutes=ranking.best_max_minutes,

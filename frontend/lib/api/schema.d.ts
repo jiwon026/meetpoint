@@ -192,6 +192,8 @@ export interface components {
             minutes: number;
             /** Origin Station Name */
             origin_station_name: string;
+            /** Entered Station Name */
+            entered_station_name: string;
             /** Origin Lat */
             origin_lat: number | null;
             /** Origin Lng */

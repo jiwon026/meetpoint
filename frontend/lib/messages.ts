@@ -8,6 +8,11 @@ export const MSG_INVITE_READY = "방을 만들었어요. 초대 링크를 친구
 export const MSG_NICKNAME_REQUIRED = "닉네임을 적어주세요";
 export const MSG_ORIGIN_REQUIRED = "출발지를 골라주세요";
 export const MSG_PRIVACY = "원래 주소는 저장하지 않아요. 약 100m 단위로 뭉갠 위치만 보관하고 방과 함께 자동으로 지워요.";
+// 참여 목록에 보이는 역과 이 거점까지 실제로 타는 역이 다를 때 (예: "노원, 창동에서 타요").
+export function msgBoardElsewhere(entered: string, boarding: string): string {
+  return `${entered}, ${boarding}에서 타요`;
+}
+
 // 날짜는 방을 지우는 날 (예: "11월 23일 (월)").
 export function msgAutoDelete(dateLabel: string): string {
   return `${dateLabel} 자동 삭제`;

@@ -10,7 +10,7 @@ from app.deps import get_geocoder, get_matrix
 from app.errors import UpstreamError
 from app.geocoding.kakao import GeoPoint
 from app.main import create_app
-from app.models import Room
+from app.models import Participant, Room
 from app.transit.matrix import StationTimeMatrix
 
 
@@ -309,3 +309,25 @@ def test_create_room_uses_korean_date_for_today(client, monkeypatch):
     monkeypatch.setattr("app.rooms.service.utcnow", lambda: datetime(2026, 9, 20, 15, 30))
     response = client.post("/rooms", json={"title": "t", "meet_date": "2026-09-20"})
     assert response.status_code == 422
+
+
+def test_result_legs_carry_the_station_shown_in_the_roster(client, session):
+    # 추천 화면은 거점마다 가장 빠른 출발 후보를 고른다. 참여 목록에 보이는 역(첫 후보)도 같이 줘서
+    # 화면이 "홍대입구, 신촌에서 타요"처럼 같은 사람을 같은 역으로 보여줄 수 있게 한다.
+    slug = _create_room(client)["slug"]
+    first = client.post(f"/rooms/{slug}/participants", json={"nickname": "a", "address": "홍대 근처"}).json()
+    client.post(f"/rooms/{slug}/participants", json={"nickname": "b", "address": "잠실 근처"})
+    row = session.get(Participant, first["id"])
+    row.nearest_stations = [
+        {"station_id": 1, "station_name": "홍대입구", "walk_minutes": 5, "via": "walk"},
+        {"station_id": 5, "station_name": "신촌", "walk_minutes": 1, "via": "walk"},
+    ]
+    session.commit()
+    body = client.get(f"/rooms/{slug}/result").json()
+    gangnam = next(r for r in body["recommendations"] if r["name"] == "강남")
+    leg = next(l for l in gangnam["legs"] if l["nickname"] == "a")
+    # 강남까지는 신촌에서 타는 쪽이 빠르다 (1 + 33 < 5 + 35).
+    assert leg["origin_station_name"] == "신촌"
+    assert leg["entered_station_name"] == "홍대입구"
+    other = next(l for l in gangnam["legs"] if l["nickname"] == "b")
+    assert other["entered_station_name"] == other["origin_station_name"] == "잠실"

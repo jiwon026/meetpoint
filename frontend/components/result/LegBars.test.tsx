@@ -56,3 +56,17 @@ test("출발역 좌표가 없는 사람과 목적지가 없을 때는 링크가 
   rerender(<LegBars legs={legs} mine={[]} />);
   expect(screen.queryAllByRole("link")).toHaveLength(0);
 });
+
+test("참여 목록과 같은 역을 먼저 쓰고, 타는 역이 다르면 뒤에 붙인다", () => {
+  render(
+    <LegBars
+      legs={[
+        leg({ participant_id: 1, nickname: "친구 2", origin_station_name: "창동", entered_station_name: "노원" }),
+        leg({ participant_id: 2, nickname: "친구 1", origin_station_name: "수원" }),
+      ]}
+      mine={[]}
+    />,
+  );
+  expect(screen.getByText("노원, 창동에서 타요")).toBeInTheDocument();
+  expect(screen.getByText("수원")).toBeInTheDocument();
+});
