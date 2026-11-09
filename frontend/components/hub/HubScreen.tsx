@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { Share2 } from "lucide-react";
 import { Loading } from "@/components/ui/Loading";
-import { CARD } from "@/components/ui/styles";
+import { StickyAction } from "@/components/ui/StickyAction";
+import { CARD, PRIMARY_BUTTON } from "@/components/ui/styles";
+import { useToast } from "@/components/ui/Toast";
 import { track } from "@/lib/analytics";
 import { useResult } from "@/lib/api/hooks";
-import type { ResultFilter } from "@/lib/filter";
+import { filterQuery, type ResultFilter } from "@/lib/filter";
+import { MSG_LINK_COPIED, MSG_LINK_COPY_FAILED } from "@/lib/messages";
+import { copyText, shareLink } from "@/lib/share";
 import { firstTab } from "@/lib/themes";
 import { ContentTabs } from "./ContentTabs";
 import { HubHeader } from "./HubHeader";
@@ -13,6 +18,7 @@ import { HubHeader } from "./HubHeader";
 type Props = { slug: string; hubId: number; filter: ResultFilter; onGone: () => void };
 
 export function HubScreen({ slug, hubId, filter, onGone }: Props) {
+  const toast = useToast();
   // 거점 단건 API는 없다. 추천 결과에서 찾는다. 이 화면에서는 폴링하지 않는다.
   const result = useResult(slug, filter, { poll: false });
   const rec = result.data?.recommendations.find((r) => r.hub_id === hubId) ?? null;
@@ -49,6 +55,18 @@ export function HubScreen({ slug, hubId, filter, onGone }: Props) {
   }
   if (!rec) return <Loading />;
 
+  // 동네를 골랐으면 친구에게 알리는 게 다음 일이다. 휴대폰은 공유창으로, 공유창이 없으면 링크를 복사한다.
+  // 받은 친구는 같은 둘러보기 화면을 연다.
+  const shareHub = async () => {
+    const url = `${window.location.origin}/r/${slug}/hubs/${hubId}${filterQuery(filter)}`;
+    const outcome = await shareLink({ title: `${rec.name}에서 만나요`, url });
+    if (outcome === "shared") track("link_shared", { place: "hub" });
+    if (outcome !== "unsupported") return;
+    const copied = await copyText(url);
+    toast(copied ? MSG_LINK_COPIED : MSG_LINK_COPY_FAILED);
+    if (copied) track("link_copied", { place: "hub" });
+  };
+
   return (
     <div className="space-y-4">
       <HubHeader rec={rec} />
@@ -59,6 +77,12 @@ export function HubScreen({ slug, hubId, filter, onGone }: Props) {
         center={{ lat: rec.lat, lng: rec.lng }}
         onGone={gone}
       />
+      <StickyAction>
+        <button type="button" onClick={shareHub} className={PRIMARY_BUTTON}>
+          <Share2 size={18} aria-hidden />
+          친구에게 {rec.name} 보내기
+        </button>
+      </StickyAction>
     </div>
   );
 }

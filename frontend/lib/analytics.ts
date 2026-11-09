@@ -16,9 +16,9 @@ export type AnalyticsEvents = {
   // source는 참여 화면에 어떻게 왔는지(lib/joinSource.ts).
   join_viewed: { participant_count: number; source: "link" | "add_people" | "home" | "tour" | "back" };
   participant_added: { method: "station" | "address"; participant_count: number };
-  link_copied: { place: "join" | "result" };
+  link_copied: { place: "join" | "result" | "hub" };
   // 휴대폰 공유창에서 보낼 곳을 골랐을 때. 창을 열었다 닫은 것은 남기지 않는다.
-  link_shared: { place: "join" | "result" };
+  link_shared: { place: "join" | "result" | "hub" };
   // viewer는 이 브라우저에서 넣은 사람이 있으면 member, 없으면 guest(남이 보낸 결과 링크로 들어왔다).
   result_viewed: {
     participant_count: number;
