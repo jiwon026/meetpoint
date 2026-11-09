@@ -100,7 +100,7 @@ test("출발역 둘을 넣고 누르면 서울 방을 만들고 차례로 등록
   await waitFor(() => expect(onStarted).toHaveBeenCalledWith("new123", true));
   expect(calls).toEqual([
     { path: "/rooms", body: { title: "10월 21일 (수) 모임", meet_date: "2026-10-21", regions: ["서울"], themes: [] } },
-    { path: "/rooms/new123/participants", body: { nickname: "나", station_id: 222 } },
+    { path: "/rooms/new123/participants", body: { nickname: "모임장", station_id: 222 } },
     { path: "/rooms/new123/participants", body: { nickname: "친구 1", station_id: 77 } },
   ]);
   expect(readMine("new123")).toEqual([101, 102]);
@@ -149,7 +149,7 @@ test("한 명 더 넣고, 고른 역을 바꾸고, 줄을 지울 수 있다", as
 
   await waitFor(() => expect(onStarted).toHaveBeenCalledWith("new123", true));
   expect(calls.slice(1).map((call) => call.body)).toEqual([
-    { nickname: "나", station_id: 77 },
+    { nickname: "모임장", station_id: 77 },
     { nickname: "친구 1", station_id: 216 },
   ]);
 });
@@ -172,7 +172,7 @@ test("주소로 넣은 사람은 address로 보낸다", async () => {
   await user.click(screen.getByRole("button", { name: "추천 보기 (2명)" }));
 
   await waitFor(() => expect(onStarted).toHaveBeenCalled());
-  expect(calls[1].body).toEqual({ nickname: "나", address: "서울 어딘가 1" });
+  expect(calls[1].body).toEqual({ nickname: "모임장", address: "서울 어딘가 1" });
 });
 
 test("그 사람만의 문제로 못 넣으면 나머지는 계속 넣고, 이유를 알린 뒤 그 방의 사람 추가 화면으로 보낸다", async () => {
@@ -190,7 +190,7 @@ test("그 사람만의 문제로 못 넣으면 나머지는 계속 넣고, 이�
   await waitFor(() => expect(onStarted).toHaveBeenCalledWith("new123", false));
   expect(screen.getByRole("status")).toHaveTextContent("친구 1님의 출발지를 넣지 못했어요. 아직 수도권만 지원해요");
   // 뒤 사람은 그대로 보낸다. 등록된 사람만 내 것으로 기억하고, 통계의 인원은 등록된 순서로 센다.
-  expect(calls.slice(1).map((call) => (call.body as { nickname: string }).nickname)).toEqual(["나", "친구 1", "친구 2"]);
+  expect(calls.slice(1).map((call) => (call.body as { nickname: string }).nickname)).toEqual(["모임장", "친구 1", "친구 2"]);
   expect(readMine("new123")).toEqual([101, 103]);
   expect(vi.mocked(track).mock.calls.filter(([name]) => name === "participant_added")).toEqual([
     ["participant_added", { method: "station", participant_count: 1 }],

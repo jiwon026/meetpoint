@@ -39,8 +39,14 @@ const DEFAULT_DAYS_AHEAD = 7;
 const ROOM_REGION = "서울";
 
 
+// 입력 칸에 보이는 이름. 쓰는 사람 입장이라 첫 줄은 "나"다.
 function fallbackName(index: number): string {
   return index === 0 ? "나" : `친구 ${index}`;
+}
+
+// 이름을 비워 두면 저장하는 이름. 링크를 받은 친구도 이 이름을 보므로 첫 줄을 "나"로 저장하지 않는다.
+function savedName(index: number): string {
+  return index === 0 ? "모임장" : fallbackName(index);
 }
 
 function blankPerson(key: number): Person {
@@ -119,7 +125,7 @@ export function HomeScreen({ today, onStarted }: Props) {
       person.origin
         ? [
             {
-              nickname: person.name.trim() || fallbackName(index),
+              nickname: person.name.trim() || savedName(index),
               origin: person.origin,
             },
           ]
