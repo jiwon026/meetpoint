@@ -2,7 +2,7 @@ import { focusManager } from "@tanstack/react-query";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { track } from "@/lib/analytics";
 import { NO_FILTER } from "@/lib/filter";
 import { API, rec, result } from "@/lib/test/fixtures";
@@ -306,4 +306,39 @@ test("가게 카드에 분류에 맞는 아이콘을 붙인다", async () => {
   show();
   expect(await screen.findByText("양재 국밥집")).toBeInTheDocument();
   expect(document.querySelector('[data-icon="dessert"]')).not.toBeNull();
+});
+
+afterEach(() => {
+  Reflect.deleteProperty(navigator, "share");
+});
+
+function withShareSheet() {
+  const share = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "share", { value: share, configurable: true });
+  return share;
+}
+
+test("아래 버튼으로 이 동네의 둘러보기 주소를 친구에게 보낸다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  const share = withShareSheet();
+  const user = userEvent.setup();
+  renderWithClient(<HubScreen slug="abc123" hubId={1} filter={{ regions: null, themes: ["cafe"] }} onGone={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "친구에게 양재 보내기" }));
+  expect(share).toHaveBeenCalledWith({
+    title: "양재에서 만나요",
+    url: `${window.location.origin}/r/abc123/hubs/1?theme=cafe`,
+  });
+  await waitFor(() => expect(track).toHaveBeenCalledWith("link_shared", { place: "hub" }));
+});
+
+test("공유창이 없는 브라우저에서는 둘러보기 주소를 복사한다", async () => {
+  serveResult();
+  serveContent((kind) => HttpResponse.json({ kind, items: [PLACE], error: null }));
+  const user = userEvent.setup();
+  show();
+  await user.click(await screen.findByRole("button", { name: "친구에게 양재 보내기" }));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("링크를 복사했어요"));
+  expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/hubs/1`);
+  expect(track).toHaveBeenCalledWith("link_copied", { place: "hub" });
 });
