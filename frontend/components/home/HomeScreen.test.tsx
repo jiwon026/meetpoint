@@ -63,19 +63,20 @@ test("큰 제목은 검색어와 같은 말로 쓴다", () => {
   expect(screen.getByRole("heading", { level: 1, name: "지하철로 공평한 약속장소 찾기" })).toBeInTheDocument();
 });
 
-test("처음에는 두 칸이 비어 있고 날짜는 일주일 뒤이며 버튼은 꺼져 있다", () => {
+test("처음에는 두 칸이 비어 있고 버튼은 꺼져 있다. 약속 날짜와 모임 이름은 묻지 않는다", () => {
   renderWithClient(<HomeScreen today={TODAY} onStarted={vi.fn()} />);
   expect(within(screen.getByRole("region", { name: "출발지" })).getAllByRole("listitem")).toHaveLength(2);
   expect(screen.getByLabelText("나 이름")).toHaveValue("");
   expect(screen.getByLabelText("친구 1 이름")).toHaveValue("");
-  expect(screen.getByLabelText("약속 날짜 10월 21일 (수), 달력에서 고르기")).toHaveValue("2026-10-21");
+  expect(screen.queryByLabelText(/약속 날짜/)).toBeNull();
+  expect(screen.queryByLabelText("모임 이름")).toBeNull();
+  expect(screen.queryByText("모임 이름 붙이기")).toBeNull();
   expect(screen.getByRole("button", { name: "출발지를 두 곳 넣어주세요" })).toBeDisabled();
   expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "7");
 });
 
-test("오늘 날짜를 아직 모르는 첫 렌더에서는 날짜 칸 없이 그려지고 버튼이 꺼져 있다", () => {
+test("오늘 날짜를 아직 모르는 첫 렌더에서는 버튼이 꺼져 있다", () => {
   renderWithClient(<HomeScreen today="" onStarted={vi.fn()} />);
-  expect(screen.queryByLabelText(/약속 날짜/)).toBeNull();
   expect(screen.getByRole("button", { name: "출발지를 두 곳 넣어주세요" })).toBeDisabled();
 });
 
@@ -99,14 +100,14 @@ test("출발역 둘을 넣고 누르면 서울 방을 만들고 차례로 등록
 
   await waitFor(() => expect(onStarted).toHaveBeenCalledWith("new123", true));
   expect(calls).toEqual([
-    { path: "/rooms", body: { title: "10월 21일 (수) 모임", meet_date: "2026-10-21", regions: ["서울"], themes: [] } },
+    { path: "/rooms", body: { title: "우리 모임", meet_date: "2026-10-21", regions: ["서울"], themes: [] } },
     { path: "/rooms/new123/participants", body: { nickname: "모임장", station_id: 222 } },
     { path: "/rooms/new123/participants", body: { nickname: "친구 1", station_id: 77 } },
   ]);
   expect(readMine("new123")).toEqual([101, 102]);
 });
 
-test("이름, 모임 이름, 날짜를 바꾸면 그대로 보낸다", async () => {
+test("이름을 붙이면 그대로 보낸다. 방은 일주일 뒤 날짜와 정해 둔 이름으로 만든다", async () => {
   const calls = recordingServer();
   const onStarted = vi.fn();
   const user = userEvent.setup();
@@ -115,13 +116,10 @@ test("이름, 모임 이름, 날짜를 바꾸면 그대로 보낸다", async () 
   await user.type(screen.getByLabelText("나 이름"), " 지원 ");
   await pickStation(user, "강남");
   await pickStation(user, "수원");
-  await user.click(screen.getByRole("button", { name: "하루 뒤" }));
-  await user.click(screen.getByText("모임 이름 붙이기"));
-  await user.type(screen.getByLabelText("모임 이름"), "동기 모임");
   await user.click(screen.getByRole("button", { name: "추천 보기 (2명)" }));
 
   await waitFor(() => expect(onStarted).toHaveBeenCalled());
-  expect(calls[0].body).toEqual({ title: "동기 모임", meet_date: "2026-10-22", regions: ["서울"], themes: [] });
+  expect(calls[0].body).toEqual({ title: "우리 모임", meet_date: "2026-10-21", regions: ["서울"], themes: [] });
   expect(calls[1].body).toEqual({ nickname: "지원", station_id: 222 });
 });
 

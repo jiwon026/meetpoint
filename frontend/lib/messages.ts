@@ -7,8 +7,11 @@ export const MSG_DEMO_READ_ONLY = "예시 화면이라 바꿀 수 없어요";
 export const MSG_INVITE_READY = "방을 만들었어요. 초대 링크를 친구에게 보내 주세요";
 export const MSG_NICKNAME_REQUIRED = "닉네임을 적어주세요";
 export const MSG_ORIGIN_REQUIRED = "출발지를 골라주세요";
-export const MSG_PRIVACY = "원래 주소는 저장하지 않아요. 약 100m 단위로 뭉갠 위치만 약속 7일 뒤까지 보관해요.";
-export const MSG_AUTO_DELETE = "약속 7일 뒤 자동 삭제";
+export const MSG_PRIVACY = "원래 주소는 저장하지 않아요. 약 100m 단위로 뭉갠 위치만 보관하고 방과 함께 자동으로 지워요.";
+// 날짜는 방을 지우는 날 (예: "11월 23일 (월)").
+export function msgAutoDelete(dateLabel: string): string {
+  return `${dateLabel} 자동 삭제`;
+}
 export const MSG_NEED_TWO = "친구를 초대하세요. 두 명부터 추천이 나와요.";
 export const MSG_EMPTY_ROSTER = "아직 아무도 없어요. 첫 번째로 출발지를 넣어보세요.";
 export const MSG_NO_SEARCH_RESULT = "찾지 못했어요. 다른 이름으로 검색해보세요.";

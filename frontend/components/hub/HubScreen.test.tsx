@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, expect, test, vi } from "vitest";
 import { track } from "@/lib/analytics";
 import { NO_FILTER } from "@/lib/filter";
-import { API, rec, result } from "@/lib/test/fixtures";
+import { API, rec, result, room } from "@/lib/test/fixtures";
 import { renderWithClient } from "@/lib/test/render";
 import { server } from "@/lib/test/server";
 import { HubScreen } from "./HubScreen";
@@ -310,6 +310,7 @@ test("가게 카드에 분류에 맞는 아이콘을 붙인다", async () => {
 
 afterEach(() => {
   Reflect.deleteProperty(navigator, "share");
+  vi.useRealTimers();
 });
 
 function withShareSheet() {
@@ -341,4 +342,32 @@ test("공유창이 없는 브라우저에서는 둘러보기 주소를 복사한
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("링크를 복사했어요"));
   expect(await navigator.clipboard.readText()).toBe(`${window.location.origin}/r/abc123/hubs/1`);
   expect(track).toHaveBeenCalledWith("link_copied", { place: "hub" });
+});
+
+test("행사 탭에서만 약속 날짜를 고르고, 날짜를 바꾸면 행사를 다시 불러온다", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 6));
+  serveResult();
+  let meetDate = "2026-10-10";
+  server.use(
+    http.get(`${API}/rooms/abc123`, () => HttpResponse.json(room({ meet_date: meetDate }))),
+    http.patch(`${API}/rooms/abc123`, async ({ request }) => {
+      meetDate = ((await request.json()) as { meet_date: string }).meet_date;
+      return HttpResponse.json(room({ meet_date: meetDate }));
+    }),
+  );
+  const kinds = serveContent((kind) => HttpResponse.json({ kind, items: kind === "event" ? [EVENT] : [PLACE], error: null }));
+  const user = userEvent.setup();
+  show();
+  await screen.findByText("양재 국밥집");
+  // 맛집 탭에는 날짜가 없다.
+  expect(screen.queryByText("약속 날짜")).toBeNull();
+  await user.click(screen.getByRole("tab", { name: "행사" }));
+  expect(await screen.findByText("약속 날짜")).toBeInTheDocument();
+  expect(screen.getByText("10월 10일 (토)")).toBeInTheDocument();
+  expect(screen.getByText("이날 열리는 행사를 보여줘요")).toBeInTheDocument();
+  await screen.findByText("양재천 봄 음악회");
+  await user.click(screen.getByRole("button", { name: "하루 뒤" }));
+  await waitFor(() => expect(meetDate).toBe("2026-10-11"));
+  await waitFor(() => expect(kinds.filter((kind) => kind === "event")).toHaveLength(2));
 });

@@ -28,7 +28,7 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
   // 카카오와 행사 API는 부르지 않는다. 콘텐츠 응답만 고정한다.
   await page.route(/\/hubs\/\d+\/content/, (route) => route.fulfill({ json: FOOD }));
 
-  // 모임 이름과 날짜는 기본값 그대로 둔다. 출발지 둘이면 추천을 볼 수 있다.
+  // 출발지 둘이면 추천을 볼 수 있다.
   await page.goto("/");
   // 처음 온 브라우저여도 사용법은 저절로 뜨지 않는다.
   await expect(page.getByRole("dialog")).toHaveCount(0);

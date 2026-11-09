@@ -2,22 +2,20 @@
 
 import { useState } from "react";
 import type { Origin, OriginMode } from "@/components/join/OriginSearch";
-import { DateStepper } from "@/components/ui/DateStepper";
 import { HOME_TOUR } from "@/components/ui/tourSteps";
 import { useTour } from "@/components/ui/useTour";
 import { SlowNote } from "@/components/ui/Loading";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StickyAction } from "@/components/ui/StickyAction";
 import { useToast } from "@/components/ui/Toast";
-import { CARD, INPUT, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/ui/styles";
 import { track } from "@/lib/analytics";
 import { useStartMeeting } from "@/lib/api/hooks";
 import type { ParticipantCreate } from "@/lib/api/types";
-import { MAX_MEET_DAYS_AHEAD, MAX_PARTICIPANTS } from "@/lib/constants";
+import { MAX_PARTICIPANTS } from "@/lib/constants";
 import { addDaysIso, daysBetween } from "@/lib/format";
 import { MSG_INVITE_READY, MSG_PRIVACY, msgCouldNotAdd } from "@/lib/messages";
 import { addMine } from "@/lib/myParticipants";
-import { dateTitle } from "@/components/join/RoomSummary";
 import { OriginRow } from "./OriginRow";
 
 // complete가 false면 방은 만들었지만 넣지 못한 사람이 있다. 그 방의 사람 추가 화면에서 이어서 넣는다.
@@ -34,7 +32,11 @@ type Person = {
 };
 
 const MIN_PEOPLE = 2;
+// 약속 날짜는 묻지 않는다. 날짜가 쓰이는 곳은 행사 탭뿐이라 그곳에서 고른다(2026-11-09).
+// 그때까지는 오늘에서 일주일 뒤로 두고, 방은 그 7일 뒤에 지워진다.
 const DEFAULT_DAYS_AHEAD = 7;
+// 날짜가 들어간 이름은 아무도 정하지 않은 날짜를 보여 주므로 쓰지 않는다.
+const ROOM_TITLE = "우리 모임";
 // 방은 서울로 만든다. 추천 화면에 지역 필터가 없으므로 만날 역은 서울 안에서만 고른다.
 const ROOM_REGION = "서울";
 
@@ -68,9 +70,6 @@ export function HomeScreen({ today, onStarted }: Props) {
   const [openKey, setOpenKey] = useState<number | null>(0);
   // 처음 들어왔을 때는 자판이 올라오지 않게 초점을 주지 않고, 한 번이라도 손을 댄 뒤부터 펼친 줄의 검색 칸에 초점을 준다.
   const [touched, setTouched] = useState(false);
-  // 사용자가 고르기 전에는 오늘에서 일주일 뒤. today는 첫 렌더에서 빈 문자열일 수 있다 (app/page.tsx 참고).
-  const [pickedDate, setPickedDate] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   // 친구 출발역을 몰라 내 것만 넣고 링크로 부르는 길을 골랐는지.
   const [inviting, setInviting] = useState(false);
@@ -80,8 +79,8 @@ export function HomeScreen({ today, onStarted }: Props) {
   // 성공 뒤 다른 화면으로 넘어갈 때까지도 다시 누를 수 없게 막는다 (방이 두 개 생기지 않게).
   const busy = start.isPending || start.isSuccess;
 
-  const meetDate = pickedDate ?? (today ? addDaysIso(today, DEFAULT_DAYS_AHEAD) : "");
-  const defaultTitle = meetDate ? dateTitle(meetDate) : "";
+  // today는 첫 렌더에서 빈 문자열일 수 있다 (app/page.tsx 참고).
+  const meetDate = today ? addDaysIso(today, DEFAULT_DAYS_AHEAD) : "";
   const filledCount = people.filter((person) => person.origin !== null).length;
   const ready = filledCount >= MIN_PEOPLE && meetDate !== "";
 
@@ -135,7 +134,7 @@ export function HomeScreen({ today, onStarted }: Props) {
     start.mutate(
       {
         room: {
-          title: title.trim() || defaultTitle,
+          title: ROOM_TITLE,
           meet_date: meetDate,
           regions: [ROOM_REGION],
           themes: [],
@@ -207,28 +206,6 @@ export function HomeScreen({ today, onStarted }: Props) {
             한 명 더
           </button>
         )}
-      </section>
-      <section className={`${CARD} space-y-3`}>
-        <h2 className="text-sm font-semibold">약속 날짜</h2>
-        {meetDate && (
-          <DateStepper
-            value={meetDate}
-            min={today}
-            max={addDaysIso(today, MAX_MEET_DAYS_AHEAD)}
-            onChange={setPickedDate}
-          />
-        )}
-        <details>
-          <summary className="cursor-pointer text-sm text-ink-sub">모임 이름 붙이기</summary>
-          <input
-            aria-label="모임 이름"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={40}
-            placeholder={defaultTitle}
-            className={`${INPUT} mt-2`}
-          />
-        </details>
       </section>
       <p className="rounded-lg bg-track p-3 text-xs text-ink-sub">{MSG_PRIVACY}</p>
       <StickyAction>

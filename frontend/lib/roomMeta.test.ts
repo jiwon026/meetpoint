@@ -6,13 +6,13 @@ import { roomMetadata } from "./roomMeta";
 
 const NOINDEX = { index: false, follow: false };
 
-test("방 제목과 약속 날짜를 넣고 검색 노출은 막는다", async () => {
+test("방 제목을 넣고 검색 노출은 막는다. 아무도 정하지 않았을 수 있는 약속 날짜는 넣지 않는다", async () => {
   server.use(
     http.get(`${API}/rooms/abc123`, () => HttpResponse.json(room({ title: "주말 모임", meet_date: "2026-10-10" }))),
   );
   const meta = await roomMetadata("abc123");
   expect(meta.title).toBe("주말 모임 | 우리지금만나");
-  expect(meta.description).toContain("10월 10일");
+  expect(meta.description).toBe("출발지를 넣으면 모두에게 공평한 장소를 찾아줘요.");
   expect(meta.robots).toEqual(NOINDEX);
 });
 

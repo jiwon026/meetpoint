@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { API_BASE } from "@/lib/api/client";
 import type { RoomOut } from "@/lib/api/types";
 import { SERVICE_NAME } from "@/lib/constants";
-import { formatMeetDate } from "@/lib/format";
 
 // 무료 서버는 잠들었다 깨는 데 1분쯤 걸린다. 제목 때문에 페이지가 그만큼 늦게 뜨면 안 된다.
 export const META_TIMEOUT_MS = 3000;
@@ -33,7 +32,7 @@ export async function roomMetadata(slug: string, timeoutMs: number = META_TIMEOU
   if (!room) return { title: SERVICE_NAME, robots: NOINDEX };
   return {
     title: `${room.title} | ${SERVICE_NAME}`,
-    description: `${formatMeetDate(room.meet_date)} 약속. 출발지를 넣으면 모두에게 공평한 장소를 찾아줘요.`,
+    description: "출발지를 넣으면 모두에게 공평한 장소를 찾아줘요.",
     robots: NOINDEX,
   };
 }

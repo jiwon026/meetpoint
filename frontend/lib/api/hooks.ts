@@ -109,7 +109,8 @@ export function useChangeMeetDate(slug: string) {
   const client = useQueryClient();
   return useMutation<RoomOut, ApiError, RoomUpdate>({
     mutationFn: (body) => request<RoomOut>(`/rooms/${slug}`, { method: "PATCH", body: JSON.stringify(body) }),
-    onSuccess: () => invalidateRoom(client, slug),
+    // 행사 목록은 약속 날짜로 고르므로 둘러보기 내용도 다시 불러온다.
+    onSuccess: () => Promise.all([invalidateRoom(client, slug), client.invalidateQueries({ queryKey: ["content", slug] })]),
   });
 }
 
