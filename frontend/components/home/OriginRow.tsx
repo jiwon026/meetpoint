@@ -4,7 +4,7 @@ import { OriginLabel, OriginSearch, type Origin, type OriginMode } from "@/compo
 import { SMALL_BUTTON } from "@/components/ui/styles";
 
 type Props = {
-  // 이름을 비워 두면 쓰는 이름 ("나", "친구 1").
+  // 이름 칸의 자리 표시 ("나", "친구 1"). 비워 두면 저장하는 이름은 HomeScreen의 savedName이 정한다.
   fallbackName: string;
   name: string;
   onNameChange: (name: string) => void;
