@@ -85,6 +85,8 @@ class LegOut(BaseModel):
     nickname: str
     minutes: int
     origin_station_name: str
+    # 참여 목록에 보이는 역(첫 출발 후보). 거점마다 고른 출발역과 다를 수 있어 화면이 둘을 함께 보여준다.
+    entered_station_name: str
     # 출발역의 좌표. 참가자 좌표가 아니다. 역 id가 재적재로 사라졌으면 None.
     origin_lat: float | None
     origin_lng: float | None

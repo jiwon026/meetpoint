@@ -21,7 +21,9 @@ export function room(over: Partial<RoomOut> = {}): RoomOut {
 }
 
 export function leg(over: Partial<LegOut> = {}): LegOut {
-  return { participant_id: 1, nickname: "민수", minutes: 12, origin_station_name: "강남", origin_lat: 37.4979, origin_lng: 127.0276, via: "walk", ...over };
+  // 넣은 역은 따로 주지 않으면 타는 역과 같다.
+  const origin = over.origin_station_name ?? "강남";
+  return { participant_id: 1, nickname: "민수", minutes: 12, origin_station_name: origin, entered_station_name: origin, origin_lat: 37.4979, origin_lng: 127.0276, via: "walk", ...over };
 }
 
 export function rec(over: Partial<RecommendationOut> = {}): RecommendationOut {
