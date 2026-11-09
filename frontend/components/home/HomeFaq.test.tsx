@@ -13,3 +13,9 @@ test("답은 결론 문장부터 굵게 쓴다", () => {
   render(<HomeFaq />);
   expect(screen.getByText("한 약속에 20명까지예요.").tagName).toBe("STRONG");
 });
+
+test("지역 답은 화면에 없는 지역 필터를 안내하지 않는다", () => {
+  render(<HomeFaq />);
+  expect(screen.getByText(/만날 역은 서울 안에서 골라 드려요/)).toBeInTheDocument();
+  expect(screen.queryByText(/켤 수 있어요/)).toBeNull();
+});

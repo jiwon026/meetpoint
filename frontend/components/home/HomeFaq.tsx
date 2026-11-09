@@ -26,7 +26,7 @@ const FAQ: { question: string; answer: string; detail: string }[] = [
   {
     question: "어느 지역까지 되나요?",
     answer: "출발지는 수도권 지하철이 닿는 곳이면 돼요.",
-    detail: "만날 역은 서울부터 보여 주고, 추천 화면에서 경기와 인천도 켤 수 있어요.",
+    detail: "만날 역은 서울 안에서 골라 드려요. 경기, 인천에서 출발해도 서울 역 중에서 추천해요.",
   },
 ];
 

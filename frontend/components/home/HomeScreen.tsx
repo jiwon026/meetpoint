@@ -35,7 +35,7 @@ type Person = {
 
 const MIN_PEOPLE = 2;
 const DEFAULT_DAYS_AHEAD = 7;
-// 방은 서울로 만든다. 경기와 인천은 추천 화면의 필터에서 켤 수 있다.
+// 방은 서울로 만든다. 추천 화면에 지역 필터가 없으므로 만날 역은 서울 안에서만 고른다.
 const ROOM_REGION = "서울";
 
 
