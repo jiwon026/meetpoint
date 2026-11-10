@@ -16,7 +16,7 @@ export const DEMO_STEPS: readonly TourStep[] = [
     target: "themes",
     demo: true,
     title: "모임 성격을 골라요",
-    body: "맛집, 카페, 술자리, 놀거리를 고르면 그런 동네를 앞에 보여줘요.",
+    body: "맛집, 카페, 술자리, 놀거리를 고르면 딱 맞는 역이 먼저 나와요.",
   },
   {
     path: DEMO_RESULT_PATH,
