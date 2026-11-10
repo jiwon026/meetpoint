@@ -61,7 +61,7 @@ npm run gen:og              # 링크 미리보기 그림 다시 찍기 (scripts/
 
 ### 백엔드 (`backend/app/`)
 
-FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외부 HTTP 호출은 클라이언트 클래스 안에서만 하고(`geocoding/kakao.py`, `places/kakao_local.py`, `events/seoul.py`, `events/kopis.py`) 서비스와 라우터는 `deps.py`에서 주입받는다. `deps.py`는 프로세스 공용 `httpx.Client` 하나와 역간 시간표 캐시(`get_matrix`)를 들고 있다.
+FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외부 HTTP 호출은 클라이언트 클래스 안에서만 하고(`geocoding/kakao.py`, `places/kakao_local.py`, `events/seoul.py`) 서비스와 라우터는 `deps.py`에서 주입받는다. `deps.py`는 프로세스 공용 `httpx.Client` 하나와 역간 시간표 캐시(`get_matrix`)를 들고 있다.
 
 요청 흐름: `rooms/router.py` -> `rooms/service.py` -> (주소는 `geocoding/nearest.py`로 가까운 역 최대 3개, 역을 직접 고르면 `_station_candidates`가 같은 `group_id`의 모든 노선 노드를 도보 0분으로 앞에 넣는다) -> `ranking/rank.py`의 `rank_with_preference`(`rank_hubs`는 이것을 감싼 얇은 함수로 테스트에서만 쓴다) -> `transit/travel.py`의 `travel_minutes`(출발 후보 x 거점 노드 최소값) -> `transit/matrix.py`(DB `station_times` 조회).
 
@@ -72,7 +72,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 - 참가자는 원문 주소를 저장하지 않는다. 좌표는 소수점 3자리, `nearest_stations`는 역 id 목록(JSON). 역 id는 원본 데이터 갱신 시 바뀔 수 있다(알려진 한계).
 - 콘텐츠는 `cache.py`의 `content_cache` 테이블에 24시간 캐시. 실패 시 만료 캐시라도 돌려주고 `error` 문구를 붙인다.
 - 맛집, 카페, 술집은 `sort` 쿼리(`recommended` 기본, `distance`)로 정렬을 고른다. 추천순은 카카오의 정확도순이고 별점이 아니다. 카페는 `places/service.py`에서 분류 이름으로 만화카페, 보드카페 등을 걸러낸다. 술집은 분류 코드가 없어 음식점 안에서 "술집"을 검색한 뒤 분류 이름으로 거른다. 이유와 근거는 `docs/design.md`의 콘텐츠 절.
-- KOPIS(경기, 인천 공연) 목록에는 공연장 좌표와 id가 없다. `events/service.py`의 `resolve_venues`가 공연 상세와 공연장 정보를 조회해 이름별로 30일 캐시한다. 요청 중 새 조회는 `MAX_NEW_VENUE_LOOKUPS`곳까지이고 `scripts/warm_kopis_venues.py`가 매일 미리 채운다. 조회 실패는 예외로 올리지 않고 그 공연장만 건너뛴다. 외부 API의 테스트 픽스처는 실제 응답 모양과 맞는지 확인하고 만든다(이 버그는 픽스처에 실제에 없는 필드를 넣어서 생겼다).
+- 행사는 서울시 API의 서울 행사만 보여준다. 경기, 인천 공연(KOPIS)은 2026-11-10에 뺐다. 그때 살아 있던 방 56개가 모두 서울이었고 새 방은 늘 서울로 만든다. 서울 밖 거점의 행사 탭은 빈 목록이다. 외부 API의 테스트 픽스처는 실제 응답 모양과 맞는지 확인하고 만든다(예전 KOPIS 버그는 픽스처에 실제에 없는 필드를 넣어서 생겼다).
 - 방은 `regions`(서울, 경기, 인천 중 1개 이상)와 `themes`(0개 이상)를 가진다. 결과 API의 `region`, `theme` 쿼리(둘 다 여러 번 줄 수 있다)가 방 기본값보다 우선한다. 고른 테마 중 하나라도 맞는 거점이 테마에 맞는 거점이다. `rooms.theme` 열과 응답의 `theme`은 테마를 하나만 고르던 때의 것으로, 그때 만든 방과 예전 화면을 위해 남아 있다(`rooms/service.py`의 `room_themes`). 지역 필터는 반드시 `rank_with_preference` 전에 건다.
 - 참가자는 지우지 않고 `active`를 끈다. 계산은 `active`만, 정원 20명은 전체 행 수.
 

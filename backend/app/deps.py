@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.cache import ContentCacheRepo
 from app.config import get_settings
 from app.db import get_db
-from app.events.kopis import KopisClient
 from app.events.seoul import SeoulEventClient
 from app.geocoding.kakao import Geocoder, KakaoGeocoder
 from app.hubs import hub_node_ids
@@ -54,10 +53,6 @@ def get_local_client() -> KakaoLocalClient:
 
 def get_seoul_client() -> SeoulEventClient:
     return SeoulEventClient(get_settings().seoul_api_key, client=get_http_client())
-
-
-def get_kopis_client() -> KopisClient:
-    return KopisClient(get_settings().kopis_api_key, client=get_http_client())
 
 
 def get_cache(session: Session = Depends(get_db)) -> ContentCacheRepo:

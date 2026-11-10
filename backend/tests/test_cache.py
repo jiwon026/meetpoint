@@ -51,12 +51,12 @@ def test_set_survives_another_request_inserting_the_same_key_first(session, monk
         calls["n"] += 1
         if calls["n"] == 1:
             # 다른 요청이 방금 같은 키를 넣었는데 이 요청은 아직 못 본 상황을 만든다.
-            session.add(ContentCache(cache_key=key, kind="venue", payload={"la": "1", "lo": "1"}, fetched_at=datetime(2026, 1, 1)))
+            session.add(ContentCache(cache_key=key, kind="food", payload=[], fetched_at=datetime(2026, 1, 1)))
             session.commit()
             return None
         return real_row(key)
 
     monkeypatch.setattr(repo, "_row", row_missing_once)
-    repo.set("venue:kopis:41:abc", {"la": "2", "lo": "2"}, kind="venue")
-    assert repo.get_stale("venue:kopis:41:abc") == {"la": "2", "lo": "2"}
+    repo.set("places:1:food:recommended", [{"name": "b"}], kind="food")
+    assert repo.get_stale("places:1:food:recommended") == [{"name": "b"}]
     assert session.scalar(select(func.count()).select_from(ContentCache)) == 1

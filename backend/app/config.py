@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./dev.db"
     kakao_rest_key: str = ""
     seoul_api_key: str = ""
-    kopis_api_key: str = ""
     cors_origins: str = "http://localhost:3000"
 
     def cors_origin_list(self) -> list[str]:

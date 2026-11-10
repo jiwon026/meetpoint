@@ -22,7 +22,5 @@ services:
         sync: false
       - key: SEOUL_API_KEY
         sync: false
-      - key: KOPIS_API_KEY
-        sync: false
       - key: CORS_ORIGINS
         sync: false

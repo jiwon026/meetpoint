@@ -37,7 +37,7 @@ LIMITS: dict[str, Limit] = {
     "add_participant": Limit(limit=60, window_seconds=600),
     # 주소 검색: 글자를 칠 때마다 부른다(0.3초 디바운스). 카카오 할당량을 쓰는 익명 프록시다.
     "place_search": Limit(limit=120, window_seconds=60),
-    # 주변 장소와 행사: 캐시가 없으면 카카오, 서울시, KOPIS를 부른다.
+    # 주변 장소와 행사: 캐시가 없으면 카카오, 서울시를 부른다.
     "hub_content": Limit(limit=120, window_seconds=60),
 }
 
