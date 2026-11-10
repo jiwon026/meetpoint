@@ -13,9 +13,13 @@ type Props = {
   origins?: readonly MapOrigin[];
   center?: { lat: number; lng: number };
   level?: number;
+  // 출발역이 수십 km씩 떨어지는 추천 화면은 높여야 한 단계 가까이 잡힌다.
+  height?: string;
 };
 
-const FRAME = "h-56 w-full overflow-hidden rounded-card border border-line";
+const FRAME = "w-full overflow-hidden rounded-card border border-line";
+// 범위를 맞출 때 가장자리 여백(px). 기본값은 넓어서 배율이 한 단계 멀어지곤 했다.
+const FIT_PADDING = 16;
 
 export function KakaoMap(props: Props) {
   const appkey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY ?? "";
@@ -24,7 +28,15 @@ export function KakaoMap(props: Props) {
   return <LoadedMap appkey={appkey} {...props} />;
 }
 
-function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: Props & { appkey: string }) {
+function LoadedMap({
+  appkey,
+  pins,
+  activeId,
+  origins = [],
+  center,
+  level = 5,
+  height = "h-56",
+}: Props & { appkey: string }) {
   const [loading, error] = useKakaoLoader({ appkey });
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
   // 범위를 맞추는 중에 선을 그리면 SDK가 좌표를 NaN으로 계산해 콘솔 오류가 난다. 지도가 멈춘 뒤에 그린다.
@@ -39,7 +51,7 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
     const bounds = new kakao.maps.LatLngBounds();
     for (const pin of [...pins, ...origins]) bounds.extend(new kakao.maps.LatLng(pin.lat, pin.lng));
     if (center) bounds.extend(new kakao.maps.LatLng(center.lat, center.lng));
-    map.setBounds(bounds);
+    map.setBounds(bounds, FIT_PADDING, FIT_PADDING, FIT_PADDING, FIT_PADDING);
     // pins 대신 pinKey로 비교한다 (위 주석 참고).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, center?.lat, center?.lng, pinKey]);
@@ -47,7 +59,7 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
   if (error) return null;
   const start = center ?? pins[0];
   const target = pins.find((pin) => pin.id === activeId);
-  if (loading || !start) return <div aria-hidden className={`${FRAME} bg-track`} />;
+  if (loading || !start) return <div aria-hidden className={`${FRAME} ${height} bg-track`} />;
   // 여기부터는 SDK를 불러온 브라우저에서만 그려진다. 선 색은 클래스로 줄 수 없어 토큰 값을 읽어 넘긴다.
   const lineColor = getComputedStyle(document.documentElement).getPropertyValue("--color-ink-sub").trim();
 
@@ -57,7 +69,7 @@ function LoadedMap({ appkey, pins, activeId, origins = [], center, level = 5 }: 
       center={{ lat: start.lat, lng: start.lng }}
       level={level}
       onCreate={setMap}
-      className={FRAME}
+      className={`${FRAME} ${height}`}
       scrollwheel={false}
       onIdle={() => setSettled(true)}
     >

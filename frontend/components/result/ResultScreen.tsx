@@ -109,16 +109,23 @@ export function ResultScreen({ slug, filter, onFilterChange, onAddPeople }: Prop
         </p>
       ) : (
         <>
+          {/* 거점은 펼친 카드 하나만 찍는다. 거점끼리 몰려 있어 다섯 개를 다 찍으면 번호와 출발역 이름이 서로 가렸다. */}
           <KakaoMap
-            pins={recs.map((rec, index) => ({
-              id: String(rec.hub_id),
-              lat: rec.lat,
-              lng: rec.lng,
-              // 1위 핀에는 이름을 붙여 한눈에 찾게 한다.
-              label: index === 0 ? `1위 ${rec.name}` : String(index + 1),
-            }))}
-            activeId={open === null ? null : String(open)}
-            origins={legOrigins(recs.find((rec) => rec.hub_id === open)?.legs ?? [])}
+            pins={
+              openRec
+                ? [
+                    {
+                      id: String(openRec.hub_id),
+                      lat: openRec.lat,
+                      lng: openRec.lng,
+                      label: `${recs.indexOf(openRec) + 1}위 ${openRec.name}`,
+                    },
+                  ]
+                : []
+            }
+            activeId={openRec ? String(openRec.hub_id) : null}
+            origins={legOrigins(openRec?.legs ?? [])}
+            height="h-80"
           />
           <p className="text-balance break-keep text-center text-xs text-ink-mute">{MSG_SUBWAY_BASIS}</p>
           <ol className="space-y-3">
