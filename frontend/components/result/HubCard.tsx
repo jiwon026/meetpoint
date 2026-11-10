@@ -38,12 +38,14 @@ export function HubCard({ rec, rank, expanded, onToggle, best, mine }: Props) {
               <LineBadge key={line} line={line} />
             ))}
           </span>
-          <span data-testid="hub-summary" className="mt-1 block text-sm text-ink-sub">
-            {rec.region}, 최대 {aboutMinutes(rec.max_minutes)}, 차이 {rec.spread_minutes}분
-          </span>
+          {/* 펼치면 아래 칸(FairnessStats)에 같은 숫자가 있어 접힌 카드에만 둔다. */}
+          {!expanded && (
+            <span data-testid="hub-summary" className="mt-1 block text-sm text-ink-sub">
+              {rec.region}, 최대 {aboutMinutes(rec.max_minutes)}, 차이 {rec.spread_minutes}분
+            </span>
+          )}
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
-          {rank === 1 && <Stamp>1위</Stamp>}
           {rec.theme_match && <Stamp>{MSG_THEME_MATCH}</Stamp>}
         </span>
       </button>
