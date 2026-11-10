@@ -15,6 +15,8 @@ export function FilterBar({ filter, appliedThemes, onChange }: Props) {
   const themes = filter.themes === THEME_OFF ? [] : (filter.themes ?? pickThemes(appliedThemes));
   return (
     <section aria-label="추천 조건" data-tour="themes" className="space-y-2">
+      {/* 둘러보기 탭과 이름이 같아 가게 목록 버튼으로 읽히기 쉽다. 거점 순서를 바꾸는 버튼임을 알린다. */}
+      <p className="text-sm text-ink-sub">어떤 모임이에요? 고르면 딱 맞는 역이 먼저 나와요</p>
       <div role="group" aria-label="테마" className="flex flex-wrap gap-2">
         {THEMES.map((item) => {
           const selected = themes.includes(item.id);
