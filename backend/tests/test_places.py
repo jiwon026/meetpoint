@@ -215,3 +215,18 @@ def test_drink_reads_more_pages_until_the_list_is_full(seeded):
     places = get_places(seeded.get(Hub, 1), "drink", KakaoLocalClient("k"), ContentCacheRepo(seeded))
     assert [r.request.url.params["page"] for r in route.calls] == ["1", "2"]
     assert len(places) == PLACE_LIMIT
+
+
+@respx.mock
+def test_db_transaction_is_closed_while_kakao_is_called(seeded):
+    # 카카오를 기다리는 동안 DB 연결을 쥐고 있으면 동시 요청에 연결 풀이 바닥난다.
+    open_during_call: list[bool] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        open_during_call.append(seeded.in_transaction())
+        return httpx.Response(200, json=_load("kakao_category_food.json"))
+
+    respx.get(CATEGORY_URL).mock(side_effect=respond)
+    hub = seeded.get(Hub, 1)
+    get_places(hub, "food", KakaoLocalClient("k"), ContentCacheRepo(seeded))
+    assert open_during_call and not any(open_during_call)

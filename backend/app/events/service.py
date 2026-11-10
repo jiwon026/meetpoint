@@ -96,6 +96,8 @@ def _seoul_raw(client: SeoulEventClient, cache: ContentCacheRepo) -> list[dict]:
     cached = cache.get(SEOUL_RAW_KEY, CONTENT_TTL)
     if cached is not None:
         return list(cached)
+    # 여러 쪽을 받는 동안 DB 연결을 붙잡지 않는다.
+    cache.release()
     try:
         rows = client.fetch_all()
     except (httpx.HTTPError, UpstreamError) as exc:
