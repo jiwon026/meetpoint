@@ -43,7 +43,9 @@ test("1위 카드가 펼쳐진 채로 시작하고 다른 카드를 누르면 �
   const cards = await screen.findAllByTestId("hub-card");
   expect(cards).toHaveLength(2);
   expect(within(cards[0]).getByRole("button", { expanded: true })).toBeInTheDocument();
-  expect(within(cards[0]).getByText("1위")).toBeInTheDocument();
+  // 순위는 앞 동그라미 숫자로만 보인다. 펼친 카드는 아래 칸에 같은 숫자가 있어 요약 줄을 빼고, 접힌 카드에만 둔다.
+  expect(within(cards[0]).queryByText("1위")).toBeNull();
+  expect(within(cards[0]).queryByTestId("hub-summary")).toBeNull();
   expect(within(cards[1]).getByRole("button", { expanded: false })).toBeInTheDocument();
   expect(within(cards[1]).getByTestId("hub-summary")).toHaveTextContent("서울, 최대 약 25분, 차이 12분");
   expect(screen.getByText(/지하철 이동 시간 기준이에요/)).toBeInTheDocument();
