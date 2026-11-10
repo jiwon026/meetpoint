@@ -8,9 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.cache import ContentCacheRepo
 from app.db import get_db
-from app.deps import get_cache, get_geocoder, get_kopis_client, get_local_client, get_matrix, get_seoul_client
+from app.deps import get_cache, get_geocoder, get_local_client, get_matrix, get_seoul_client
 from app.errors import UpstreamError
-from app.events.kopis import KopisClient
 from app.events.seoul import SeoulEventClient
 from app.events.service import get_events
 from app.geocoding.kakao import Geocoder
@@ -139,7 +138,6 @@ def hub_content(
     db: Session = Depends(get_db),
     local_client: KakaoLocalClient = Depends(get_local_client),
     seoul_client: SeoulEventClient = Depends(get_seoul_client),
-    kopis_client: KopisClient = Depends(get_kopis_client),
     cache: ContentCacheRepo = Depends(get_cache),
 ) -> ContentOut:
     room = service.get_room(db, slug)
@@ -148,7 +146,7 @@ def hub_content(
         raise HTTPException(status_code=404, detail=MSG_HUB_NOT_FOUND)
     try:
         if kind == "event":
-            items = get_events(hub, room.meet_date, seoul_client, kopis_client, cache)
+            items = get_events(hub, room.meet_date, seoul_client, cache)
         else:
             items = get_places(hub, kind, local_client, cache, sort)
         return ContentOut(kind=kind, items=[asdict(i) for i in items], error=None)

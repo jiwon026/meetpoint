@@ -40,7 +40,7 @@
    v                               v
 [Vercel: Next.js]  --제목 조회-->  [Render: FastAPI, 싱가포르]  --SQL-->  [Supabase Postgres, 싱가포르]
                                        ^                 |
-[UptimeRobot] --5분마다 /health--------+                 +--> 카카오, 서울시, KOPIS API
+[UptimeRobot] --5분마다 /health--------+                 +--> 카카오, 서울시 API
 [GitHub Actions] --하루 한 번 정리 스크립트--------------------------------> [Supabase]
 ```
 
@@ -52,7 +52,7 @@
 | 위치 | 변수 | 값 |
 |---|---|---|
 | Render | `DATABASE_URL` | Supabase 세션 모드 연결 문자열 |
-| Render | `KAKAO_REST_KEY`, `SEOUL_API_KEY`, `KOPIS_API_KEY` | 각 키 |
+| Render | `KAKAO_REST_KEY`, `SEOUL_API_KEY` | 각 키 |
 | Render | `CORS_ORIGINS` | 프론트의 운영 주소. 지금은 `https://meetpoint-kappa.vercel.app` |
 | Render | `PYTHON_VERSION` | `3.12.8` (`render.yaml`에 적는다) |
 | Vercel | `NEXT_PUBLIC_API_BASE` | Render 서비스 주소. 지금은 `https://meetpoint-api-34hf.onrender.com` (`meetpoint-api`가 이미 쓰이고 있어 뒤에 글자가 붙었다) |
@@ -136,7 +136,7 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 
 - `render.yaml`: 웹 서비스 하나. `runtime: python`, `plan: free`, `region: singapore`, `rootDir: backend`, `buildCommand: pip install .`, `startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT`, `healthCheckPath: /health`, `autoDeployTrigger: checksPass`, 비밀 값은 `sync: false`.
 - `.github/workflows/ci.yml`: push와 PR에서 백엔드 `pytest`(Python 3.12), 프론트 `npm test`, `npm run lint`, `npx tsc --noEmit`, 흐름 테스트(`e2e` 작업, Playwright). 흐름 테스트는 처음에 시간이 길어 빼 두었다가 2026-10-15에 넣었다. 이 작업도 Render 자동 배포의 검사에 들어가므로 실패하면 백엔드가 배포되지 않는다. 실패하면 실행 화면의 `e2e-results`를 받아 `npx playwright show-trace`로 본다.
-- `.github/workflows/cleanup.yml`: 매일 한국 시간 새벽에 `python -m scripts.cleanup_expired`. 같은 워크플로의 `warm-venues` 작업이 `python -m scripts.warm_kopis_venues`로 KOPIS 공연장 좌표를 미리 채운다(secret `KOPIS_API_KEY` 필요). 수동 실행도 가능하게 한다. 실패하면 GitHub가 메일로 알린다. 이 실행이 Supabase의 일주일 무활동 정지도 막는다.
+- `.github/workflows/cleanup.yml`: 매일 한국 시간 새벽에 `python -m scripts.cleanup_expired`. 수동 실행도 가능하게 한다. 실패하면 GitHub가 메일로 알린다. 이 실행이 Supabase의 일주일 무활동 정지도 막는다.
 - Vercel은 설정 파일 없이 화면에서 루트 디렉터리를 `frontend`로 지정한다.
 
 ### 4.2 순서
@@ -205,4 +205,5 @@ JavaScript 키의 SDK 도메인에 운영 주소를 추가한다. `http://localh
 - 서버 인스턴스가 하나라는 전제다. 시간표 캐시와 연결 풀 크기가 그 전제에 맞춰져 있다.
 - 개발 서버(`next dev`)의 간헐적 404는 운영(`next build`)과 무관하지만 원인은 여전히 모른다.
 - 자동 배포는 그 커밋에 붙은 검사가 모두 통과해야 일어난다(`autoDeployTrigger: checksPass`). CI뿐 아니라 그 커밋에서 돈 `cleanup` 워크플로의 작업(`cleanup`, `warm-venues`)도 검사로 잡힌다. 2026-10-06에 병합 직후 `cleanup` 워크플로를 수동 실행했는데 `warm-venues`가 실패로 끝나(98곳 중 4곳 실패를 실패로 처리하던 때) 그 커밋이 배포되지 않았고 대시보드에서 수동 배포했다. 그래서: 병합 뒤에는 Render에 배포가 올라간 것을 확인하고 나서 예약 작업을 수동 실행한다. 새 동작이 운영에 안 보이면 Render의 Events와 GitHub의 그 커밋 검사 목록을 본다. 예약 실행이 밤에 실패하면 그 시점 최신 커밋에 실패가 붙지만 이미 배포된 커밋에는 영향이 없다.
-- 경기와 인천 거점의 행사가 항상 0건이던 문제(2026-10-06 운영 점검에서 발견)는 같은 날 고쳤다. KOPIS 공연 목록에 공연장 id가 없는데 테스트 픽스처에는 있어서 테스트가 잡지 못했던 것이다. 지금은 공연 상세와 공연장 정보를 조회해 좌표를 얻고 이름별로 30일 캐시한다. 운영에서 확인했다(2026-10-06): 예약 작업이 GitHub 서버에서 공연장 94곳을 채웠고(4곳 실패), 예술회관 거점에 1건, 인천터미널과 중앙 거점에 2건씩 나온다. 남은 한계: 요청 중에는 새 공연장을 6곳까지만 찾으므로, 예약 작업(`cleanup` 워크플로의 `warm-venues`)이 채우기 전에는 일부 공연만 보일 수 있다. 목록은 날짜와 지역마다 100건까지만 읽는다. KOPIS가 목록 호출을 막으면 행사 탭은 "지금 불러올 수 없어요"가 되고, 공연장 조회만 막히면 이미 좌표를 아는 공연만 보인다. KOPIS 주소는 `http`라 서비스 키가 평문으로 나간다(원래부터 그랬다. `https` 지원 여부를 확인해 바꿀 것). 같은 이름의 다른 공연장이 한 지역에 있으면 좌표를 공유한다.
+- (지난 기록) 경기와 인천 거점의 행사가 항상 0건이던 문제(2026-10-06 운영 점검에서 발견)는 같은 날 고쳤다. KOPIS 공연 목록에 공연장 id가 없는데 테스트 픽스처에는 있어서 테스트가 잡지 못했던 것이다. 지금은 공연 상세와 공연장 정보를 조회해 좌표를 얻고 이름별로 30일 캐시한다. 운영에서 확인했다(2026-10-06): 예약 작업이 GitHub 서버에서 공연장 94곳을 채웠고(4곳 실패), 예술회관 거점에 1건, 인천터미널과 중앙 거점에 2건씩 나온다. 남은 한계: 요청 중에는 새 공연장을 6곳까지만 찾으므로, 예약 작업(`cleanup` 워크플로의 `warm-venues`)이 채우기 전에는 일부 공연만 보일 수 있다. 목록은 날짜와 지역마다 100건까지만 읽는다. KOPIS가 목록 호출을 막으면 행사 탭은 "지금 불러올 수 없어요"가 되고, 공연장 조회만 막히면 이미 좌표를 아는 공연만 보인다. KOPIS 주소는 `http`라 서비스 키가 평문으로 나간다(원래부터 그랬다. `https` 지원 여부를 확인해 바꿀 것). 같은 이름의 다른 공연장이 한 지역에 있으면 좌표를 공유한다.
+- 경기, 인천 공연(KOPIS)은 2026-11-10에 뺐다. 그때 살아 있던 방 56개가 모두 서울이었고 새 방은 늘 서울로 만든다. 서울 밖 거점의 행사 탭은 빈 목록이다. `warm-venues` 작업과 `KOPIS_API_KEY`도 함께 뺐다.

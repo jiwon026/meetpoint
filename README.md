@@ -52,7 +52,7 @@
 | DB | PostgreSQL (Supabase). 로컬과 테스트는 SQLite |
 | 배포 | 프론트 Vercel, 백엔드 Render, `main`에 합쳐진 커밋이 CI를 통과하면 자동 배포 |
 | 테스트 | pytest와 respx, Vitest와 MSW, Playwright 흐름 테스트, GitHub Actions |
-| 외부 API | 카카오 로컬(주소 검색, 가게 목록), 서울 열린데이터광장 문화행사, KOPIS 공연 정보 |
+| 외부 API | 카카오 로컬(주소 검색, 가게 목록), 서울 열린데이터광장 문화행사 |
 
 브라우저가 FastAPI를 직접 부르고 결과 화면은 10초마다 다시 읽어 친구가 들어오면 추천이 바뀝니다. 역간 시간표는 서버가 처음 계산할 때 메모리에 올려 두고 씁니다.
 
@@ -109,4 +109,4 @@ npm run dev                                     # http://localhost:3000
 
 수도권 24개 노선, 역 646곳(환승역은 하나로 셉니다)을 다룹니다. 파일별 출처, 받은 날짜, 라이선스, 원본 결함을 고친 내역은 [backend/data/SOURCES.md](backend/data/SOURCES.md)에 있습니다.
 
-가게 정보는 카카오 로컬 API, 행사는 서울 열린데이터광장과 공연예술통합전산망(KOPIS)에서 가져와 하루 동안 캐시합니다.
+가게 정보는 카카오 로컬 API, 행사는 서울 열린데이터광장에서 가져와 하루 동안 캐시합니다.

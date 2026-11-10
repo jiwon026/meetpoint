@@ -10,7 +10,7 @@ from sqlalchemy import delete
 from app.cache import ContentCacheRepo
 from app.errors import UpstreamError
 from app.events.seoul import SeoulEventClient
-from app.events.service import SEOUL_RAW_KEY, get_seoul_events
+from app.events.service import SEOUL_RAW_KEY, get_events, get_seoul_events
 from app.models import ContentCache, Hub
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -132,3 +132,12 @@ def test_db_transaction_is_closed_while_seoul_feed_is_fetched(seeded):
     hub = seeded.get(Hub, 1)
     get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), ContentCacheRepo(seeded))
     assert open_during_call and not any(open_during_call)
+
+
+@respx.mock(assert_all_called=False)
+def test_events_outside_seoul_are_empty_without_any_call(seeded):
+    # 경기, 인천 공연(KOPIS)은 방을 서울로만 만들게 된 뒤 쓰이지 않아 뺐다(2026-11-10). 예전 링크로 와도 빈 목록이다.
+    route = respx.get(url__startswith=SEOUL_URL_PREFIX)
+    hub = Hub(id=99, station_id=1, group_id=1, name="수원", lat=37.27, lng=127.0, region="경기", tags=[], vibe_summary="")
+    assert get_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), ContentCacheRepo(seeded)) == []
+    assert not route.called

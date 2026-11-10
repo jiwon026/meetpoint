@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.models import ContentCache
 
 CONTENT_TTL = timedelta(hours=24)
-VENUE_TTL = timedelta(days=30)
 
 
 def utcnow() -> datetime:
