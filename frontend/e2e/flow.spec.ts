@@ -59,8 +59,9 @@ test("첫 화면에서 출발지를 넣고 주변 둘러보기까지", async ({ 
   await expect(cards).toHaveCount(5);
 
   // 방은 서울로 만들어지고 지역은 고르지 않는다. 수원에서 오는 사람이 있어도 서울 거점만 나온다.
+  // 지역이 적힌 요약 줄은 접힌 카드(2~5위)에만 있다.
   const summaries = await page.getByTestId("hub-summary").allTextContents();
-  expect(summaries).toHaveLength(5);
+  expect(summaries).toHaveLength(4);
   expect(summaries.every((text) => text.startsWith("서울"))).toBe(true);
   await expect(page.getByRole("button", { name: "경기", exact: true })).toHaveCount(0);
 
