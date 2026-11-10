@@ -117,3 +117,18 @@ def test_non_json_error_body_raises_upstream_error(seeded):
     )
     with pytest.raises(UpstreamError):
         SeoulEventClient("test-key").fetch_all()
+
+
+@respx.mock
+def test_db_transaction_is_closed_while_seoul_feed_is_fetched(seeded):
+    # 서울시 행사 전체를 여러 쪽 받는 동안 DB 연결을 쥐고 있지 않는다.
+    open_during_call: list[bool] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        open_during_call.append(seeded.in_transaction())
+        return httpx.Response(200, json=_load())
+
+    respx.get(url__startswith=SEOUL_URL_PREFIX).mock(side_effect=respond)
+    hub = seeded.get(Hub, 1)
+    get_seoul_events(hub, date(2026, 9, 26), SeoulEventClient("test-key"), ContentCacheRepo(seeded))
+    assert open_during_call and not any(open_during_call)

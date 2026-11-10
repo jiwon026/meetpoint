@@ -149,6 +149,8 @@ def get_places(
     cached = cache.get(key, CONTENT_TTL)
     if cached is not None:
         return [Place(**item) for item in cached]
+    # 카카오를 기다리는 동안 DB 연결을 붙잡지 않는다.
+    cache.release()
     places = _fetch(hub, kind, client, sort)
     cache.set(key, [asdict(p) for p in places], kind=kind, hub_id=hub.id)
     return places
