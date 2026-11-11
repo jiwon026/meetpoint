@@ -144,6 +144,7 @@ def test_real_limits_are_generous_enough_for_shared_ips():
     assert LIMITS["create_room"] == Limit(limit=30, window_seconds=600)
     assert LIMITS["add_participant"] == Limit(limit=60, window_seconds=600)
     assert LIMITS["update_room"] == Limit(limit=30, window_seconds=600)
+    assert LIMITS["update_participant"] == Limit(limit=60, window_seconds=600)
     assert LIMITS["place_search"] == Limit(limit=120, window_seconds=60)
     assert LIMITS["hub_content"] == Limit(limit=120, window_seconds=60)
 
@@ -165,3 +166,13 @@ def test_limited_routes_say_which_address_source_was_used(client):
     assert with_header.headers["X-RateLimit-Source"] == "cf-connecting-ip"
     without_header = client.post("/rooms", json={"title": "t", "meet_date": "2026-09-26"})
     assert without_header.headers["X-RateLimit-Source"] == "peer"
+
+
+def test_toggling_a_participant_is_limited(client):
+    slug = _post_room(client, "203.0.113.14").json()["slug"]
+    headers = {"CF-Connecting-IP": "203.0.113.14"}
+    pid = client.post(f"/rooms/{slug}/participants", json={"nickname": "a", "station_id": 1}, headers=headers).json()["id"]
+    url = f"/rooms/{slug}/participants/{pid}"
+    for i in range(LIMITS["update_participant"].limit):
+        assert client.patch(url, json={"active": i % 2 == 1}, headers=headers).status_code == 200
+    assert client.patch(url, json={"active": True}, headers=headers).status_code == 429

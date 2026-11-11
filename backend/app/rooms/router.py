@@ -74,7 +74,11 @@ def add_participant(
     return service.participant_out(service.add_participant(db, room, data, geocoder))
 
 
-@router.patch("/rooms/{slug}/participants/{participant_id}", response_model=ParticipantOut)
+@router.patch(
+    "/rooms/{slug}/participants/{participant_id}",
+    response_model=ParticipantOut,
+    dependencies=[Depends(rate_limit("update_participant"))],
+)
 def update_participant(
     slug: str,
     participant_id: int,

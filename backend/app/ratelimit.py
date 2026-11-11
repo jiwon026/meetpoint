@@ -35,6 +35,8 @@ LIMITS: dict[str, Limit] = {
     "update_room": Limit(limit=30, window_seconds=600),
     # 출발지 등록: 한 브라우저에서 여러 명을 대신 넣을 수 있고 방 정원이 20명이다.
     "add_participant": Limit(limit=60, window_seconds=600),
+    # 참가자 빼기와 되돌리기: 출발지 등록과 같은 정도. 20명 방에서 몇 명을 뺐다 넣어도 남는다.
+    "update_participant": Limit(limit=60, window_seconds=600),
     # 주소 검색: 글자를 칠 때마다 부른다(0.3초 디바운스). 카카오 할당량을 쓰는 익명 프록시다.
     "place_search": Limit(limit=120, window_seconds=60),
     # 주변 장소와 행사: 캐시가 없으면 카카오, 서울시를 부른다.
