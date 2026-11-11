@@ -78,7 +78,7 @@ FastAPI + SQLAlchemy 2.0. 라우터는 얇고 로직은 서비스에 있다. 외
 
 사용자에게 보이는 에러 문구는 `rooms/service.py`의 `MSG_*` 상수와 `docs/design.md` 8절이 원본이다. 바꾸면 둘 다.
 
-호출 제한은 `app/ratelimit.py`에 있다. 쓰기와 외부 API를 부르는 경로에만 `dependencies=[Depends(rate_limit("이름"))]`으로 건다. 읽기 경로(10초 폴링)에는 걸지 않는다. 기록은 프로세스 메모리에 있고 테스트는 `conftest.py`가 매번 비운다. 한도와 근거는 `LIMITS`의 주석과 `docs/deploy-design.md` 6절.
+호출 제한은 `app/ratelimit.py`에 있다. 쓰기와 외부 API를 부르는 경로에만 `dependencies=[Depends(rate_limit("이름"))]`으로 건다. 읽기 경로(10초 폴링)에는 걸지 않는다. 대신 방 주소가 들어간 경로에는 모두 `miss_limit("room_miss")`를 걸어 없는 방(404) 응답만 센다(주소 추측 막기). 기록은 프로세스 메모리에 있고 테스트는 `conftest.py`가 매번 비운다. 한도와 근거는 `LIMITS`의 주석과 `docs/deploy-design.md` 6절.
 
 규모 통계는 `app/stats.py`의 `bump`가 `daily_stats`에 날짜별 개수만 올린다(한국 날짜). 본 작업의 커밋 뒤에 부르고 실패해도 요청을 깨지 않는다. 별도의 짧은 세션으로 쓰므로 요청의 세션을 커밋하거나 롤백하지 않는다. 개인 정보를 넣지 않는다.
 

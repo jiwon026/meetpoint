@@ -9,7 +9,7 @@ import math
 import threading
 import time
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from fastapi import HTTPException, Request, Response
@@ -37,6 +37,9 @@ LIMITS: dict[str, Limit] = {
     "add_participant": Limit(limit=60, window_seconds=600),
     # 참가자 빼기와 되돌리기: 출발지 등록과 같은 정도. 20명 방에서 몇 명을 뺐다 넣어도 남는다.
     "update_participant": Limit(limit=60, window_seconds=600),
+    # 없는 방(404): 방 읽기는 폴링이라 제한하지 않고, 주소를 마구 넣어 보는 것만 막는다.
+    # 6글자 주소는 약 8.9억 개라 10분에 30번이면 하루 종일 두드려도 살아 있는 방을 찾기 어렵다.
+    "room_miss": Limit(limit=30, window_seconds=600),
     # 주소 검색: 글자를 칠 때마다 부른다(0.3초 디바운스). 카카오 할당량을 쓰는 익명 프록시다.
     "place_search": Limit(limit=120, window_seconds=60),
     # 주변 장소와 행사: 캐시가 없으면 카카오, 서울시를 부른다.
@@ -78,6 +81,17 @@ class SlidingWindowLimiter:
                 return max(1, math.ceil(times[0] + self._window - now))
             times.append(now)
             return 0
+
+    def retry_after(self, key: str) -> int:
+        """기록하지 않고 지금 막혀 있는지만 본다. 허용이면 0, 막혔으면 다시 시도할 수 있을 때까지의 초."""
+        now = self._clock()
+        with self._lock:
+            times = self._hits.get(key)
+            while times and times[0] <= now - self._window:
+                times.popleft()
+            if not times or len(times) < self._limit:
+                return 0
+            return max(1, math.ceil(times[0] + self._window - now))
 
     def tracked_keys(self) -> int:
         with self._lock:
@@ -131,10 +145,33 @@ def rate_limit(name: str) -> Callable[[Request, Response], None]:
         response.headers[SOURCE_HEADER] = source
         retry_after = _limiter(name).hit(client_key(request))
         if retry_after:
-            raise HTTPException(
-                status_code=429,
-                detail=MSG_TOO_MANY_REQUESTS,
-                headers={"Retry-After": str(retry_after), SOURCE_HEADER: source},
-            )
+            raise _too_many(retry_after, source)
+
+    return dependency
+
+
+def _too_many(retry_after: int, source: str) -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail=MSG_TOO_MANY_REQUESTS,
+        headers={"Retry-After": str(retry_after), SOURCE_HEADER: source},
+    )
+
+
+def miss_limit(name: str) -> Callable[[Request], Iterator[None]]:
+    """404로 끝난 요청만 센다. 한도를 넘은 IP는 그 창이 지날 때까지 이 경로들을 쓸 수 없다."""
+
+    def dependency(request: Request) -> Iterator[None]:
+        limiter = _limiter(name)
+        key = client_key(request)
+        retry_after = limiter.retry_after(key)
+        if retry_after:
+            raise _too_many(retry_after, _key_source(request))
+        try:
+            yield
+        except HTTPException as exc:
+            if exc.status_code == 404:
+                limiter.hit(key)
+            raise
 
     return dependency

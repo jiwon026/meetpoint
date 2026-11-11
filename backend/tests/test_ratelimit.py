@@ -145,6 +145,7 @@ def test_real_limits_are_generous_enough_for_shared_ips():
     assert LIMITS["add_participant"] == Limit(limit=60, window_seconds=600)
     assert LIMITS["update_room"] == Limit(limit=30, window_seconds=600)
     assert LIMITS["update_participant"] == Limit(limit=60, window_seconds=600)
+    assert LIMITS["room_miss"] == Limit(limit=30, window_seconds=600)
     assert LIMITS["place_search"] == Limit(limit=120, window_seconds=60)
     assert LIMITS["hub_content"] == Limit(limit=120, window_seconds=60)
 
@@ -176,3 +177,17 @@ def test_toggling_a_participant_is_limited(client):
     for i in range(LIMITS["update_participant"].limit):
         assert client.patch(url, json={"active": i % 2 == 1}, headers=headers).status_code == 200
     assert client.patch(url, json={"active": True}, headers=headers).status_code == 429
+
+
+def test_guessing_room_addresses_is_limited_but_real_rooms_are_not(client):
+    # 방 읽기는 10초 폴링이라 제한하지 않는다. 없는 방(404)만 세서 주소를 마구 넣어 보는 것을 막는다.
+    headers = {"CF-Connecting-IP": "203.0.113.15"}
+    slug = _post_room(client, "203.0.113.15").json()["slug"]
+    for _ in range(50):
+        assert client.get(f"/rooms/{slug}", headers=headers).status_code == 200
+    for i in range(LIMITS["room_miss"].limit):
+        assert client.get(f"/rooms/zz{i:04d}", headers=headers).status_code == 404
+    assert client.get("/rooms/zzzzzz/result", headers=headers).status_code == 429
+    assert client.get(f"/rooms/{slug}", headers=headers).status_code == 429
+    # 다른 IP는 영향을 받지 않는다.
+    assert client.get(f"/rooms/{slug}", headers={"CF-Connecting-IP": "203.0.113.16"}).status_code == 200
