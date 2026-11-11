@@ -18,7 +18,7 @@ from app.options import Region, Theme
 from app.places.kakao_local import KakaoLocalClient
 from app.places.service import PlaceSort, get_places, place_cache_key
 from app.places.suggest import suggest_places
-from app.ratelimit import rate_limit
+from app.ratelimit import miss_limit, rate_limit
 from app.rooms import service
 from app.schemas import (
     ContentOut,
@@ -40,6 +40,8 @@ from app.transit.matrix import StationTimeMatrix
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+# 방 주소가 들어간 경로에 모두 건다. 없는 방(404)만 센다.
+ROOM_MISS = Depends(miss_limit("room_miss"))
 
 
 @router.post("/rooms", response_model=RoomOut, status_code=201, dependencies=[Depends(rate_limit("create_room"))])
@@ -47,13 +49,13 @@ def create_room(data: RoomCreate, db: Session = Depends(get_db)) -> RoomOut:
     return service.room_out(service.create_room(db, data))
 
 
-@router.patch("/rooms/{slug}", response_model=RoomOut, dependencies=[Depends(rate_limit("update_room"))])
+@router.patch("/rooms/{slug}", response_model=RoomOut, dependencies=[ROOM_MISS, Depends(rate_limit("update_room"))])
 def update_room(slug: str, data: RoomUpdate, db: Session = Depends(get_db)) -> RoomOut:
     room = service.get_room(db, slug)
     return service.room_out(service.change_meet_date(db, room, data.meet_date, data.title))
 
 
-@router.get("/rooms/{slug}", response_model=RoomOut)
+@router.get("/rooms/{slug}", response_model=RoomOut, dependencies=[ROOM_MISS])
 def get_room(slug: str, db: Session = Depends(get_db)) -> RoomOut:
     return service.room_out(service.get_room(db, slug))
 
@@ -62,7 +64,7 @@ def get_room(slug: str, db: Session = Depends(get_db)) -> RoomOut:
     "/rooms/{slug}/participants",
     response_model=ParticipantOut,
     status_code=201,
-    dependencies=[Depends(rate_limit("add_participant"))],
+    dependencies=[ROOM_MISS, Depends(rate_limit("add_participant"))],
 )
 def add_participant(
     slug: str,
@@ -77,7 +79,7 @@ def add_participant(
 @router.patch(
     "/rooms/{slug}/participants/{participant_id}",
     response_model=ParticipantOut,
-    dependencies=[Depends(rate_limit("update_participant"))],
+    dependencies=[ROOM_MISS, Depends(rate_limit("update_participant"))],
 )
 def update_participant(
     slug: str,
@@ -91,7 +93,7 @@ def update_participant(
     )
 
 
-@router.get("/rooms/{slug}/result", response_model=ResultOut)
+@router.get("/rooms/{slug}/result", response_model=ResultOut, dependencies=[ROOM_MISS])
 def get_result(
     slug: str,
     region: list[Region] | None = Query(default=None),
@@ -132,7 +134,7 @@ def place_search(
 @router.get(
     "/rooms/{slug}/hubs/{hub_id}/content",
     response_model=ContentOut,
-    dependencies=[Depends(rate_limit("hub_content"))],
+    dependencies=[ROOM_MISS, Depends(rate_limit("hub_content"))],
 )
 def hub_content(
     slug: str,
