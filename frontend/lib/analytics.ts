@@ -33,6 +33,8 @@ export type AnalyticsEvents = {
   hub_viewed: { hub_name: string; region: string; rank: number };
   content_tab_selected: { kind: "food" | "cafe" | "drink" | "play" | "event" };
   place_sort_changed: { kind: "food" | "cafe" | "drink"; sort: "recommended" | "distance" };
+  // 가이드 글의 "지금 해 보기"를 눌렀을 때. place는 글 중간(middle)인지 끝(end)인지.
+  guide_cta_clicked: { page: "midpoint" | "meeting-place"; place: "middle" | "end" };
   place_link_clicked: { kind: "food" | "cafe" | "drink" | "play"; sort: "recommended" | "distance"; position: number };
 };
 

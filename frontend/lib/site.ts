@@ -16,6 +16,11 @@ export const SITE_VERIFICATION = {
 export function sitemapEntries(): MetadataRoute.Sitemap {
   return [
     { url: SITE_ORIGIN, changeFrequency: "weekly", priority: 1 },
+    ...Object.values(GUIDES).map((guide) => ({
+      url: `${SITE_ORIGIN}${guide.path}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     { url: `${SITE_ORIGIN}/privacy`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }
@@ -51,5 +56,46 @@ export function websiteJsonLd() {
     "@type": "WebSite",
     name: "우리지금만나",
     url: `${SITE_ORIGIN}/`,
+  };
+}
+
+// 방법을 찾는 검색어를 받는 글(2026-11-16, dev/active/seo-guides). title은 검색 결과 제목, headline은 글의 h1이다.
+// 검색어 배정은 dev/active/seo/keywords.csv의 P1 줄을 따른다.
+export type Guide = { path: string; title: string; headline: string; description: string; published: string };
+
+export const GUIDES = {
+  midpoint: {
+    path: "/guide/midpoint",
+    title: "중간지점 찾는법 - 카카오맵, 네이버지도와 지하철 시간 기준으로 약속장소 정하기 | 우리지금만나",
+    headline: "중간지점 찾는법: 지도 한가운데보다 지하철 시간으로",
+    description:
+      "카카오맵, 네이버지도로 약속장소 중간지점을 찾는 법과 그 한계를 정리했어요. 지하철로 각자 몇 분 걸리는지로 공평한 역을 고르는 법도 예시로 보여 드려요.",
+    published: "2026-11-16",
+  },
+  meetingPlace: {
+    path: "/guide/meeting-place",
+    title: "약속 장소 정하기 - 모임, 소개팅 장소를 싸우지 않고 정하는 법 | 우리지금만나",
+    headline: "약속 장소 정하기: 모임과 소개팅 장소를 덜 싸우고 정하는 순서",
+    description:
+      "모임 장소, 소개팅 장소를 정할 때 누가 멀리 오는지와 가서 뭘 할지를 순서대로 정리했어요. 지하철 시간 기준으로 공평한 역을 고르는 예시도 있어요.",
+    published: "2026-11-16",
+  },
+} as const satisfies Record<string, Guide>;
+
+export function guideMetadata(guide: Guide): Metadata {
+  return { title: guide.title, description: guide.description, alternates: { canonical: guide.path } };
+}
+
+// 검색 엔진이 글로 알아보게 하는 구조화 데이터. 글 페이지마다 하나씩 넣는다.
+export function articleJsonLd(guide: Guide) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: guide.headline,
+    description: guide.description,
+    url: `${SITE_ORIGIN}${guide.path}`,
+    inLanguage: "ko",
+    datePublished: guide.published,
+    author: { "@type": "Organization", name: "우리지금만나", url: `${SITE_ORIGIN}/` },
   };
 }

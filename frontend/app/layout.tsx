@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import localFont from "next/font/local";
 import { AppHeader } from "@/components/ui/AppHeader";
-import { SITE_DESCRIPTION, SITE_ORIGIN, SITE_TITLE, SITE_VERIFICATION } from "@/lib/site";
+import { GUIDES, SITE_DESCRIPTION, SITE_ORIGIN, SITE_TITLE, SITE_VERIFICATION } from "@/lib/site";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -36,7 +36,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AppHeader />
             {children}
             {/* 아래 여백(pb-32)이 하단 고정 바보다 높아서 바에 가려지지 않는다 */}
-            <footer className="mt-10 text-center text-xs text-ink-mute">
+            <footer className="mt-10 flex flex-wrap justify-center gap-x-4 gap-y-1 text-center text-xs text-ink-mute">
+              <Link href={GUIDES.midpoint.path} className="underline">
+                중간지점 찾는법
+              </Link>
+              <Link href={GUIDES.meetingPlace.path} className="underline">
+                약속 장소 정하기
+              </Link>
               <Link href="/privacy" className="underline">
                 개인정보 안내
               </Link>
