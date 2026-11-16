@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { CARD } from "@/components/ui/styles";
+import { GUIDES } from "@/lib/site";
 
 // 검색으로 들어온 사람이 묻는 말을 그대로 질문으로 쓰고, 답은 결론 문장부터 굵게 쓴다.
 // 사실이 바뀌면(정원, 지역, 계산 방식) 같이 고친다. 근거: backend/app/rooms/service.py, docs/design.md
@@ -49,6 +51,17 @@ export function HomeFaq() {
           </p>
         </details>
       ))}
+      {/* 방법을 찾다 들어온 사람에게 가이드 글을 이어 준다. 검색 엔진도 이 링크로 글을 찾는다. */}
+      <p className="pt-2 text-sm text-ink-sub">
+        더 알아보기:{" "}
+        <Link href={GUIDES.midpoint.path} className="font-semibold text-primary underline">
+          중간지점 찾는법
+        </Link>
+        ,{" "}
+        <Link href={GUIDES.meetingPlace.path} className="font-semibold text-primary underline">
+          약속 장소 정하기
+        </Link>
+      </p>
     </section>
   );
 }
