@@ -33,6 +33,8 @@ export type AnalyticsEvents = {
   hub_viewed: { hub_name: string; region: string; rank: number };
   content_tab_selected: { kind: "food" | "cafe" | "drink" | "play" | "event" };
   place_sort_changed: { kind: "food" | "cafe" | "drink"; sort: "recommended" | "distance" };
+  // 가이드 글을 열었을 때 한 번. 글 주소에는 방 슬러그가 없어 어느 글인지 남겨도 된다.
+  guide_viewed: { page: "midpoint" | "meeting-place" };
   // 가이드 글의 "지금 해 보기"를 눌렀을 때. place는 글 중간(middle)인지 끝(end)인지.
   guide_cta_clicked: { page: "midpoint" | "meeting-place"; place: "middle" | "end" };
   place_link_clicked: { kind: "food" | "cafe" | "drink" | "play"; sort: "recommended" | "distance"; position: number };

@@ -61,10 +61,18 @@ export function websiteJsonLd() {
 
 // 방법을 찾는 검색어를 받는 글(2026-11-16, dev/active/seo-guides). title은 검색 결과 제목, headline은 글의 h1이다.
 // 검색어 배정은 dev/active/seo/keywords.csv의 P1 줄을 따른다.
-export type Guide = { path: string; title: string; headline: string; description: string; published: string };
+export type Guide = {
+  id: "midpoint" | "meeting-place";
+  path: string;
+  title: string;
+  headline: string;
+  description: string;
+  published: string;
+};
 
 export const GUIDES = {
   midpoint: {
+    id: "midpoint",
     path: "/guide/midpoint",
     title: "중간지점 찾는법 - 카카오맵, 네이버지도와 지하철 시간 기준으로 약속장소 정하기 | 우리지금만나",
     headline: "중간지점 찾는법: 지도 한가운데보다 지하철 시간으로",
@@ -73,6 +81,7 @@ export const GUIDES = {
     published: "2026-11-16",
   },
   meetingPlace: {
+    id: "meeting-place",
     path: "/guide/meeting-place",
     title: "약속 장소 정하기 - 모임, 소개팅 장소를 싸우지 않고 정하는 법 | 우리지금만나",
     headline: "약속 장소 정하기: 모임과 소개팅 장소를 덜 싸우고 정하는 순서",

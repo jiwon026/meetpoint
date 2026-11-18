@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { articleJsonLd, type Guide } from "@/lib/site";
+import { GuideViewed } from "./GuideViewed";
 
 // 가이드 글의 틀. 검색 결과에서 들어온 사람이 읽는 블로그 글 모양이다(2026-11-16 사용자 선택).
 export function GuideArticle({ guide, lead, children }: { guide: Guide; lead: ReactNode; children: ReactNode }) {
   return (
     <main>
+      <GuideViewed page={guide.id} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd(guide)) }} />
       <article className="space-y-4 break-keep leading-relaxed">
         <header className="space-y-3">
